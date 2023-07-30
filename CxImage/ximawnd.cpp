@@ -1364,13 +1364,12 @@ long CxImage::DrawStringEx(HDC hdc, long x, long y, CXTEXTINFO *pTextType, bool 
     y=head.biHeight-y-1;
 
 	itext.Negative();
-#if CXIMAGE_SUPPORT_DSP
+
 	if (pTextType->smooth==FALSE){
 		itext.Threshold(128);
 	} else {
 		//itext.TextBlur();
 	}
-#endif
 
     //move the insertion point according to alignment type
     // DT_CENTER: cursor points to the center of text rectangle

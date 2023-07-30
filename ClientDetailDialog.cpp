@@ -28,6 +28,10 @@
 #include "UserMsgs.h"
 #include "ListenSocket.h"
 #include "preferences.h"
+#include "IP2Country.h" //EastShare - added by AndCycle, IP to Country
+#include "UploadQueue.h" //Xman Queuerank at clientdetail
+#include "Preferences.h" // CreditSystems [EastShare/ MorphXT] - Stulle
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -74,6 +78,11 @@ BOOL CClientDetailPage::OnInitDialog()
 	AddAnchor(IDC_STATIC50, TOP_LEFT, TOP_RIGHT);
 	AddAnchor(IDC_DNAME, TOP_LEFT, TOP_RIGHT);
 	AddAnchor(IDC_DSNAME, TOP_LEFT, TOP_RIGHT);
+	//zz_fly :: let it resize together with the dialog
+	CSize tAnchor(40,0);
+	AddAnchor(IDC_DSOFT, TOP_LEFT, tAnchor);
+	AddAnchor(IDC_DLOC, tAnchor, TOP_RIGHT);
+	//zz_fly :: end
 	AddAnchor(IDC_DDOWNLOADING, TOP_LEFT, TOP_RIGHT);
 	AddAnchor(IDC_UPLOADING, TOP_LEFT, TOP_RIGHT);
 	AddAnchor(IDC_OBFUSCATION_STAT, TOP_LEFT, TOP_RIGHT);
@@ -89,6 +98,13 @@ BOOL CClientDetailPage::OnSetActive()
 
 	if (m_bDataChanged)
 	{
+
+		//Xman Code Fix
+		//don't know how this happend, but happend with a friend:
+		if(m_paClients==NULL)
+			return FALSE;
+		//Xman end
+
 		CUpDownClient* client = STATIC_DOWNCAST(CUpDownClient, (*m_paClients)[0]);
 
 		CString buffer;
@@ -97,12 +113,21 @@ BOOL CClientDetailPage::OnSetActive()
 		else
 			GetDlgItem(IDC_DNAME)->SetWindowText(_T("?"));
 		
+		//EastShare Start - added by AndCycle, IP to Country
+		GetDlgItem(IDC_DLOC)->SetWindowText(client->GetCountryName(true));
+		//EastShare End - added by AndCycle, IP to Country
+
 		if (client->HasValidHash())
 			GetDlgItem(IDC_DHASH)->SetWindowText(md4str(client->GetUserHash()));
 		else
 			GetDlgItem(IDC_DHASH)->SetWindowText(_T("?"));
 		
+		//Xman ModId
+		/*
 		GetDlgItem(IDC_DSOFT)->SetWindowText(client->GetClientSoftVer());
+		*/
+		GetDlgItem(IDC_DSOFT)->SetWindowText(client->DbgGetFullClientSoftVer());
+		//Xman end
 
 		if (client->SupportsCryptLayer() && thePrefs.IsClientCryptLayerSupported() && (client->RequestsCryptLayer() || thePrefs.IsClientCryptLayerRequested()) 
 			&& (client->IsObfuscatedConnectionEstablished() || !(client->socket != NULL && client->socket->IsConnected())))
@@ -135,6 +160,31 @@ BOOL CClientDetailPage::OnSetActive()
 			GetDlgItem(IDC_DSNAME)->SetWindowText(_T("?"));
 		}
 
+		//Xman Queuerank at clientdetail
+		if(client->GetUploadState()==US_ONUPLOADQUEUE)
+			buffer.Format(_T("%u"),theApp.uploadqueue->GetWaitingPosition(client));
+		else
+			buffer.Format(_T("-"));
+		GetDlgItem(IDC_DOWNQUEUERANK)->SetWindowText(buffer);
+		if(client->GetDownloadState()==DS_ONQUEUE)
+		{
+			if(client->IsRemoteQueueFull())
+				buffer = GetResString(IDS_QUEUEFULL);
+			else
+				buffer.Format(_T("%u"), client->GetRemoteQueueRank());
+		}
+		else
+			buffer.Format(_T("-"));
+		GetDlgItem(IDC_UPLOADQUEURANK)->SetWindowText(buffer);
+		//Xman end
+
+		//Xman Anti-Leecher
+		if(client->IsLeecher()>0 && client->GetBanMessageString().IsEmpty()==false)
+			GetDlgItem(IDC_LEECHERINFO)->SetWindowText(client->GetBanMessageString());
+		else
+			GetDlgItem(IDC_LEECHERINFO)->SetWindowText(_T(" "));
+		//Xman end
+
 		CKnownFile* file = theApp.sharedfiles->GetFileByID(client->GetUploadFileID());
 		if (file)
 			GetDlgItem(IDC_DDOWNLOADING)->SetWindowText(file->GetFileName());
@@ -153,13 +203,28 @@ BOOL CClientDetailPage::OnSetActive()
 		buffer.Format(_T("%s"), CastItoXBytes(client->GetDownloadDatarate(), false, true));
 		GetDlgItem(IDC_DAVUR)->SetWindowText(buffer);
 
+		//Xman // Maella -Accurate measure of bandwidth
+		/*
 		buffer.Format(_T("%s"),CastItoXBytes(client->GetDatarate(), false, true));
+		*/
+		buffer.Format(_T("%s"),CastItoXBytes(client->GetUploadDatarate(), false, true));
+		//Xman end
 		GetDlgItem(IDC_DAVDR)->SetWindowText(buffer);
 		
 		if (client->Credits()){
 			GetDlgItem(IDC_DUPTOTAL)->SetWindowText(CastItoXBytes(client->Credits()->GetDownloadedTotal(), false, false));
 			GetDlgItem(IDC_DDOWNTOTAL)->SetWindowText(CastItoXBytes(client->Credits()->GetUploadedTotal(), false, false));
+			// Xman Creditsystem
+			/*
 			buffer.Format(_T("%.1f"),(float)client->Credits()->GetScoreRatio(client->GetIP()));
+			*/
+			// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+			if (thePrefs.GetCreditSystem() == 7) // is Xman CS¿
+			buffer.Format(_T("%.1f %+.1f [%.1f]"),(float)client->Credits()->GetScoreRatio(client)- (float)client->Credits()->GetBonusFaktor(client),(float)client->Credits()->GetBonusFaktor(client),(float)client->Credits()->GetMyScoreRatio(client->GetIP()));	//  See own credits VQB
+			else
+				buffer.Format(_T("%.1f [%.1f]"),(float)client->Credits()->GetScoreRatio(client),(float)client->Credits()->GetMyScoreRatio(client->GetIP()));	//  See own credits VQB
+			// <== CreditSystems [EastShare/ MorphXT] - Stulle
+			//Xman Creditsystem end
 			GetDlgItem(IDC_DRATIO)->SetWindowText(buffer);
 			
 			if (theApp.clientcredits->CryptoAvailable()){

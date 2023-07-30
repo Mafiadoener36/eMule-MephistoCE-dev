@@ -24,6 +24,7 @@
 #include "PartFile.h"
 #include "MenuCmds.h"
 #include "opcodes.h"
+#include "MenuXP.h" // XP Style Menu [Xanatos] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -59,6 +60,13 @@ BOOL CPreviewThread::InitInstance()
 
 BOOL CPreviewThread::Run()
 {
+	//Xman
+	// BEGINSLUGFILLER: SafeHash
+	CReadWriteLock lock(&theApp.m_threadlock);
+	if (!lock.ReadLock(0))
+		return 0;
+	// END SLUGFILLER: SafeHash
+
 	ASSERT (m_pPartfile) ;
 	CFile destFile;
 	CFile srcFile;
@@ -293,7 +301,12 @@ void CPreviewApps::UpdateApps()
 	}
 }
 
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 int CPreviewApps::GetAllMenuEntries(CMenu& rMenu, const CPartFile* file)
+*/
+int CPreviewApps::GetAllMenuEntries(CTitleMenu& rMenu, const CPartFile* file)
+// <== XP Style Menu [Xanatos] - Stulle
 {
 	UpdateApps();
 

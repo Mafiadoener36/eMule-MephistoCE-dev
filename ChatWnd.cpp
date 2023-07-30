@@ -29,6 +29,13 @@
 #include "IconStatic.h"
 #include "UserMsgs.h"
 #include "SmileySelector.h"
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+#include "HttpDownloadDlg.h"
+#include "ED2KLink.h"
+#include "InputBox.h"
+#include "MenuCmds.h"
+#include "Log.h"
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -60,6 +67,9 @@ BEGIN_MESSAGE_MAP(CChatWnd, CResizableDialog)
 	ON_STN_DBLCLK(IDC_FRIENDSICON, OnStnDblClickFriendIcon)
 	ON_BN_CLICKED(IDC_CSEND, OnBnClickedSend)
 	ON_BN_CLICKED(IDC_CCLOSE, OnBnClickedClose)
+	// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly 	 
+	ON_BN_CLICKED(IDC_BTN_MENU, OnBnClickedBnmenu) 	 
+	// MORPH END - Added by Commander, Friendlinks [emulEspaa]
 END_MESSAGE_MAP()
 
 CChatWnd::CChatWnd(CWnd* pParent /*=NULL*/)
@@ -114,6 +124,11 @@ void CChatWnd::ShowFriendMsgDetails(CFriend* pFriend)
 {
 	if (pFriend)
 	{
+		//Xman quick fix: some leechers(I think) can cause a crash here, a simple try catch should do the job
+		try
+		{
+		//Xman end
+
 		CString buffer;
 
 		// Name
@@ -174,6 +189,19 @@ void CChatWnd::ShowFriendMsgDetails(CFriend* pFriend)
 			GetDlgItem(IDC_FRIENDS_SUBIDO_EDIT)->SetWindowText(CastItoXBytes(pFriend->GetLinkedClient()->Credits()->GetUploadedTotal(), false, false));
 		else
 			GetDlgItem(IDC_FRIENDS_SUBIDO_EDIT)->SetWindowText(_T("?"));
+
+		//Xman quickfix:
+		}
+		catch(...)
+		{
+			GetDlgItem(IDC_FRIENDS_NAME_EDIT)->SetWindowText(_T("-"));
+			GetDlgItem(IDC_FRIENDS_USERHASH_EDIT)->SetWindowText(_T("-"));
+			GetDlgItem(IDC_FRIENDS_CLIENTE_EDIT)->SetWindowText(_T("-"));
+			GetDlgItem(IDC_FRIENDS_IDENTIFICACION_EDIT)->SetWindowText(_T("-"));
+			GetDlgItem(IDC_FRIENDS_DESCARGADO_EDIT)->SetWindowText(_T("-"));
+			GetDlgItem(IDC_FRIENDS_SUBIDO_EDIT)->SetWindowText(_T("-"));
+		}
+		//Xman end
 	}
 	else
 	{
@@ -206,6 +234,14 @@ BOOL CChatWnd::OnInitDialog()
 
 	chatselector.Init(this);
 	m_FriendListCtrl.Init();
+	// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+	if ( theApp.m_fontSymbol.m_hObject )
+	{
+		GetDlgItem(IDC_BTN_MENU)->SetFont(&theApp.m_fontSymbol);
+		GetDlgItem(IDC_BTN_MENU)->SetWindowText(_T("6")); // show a down-arrow
+	}
+	// MORPH END - Added by Commander, Friendlinks [emulEspaa]
+	OnBackcolor(); // Design Settings [eWombat/Stulle] - Max
 
 	CRect rcSpl;
 	m_FriendListCtrl.GetWindowRect(rcSpl);
@@ -520,6 +556,37 @@ BOOL CChatWnd::OnCommand(WPARAM wParam, LPARAM lParam)
 		case IDC_SMILEY:
 			OnBnClickedSmiley();
 			break;
+		// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+		case MP_GETFRIENDED2KLINK:
+			{
+				CString sLink;
+				CED2KFriendLink myLink(CPreferences::GetUserNick(), CPreferences::GetUserHash());
+				myLink.GetLink(sLink);
+				theApp.CopyTextToClipboard(sLink);
+			}
+			break;
+		case MP_GETHTMLFRIENDED2KLINK:
+			{
+				CString sLink;
+				CED2KFriendLink myLink(CPreferences::GetUserNick(), CPreferences::GetUserHash());
+				myLink.GetLink(sLink);
+				sLink = _T("<a href=\"") + sLink + _T("\">") + StripInvalidFilenameChars(CPreferences::GetUserNick()) + _T("</a>");
+				theApp.CopyTextToClipboard(sLink);
+			}
+			break;
+		//MORPH START - Added by Commander, Manual eMfriend.met download
+		case MP_GETEMFRIENDMETFROMURL: {
+
+			InputBox inp;
+			inp.SetLabels (GetResString (IDS_DOWNLOADEMFRIENDSMET),	GetResString (IDS_EMFRIENDSMETURL),_T(""));
+			inp.DoModal ();
+			CString url = inp.GetInput ();
+
+			if (!url.IsEmpty() && !inp.WasCancelled())
+					UpdateEmfriendsMetFromURL(url);
+		} break;
+		//MORPH END - Added by Commander, Manual eMfriend.met download
+		// MORPH END - Added by Commander, Friendlinks [emulEspaa]
 	}
 	return CResizableDialog::OnCommand(wParam, lParam);
 }
@@ -565,8 +632,94 @@ void CChatWnd::OnBnClickedSend()
 
 HBRUSH CChatWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
+// ==> Design Settings [eWombat/Stulle] - Max
+/*
 	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
 	if (hbr)
 		return hbr;
 	return __super::OnCtlColor(pDC, pWnd, nCtlColor);
 }
+*/
+	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
+	if (hbr)
+		return hbr;
+	hbr = __super::OnCtlColor(pDC, pWnd, nCtlColor);
+
+	switch(nCtlColor)
+	{
+	case CTLCOLOR_EDIT:
+		break;
+	default:
+		pDC->SetBkMode(TRANSPARENT);
+	case CTLCOLOR_DLG:
+		hbr = (HBRUSH) m_brMyBrush.GetSafeHandle();
+		break;
+	}
+
+	return hbr;
+}
+
+void CChatWnd::OnBackcolor() 
+{
+	clrChatColor = thePrefs.GetStyleBackColor(window_styles, style_w_messages);
+
+	if(clrChatColor == CLR_DEFAULT)
+		clrChatColor = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+	m_brMyBrush.DeleteObject();
+
+	if(clrChatColor != CLR_DEFAULT)
+		m_brMyBrush.CreateSolidBrush(clrChatColor);
+	else
+		m_brMyBrush.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+	chatselector.m_clrBack = clrChatColor;
+}
+// <== Design Settings [eWombat/Stulle] - Max
+
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+bool CChatWnd::UpdateEmfriendsMetFromURL(const CString& strURL)
+{
+	if ( strURL.IsEmpty() || strURL.Find(_T("://")) == -1 )	// not a valid URL
+	{
+		LogError(LOG_STATUSBAR, GetResString(IDS_INVALIDURL));
+		return false;
+	}
+
+	CString strTempFilename;
+	strTempFilename.Format(_T("%stemp-%d-emfriends.met"), thePrefs.GetMuleDirectory(EMULE_CONFIGDIR), ::GetTickCount());
+
+	// step2 - try to download emfriends.met
+	CHttpDownloadDlg dlgDownload;
+	dlgDownload.m_sURLToDownload = strURL;
+	dlgDownload.m_sFileToDownloadInto = strTempFilename;
+	if ( dlgDownload.DoModal() != IDOK )
+	{
+		LogError(LOG_STATUSBAR, GetResString(IDS_ERR_FAILEDDOWNLOADEMFRIENDS), strURL);
+		return false;
+	}
+
+	// step3 - add content of emfriends.met to friendlist
+	m_FriendListCtrl.AddEmfriendsMetToList(strTempFilename);
+
+	_tremove(strTempFilename);
+	return true;
+}
+
+void CChatWnd::OnBnClickedBnmenu()
+{
+	CTitleMenu tmColumnMenu;
+	VERIFY ( tmColumnMenu.CreatePopupMenu() );
+	tmColumnMenu.AddMenuTitle(GetResString(IDS_FRIENDLINKMENUTITLE),true);
+
+	VERIFY ( tmColumnMenu.AppendMenu(MF_STRING, MP_GETFRIENDED2KLINK, GetResString(IDS_GETMYFRIENDED2KLINK), _T("ED2KLINK")) );
+	VERIFY ( tmColumnMenu.AppendMenu(MF_STRING, MP_GETHTMLFRIENDED2KLINK, GetResString(IDS_GETMYHTMLFRIENDED2KLINK),_T("ED2KLINK")) );
+	VERIFY ( tmColumnMenu.AppendMenu(MF_SEPARATOR) ); 
+	VERIFY ( tmColumnMenu.AppendMenu(MF_STRING, MP_GETEMFRIENDMETFROMURL, GetResString(IDS_DOWNLOADEMFRIENDSMET),_T("WEB")) ); //MORPH - Added by Commander, Manual Download and load of emfriends.met
+
+	RECT rectBtn;
+	GetDlgItem(IDC_BTN_MENU)->GetWindowRect(&rectBtn);
+
+	tmColumnMenu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, rectBtn.right, rectBtn.bottom, this);
+	VERIFY( tmColumnMenu.DestroyMenu() );
+}
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]

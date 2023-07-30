@@ -47,6 +47,7 @@
 #include "StringConversion.h"
 #include "Log.h"
 #include "Exceptions.h"
+#include "KnownFileList.h" //Xman [MoNKi: -Check already downloaded files-]
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -106,9 +107,24 @@ void CIrcMain::ProcessLink( CString sED2KLink )
 		{
 			case CED2KLink::kFile:
 				{
+					// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+					/*
 					CED2KFileLink* pFileLink = pLink->GetFileLink();
 					_ASSERT(pFileLink !=0);
-					theApp.downloadqueue->AddFileLinkToDownload(pFileLink);
+					//Xman [MoNKi: -Check already downloaded files-]
+					if(theApp.knownfiles->CheckAlreadyDownloadedFileQuestion(pFileLink->GetHashKey(),pFileLink->GetName()))
+					{
+						theApp.downloadqueue->AddFileLinkToDownload(pFileLink);
+					}
+					//Xman end
+					*/
+					CED2KFileLink* pFileLink = (CED2KFileLink*)CED2KLink::CreateLinkFromUrl(sLink);
+					if(theApp.knownfiles->CheckAlreadyDownloadedFileQuestion(pFileLink->GetHashKey(),pFileLink->GetName()))
+					{
+						theApp.downloadqueue->AddFileLinkToDownload(pFileLink, -1, true);
+					}
+					// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
 					break;
 				}
 			case CED2KLink::kServerList:
@@ -1550,7 +1566,13 @@ void CIrcMain::ParsePerform()
 			// be change to what ever channel by just changing the language.. I will just have to check these strings
 			// before release.
 			// This also allows the help string to do more then join one channel. It could add other features later.
+			// ==> Auto join Morph help channel [Stulle] - Stulle
+			/*
 			CString sJoinHelpChannel = GetResString(IDS_IRC_HELPCHANNELPERFORM);
+			*/
+			CString sJoinHelpChannel;
+			sJoinHelpChannel.Format(_T("%s|/join #emule-morph"),GetResString(IDS_IRC_HELPCHANNELPERFORM));
+			// <== Auto join Morph help channel [Stulle] - Stulle
 			sJoinHelpChannel.Trim();
 			if (!sJoinHelpChannel.IsEmpty())
 			{

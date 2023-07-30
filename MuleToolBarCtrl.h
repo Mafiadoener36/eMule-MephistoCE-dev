@@ -66,7 +66,9 @@ protected:
 #endif
 
 	void AutoSize();
+public: // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
 	virtual	BOOL OnCommand(WPARAM wParam, LPARAM lParam);
+protected: // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
 
 	DECLARE_MESSAGE_MAP()
 	afx_msg void OnNmRClick(NMHDR *pNMHDR, LRESULT *pResult);
@@ -80,4 +82,9 @@ protected:
 	afx_msg void OnTbnQueryInsert(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnTbnReset(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnTbnToolbarChange(NMHDR *pNMHDR, LRESULT *pResult);
+
+	// ==> High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+public:
+	void ShowSpeedMeter(bool bShow = true);
+	// <== High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
 };

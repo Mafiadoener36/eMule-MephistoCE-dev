@@ -25,7 +25,14 @@
 #pragma warning(disable:4244) // conversion from 'type1' to 'type2', possible loss of data
 #pragma warning(disable:4100) // unreferenced formal parameter
 #pragma warning(disable:4702) // unreachable code
+//Xman
+/*
 #include <crypto51/rsa.h>
+*/
+#pragma warning(disable:4189) // local variable is initialized but not referenced
+#include <cryptopp/rsa.h>
+#pragma warning(default:4189) // local variable is initialized but not referenced
+//Xman end
 #pragma warning(default:4702) // unreachable code
 #pragma warning(default:4100) // unreferenced formal parameter
 #pragma warning(default:4244) // conversion from 'type1' to 'type2', possible loss of data
@@ -428,6 +435,13 @@ BOOL CPCValditeThread::InitInstance()
 }
 
 BOOL CPCValditeThread::Run(){
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash
+	CReadWriteLock lock(&theApp.m_threadlock);
+	if (!lock.ReadLock(0))
+		return 0;
+	// END SLUGFILLER: SafeHash
+
 	if (theApp.emuledlg != NULL && theApp.emuledlg->IsRunning()){
 		if (Valdite()){
 			m_pOwner->m_bValdited = true;
@@ -669,7 +683,13 @@ bool CPCValditeThread::Valdite(){
 				rsa.SetModulus(n);
 				Integer result = rsa.ApplyFunction(m);
 				uchar aucResult[SIGNATURELENGTH];
+				//MORPH START - Changed by Stulle, Use of cryptopp 5.6.0
+				/*
 				if(result.Encode(aucResult, SIGNATURELENGTH)){
+				*/
+				result.Encode(aucResult, SIGNATURELENGTH);
+				{
+				//MORPH END   - Changed by Stulle, Use of cryptopp 5.6.0
 					uchar aucHash1[16];
 					for (int i = 0; i != 16; i++)
 						aucHash1[i] = aucResult[(SIGNATURELENGTH-1)-i]; 
@@ -700,6 +720,13 @@ BOOL CPCReverseDnsThread::InitInstance()
 	ASSERT( m_hwndAsyncResult != NULL );
 	ASSERT( m_dwIP != 0 );
 	InitThreadLocale();
+
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash
+	CReadWriteLock lock(&theApp.m_threadlock);
+	if (!lock.ReadLock(0))
+		return FALSE;
+	// END SLUGFILLER: SafeHash
 
 	memset(s_acDNSBuffer, 0, sizeof s_acDNSBuffer);
 	CString strHostname = ReverseDnsLookup(m_dwIP);

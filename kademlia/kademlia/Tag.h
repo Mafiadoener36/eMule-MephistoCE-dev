@@ -54,9 +54,6 @@ namespace Kademlia
 					: CStringA(psz, len)
 			{}
 
-			virtual ~CKadTagNameString()
-			{}
-
 			// A tag name may include character values >= 0xD0 and therefor also >= 0xF0. to prevent those
 			// characters be interpreted as multi byte character sequences we have to sensure that a binary
 			// string compare is performed.
@@ -129,9 +126,6 @@ namespace Kademlia
 
 			CKadTagValueString(const wchar_t *psz, int iLen)
 				: CStringW(psz, iLen)
-			{}
-
-			virtual ~CKadTagValueString()
 			{}
 
 			int CompareNoCase(LPCWSTR src) const throw()
@@ -211,12 +205,20 @@ namespace Kademlia
 
 			virtual CKadTagValueString GetStr() const
 			{
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+				/*
 				ASSERT(0);
+				*/
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 				return L"";
 			}
 			virtual uint64 GetInt() const
 			{
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+				/*
 				ASSERT(0);
+				*/
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 				return 0;
 			}
 			virtual float GetFloat() const

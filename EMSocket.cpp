@@ -27,6 +27,15 @@
 #include "Preferences.h"
 #include "emuleDlg.h"
 #include "Log.h"
+//Xman
+#include "updownclient.h" //Xman Xtreme Upload
+#include "BandWidthControl.h" // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+#include "ListenSocket.h" //Xman 
+// netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+#ifdef HAVE_VISTA_SDK
+#include "NetF.h"
+#endif
+// netfinity: end
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -115,27 +124,73 @@ CEMSocket::CEMSocket(void){
     //m_latency_sum = 0;
     //m_wasBlocked = false;
 
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
     m_currentPacket_is_controlpacket = false;
 	m_currentPackageIsFromPartFile = false;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 
     m_numberOfSentBytesCompleteFile = 0;
     m_numberOfSentBytesPartFile = 0;
+    //Xman unused
+    /*
     m_numberOfSentBytesControlPacket = 0;
+    */
+    //Xman end
 
     lastCalledSend = ::GetTickCount();
     lastSent = ::GetTickCount()-1000;
 
+	//Xman unused
+	/*
 	m_bAccelerateUpload = false;
+	*/
+	//Xman end
 
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
     m_actualPayloadSize = 0;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
     m_actualPayloadSizeSent = 0;
 
     m_bBusy = false;
     m_hasSent = false;
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
 	m_bUsesBigSendBuffers = false;
-	m_pPendingSendOperation = NULL;
-	// Overlapped sockets are under investigations for buggyness (heap corruption), only use for testing
-	m_bOverlappedSending = thePrefs.GetUseOverlappedSockets() && theApp.IsWinSock2Available();
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+
+	//Xman
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	client = NULL; // Quick and dirty
+
+	//Xman Code Improvement
+	isreadyforsending=false;
+
+	//Xman count block/success send
+	blockedsendcount=0;
+	sendcount=0;
+	blockedsendcount_overall=0;
+	sendcount_overall=0;
+	avg_block_ratio=0;
+	sum_blockhistory=0;
+	//Xman end
+
+	// netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+	m_dwMSS = 0;
+
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+	sendblenWithoutControlPacket = 0;
+	currentBufferSize = 0;
+
+	m_uCurrentSendBufferSize = 0;
+	m_uCurrentRecvBufferSize = 0;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 }
 
 CEMSocket::~CEMSocket(){
@@ -146,7 +201,6 @@ CEMSocket::~CEMSocket(){
     sendLocker.Lock();
 	byConnected = ES_DISCONNECTED;
     sendLocker.Unlock();
-	CleanUpOverlappedSendOperation(true);
 
     // now that we know no other method will keep adding to the queue
     // we can remove ourself from the queue
@@ -155,6 +209,16 @@ CEMSocket::~CEMSocket(){
     ClearQueues();
 	RemoveAllLayers(); // deadlake PROXYSUPPORT
 	AsyncSelect(0);
+	//Xman
+	// Maella -Accurate download rate measurement directly at socket-
+	if(client != NULL && (CEMSocket*)client->socket == this){ 
+		// They might have an error in the cross link somewhere
+		//Xman only for test
+		AddDebugLogLine(false,_T("emsocket destructor exception"));
+		client->socket = NULL;		
+	}
+	client = NULL;
+	// Maella end
 }
 
 // deadlake PROXYSUPPORT
@@ -162,6 +226,9 @@ CEMSocket::~CEMSocket(){
 BOOL CEMSocket::Connect(LPCSTR lpszHostAddress, UINT nHostPort)
 {
 	InitProxySupport();
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	theApp.pBandWidthControl->AddeMuleOutTCPOverall(0); // SYN
+	// Maella end	
 	return CEncryptedStreamSocket::Connect(lpszHostAddress, nHostPort);
 }
 // end deadlake
@@ -184,7 +251,6 @@ void CEMSocket::InitProxySupport()
 	const ProxySettings& settings = thePrefs.GetProxySettings();
 	if (settings.UseProxy && settings.type != PROXYTYPE_NOPROXY)
 	{
-		m_bOverlappedSending = false;
 		Close();
 
 		m_pProxyLayer = new CAsyncProxySocketLayer;
@@ -216,7 +282,7 @@ void CEMSocket::InitProxySupport()
 void CEMSocket::ClearQueues(){
 	EMTrace("CEMSocket::ClearQueues on %d",(SOCKET)this);
 
-    sendLocker.Lock();
+	sendLocker.Lock();
 	for(POSITION pos = controlpacket_queue.GetHeadPosition(); pos != NULL; )
 		delete controlpacket_queue.GetNext(pos);
 	controlpacket_queue.RemoveAll();
@@ -224,7 +290,24 @@ void CEMSocket::ClearQueues(){
 	for(POSITION pos = standartpacket_queue.GetHeadPosition(); pos != NULL; )
 		delete standartpacket_queue.GetNext(pos).packet;
 	standartpacket_queue.RemoveAll();
+
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+	sendblenWithoutControlPacket = 0;
+	for (POSITION pos = m_currentPacket_in_buffer_list.GetHeadPosition(); pos != NULL;) {
+		delete m_currentPacket_in_buffer_list.GetNext(pos);
+	}
+	m_currentPacket_in_buffer_list.RemoveAll();
+
+	sendblenWithoutControlPacket = 0;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+
+    //Xman
+    /*
     sendLocker.Unlock();
+    */
+    //Xman end
 
 	// Download (pseudo) rate control	
 	downloadLimit = 0;
@@ -245,7 +328,21 @@ void CEMSocket::ClearQueues(){
 
 	sendblen = 0;
 	sent = 0;
+
+	sendLocker.Unlock(); //Xman
 }
+
+//Xman
+void CEMSocket::OnConnect(int nErrorCode){
+	if(nErrorCode == 0){
+		// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		theApp.pBandWidthControl->AddeMuleSYNACK();
+		// Maella end
+
+	}
+	CAsyncSocketEx::OnConnect(nErrorCode); // deadlake PROXYSUPPORT - changed to AsyncSocketEx
+}
+//Xman end
 
 void CEMSocket::OnClose(int nErrorCode){
     // need to be locked here to know that the other methods
@@ -261,6 +358,13 @@ void CEMSocket::OnClose(int nErrorCode){
 	CEncryptedStreamSocket::OnClose(nErrorCode); // deadlake changed socket to PROXYSUPPORT ( AsyncSocketEx )
 	RemoveAllLayers(); // deadlake PROXYSUPPORT
 	ClearQueues();
+	//Xman
+	if(nErrorCode == 0){
+		// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		theApp.pBandWidthControl->AddeMuleSYNACK();
+		// Maella end
+	}
+	//Xman end
 }
 
 BOOL CEMSocket::AsyncSelect(long lEvent){
@@ -280,24 +384,74 @@ BOOL CEMSocket::AsyncSelect(long lEvent){
 
 void CEMSocket::OnReceive(int nErrorCode){
 	// the 2 meg size was taken from another place
+	//Xman include ACK
+	/*
 	static char GlobalReadBuffer[2000000];
+	*/
+	//Xman end
 
 	// Check for an error code
+	//zz_fly
+	//netfinity: Special case when socket is closing but data still in buffer, need to empty buffer or deadlock forever
+	/*
 	if(nErrorCode != 0){
+	*/
+	if(nErrorCode != 0 && nErrorCode != WSAESHUTDOWN){ 
+	//zz_fly end
 		OnError(nErrorCode);
 		return;
 	}
+
+	//Xman -Reask sources after IP change- v4
+	if(pendingOnReceive==false)
+		theApp.last_traffic_reception=::GetTickCount(); //Threading Info: synchronized with the main thread
+	//Xman end
 	
 	// Check current connection state
+	sendLocker.Lock(); //Xman threadsafe!
 	if(byConnected == ES_DISCONNECTED){
+		sendLocker.Unlock(); //Xman threadsafe!
 		return;
 	}
 	else {	
 		byConnected = ES_CONNECTED; // ES_DISCONNECTED, ES_NOTCONNECTED, ES_CONNECTED
 	}
+	sendLocker.Unlock(); //Xman threadsafe!
 
+	//Xman include ACK
+	theApp.pBandWidthControl->AddeMuleOutTCPOverall(0); //ACK
+
+	//zz_fly
+	//netfinity: Special case when socket is closing but data still in buffer, need to empty buffer or deadlock forever
+	/*
+	ProcessReceiveData(); //Xman include ACK
+	*/
+	ProcessReceiveData(nErrorCode); //Xman include ACK
+	//zz_fly end
+}
+
+//Xman include ACK
+//zz_fly
+//netfinity: Special case when socket is closing but data still in buffer, need to empty buffer or deadlock forever
+/*
+void CEMSocket::ProcessReceiveData()
+*/
+void CEMSocket::ProcessReceiveData(int nErrorCode)
+//zz_fly end
+//Xman include ACK end
+{
+	// the 2 meg size was taken from another place
+	static char GlobalReadBuffer[256*1024];
+
+	//Xman end include ACK
     // CPU load improvement
+	//zz_fly
+	//netfinity: Special case when socket is closing but data still in buffer, need to empty buffer or deadlock forever
+    /*
     if(downloadLimitEnable == true && downloadLimit == 0){
+	*/
+	if(downloadLimitEnable == true && downloadLimit == 0 && nErrorCode != WSAESHUTDOWN){ 
+	//zz_fly end
         EMTrace("CEMSocket::OnReceive blocked by limit");
         pendingOnReceive = true;
 
@@ -307,7 +461,13 @@ void CEMSocket::OnReceive(int nErrorCode){
 
 	// Remark: an overflow can not occur here
 	uint32 readMax = sizeof(GlobalReadBuffer) - pendingHeaderSize; 
+	//zz_fly
+	//netfinity: Special case when socket is closing but data still in buffer, need to empty buffer or deadlock forever
+	/*
 	if(downloadLimitEnable == true && readMax > downloadLimit) {
+	*/
+	if(downloadLimitEnable == true && readMax > downloadLimit && nErrorCode != WSAESHUTDOWN) {
+	//zz_fly end
 		readMax = downloadLimit;
 	}
 
@@ -317,15 +477,63 @@ void CEMSocket::OnReceive(int nErrorCode){
 		return;
 	}
 
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+	uint32 recvbufferlimit = 2*ret;
+	if (recvbufferlimit > (10*1024*1024)) {
+		recvbufferlimit = (10*1024*1024);
+	} else if (recvbufferlimit < 8192) {
+		recvbufferlimit = 8192;
+	}
+
+	if (recvbufferlimit > m_uCurrentRecvBufferSize) {
+		SetSockOpt(SO_RCVBUF, &recvbufferlimit, sizeof(recvbufferlimit), SOL_SOCKET);
+	}
+	int ilen = sizeof(int);
+	GetSockOpt(SO_RCVBUF, &recvbufferlimit, &ilen, SOL_SOCKET);
+	m_uCurrentRecvBufferSize = recvbufferlimit;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+
+	//Xman
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	//cache the value
+	uint32 realreceivedbytes=GetRealReceivedBytes();
+	//Xman end
+
 	// Bandwidth control
 	if(downloadLimitEnable == true){
 		// Update limit
+	//Xman
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	/*
 		downloadLimit -= GetRealReceivedBytes();
 	}
+	*/
+		downloadLimit -= realreceivedbytes;
+	}
+	if(realreceivedbytes >0)
+	{
+		theApp.pBandWidthControl->AddeMuleInTCPOverall(realreceivedbytes);
+		theApp.pBandWidthControl->AddeMuleInObfuscation(realreceivedbytes-ret);
+	}
+	//Xman end
 
 	// CPU load improvement
 	// Detect if the socket's buffer is empty (or the size did match...)
+	//Xman Code Improvement: what is if the sizes match per accident ?
+	/*
 	pendingOnReceive = m_bFullReceive;
+	*/
+	//more accurate
+	DWORD nBytes=0;
+	if(downloadLimitEnable == false || !IOCtl(FIONREAD, &nBytes))
+		pendingOnReceive=false;
+	else if (nBytes != 0)
+		pendingOnReceive=true;
+	else	
+		pendingOnReceive=false;
+	//Xman end
 
 	if (ret == 0)
 		return;
@@ -406,11 +614,49 @@ void CEMSocket::OnReceive(int nErrorCode){
 		uint32 toCopy = ((pendingPacket->size - pendingPacketSize) < (uint32)(rend - rptr)) ? 
 			             (pendingPacket->size - pendingPacketSize) : (uint32)(rend - rptr);
 
+		//Xman
+		// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		switch(pendingPacket->opcode){
+			case OP_SENDINGPART:
+			case OP_COMPRESSEDPART:
+			case OP_SENDINGPART_I64:
+			case OP_COMPRESSEDPART_I64:
+				{
+					// Don't wait to have recieved the full block (10k) to account it 
+					if(client != NULL){						
+						if(pendingPacketSize == 0){
+							// Statistic, the control (FileId+StartPos+EndPos) header should not be included
+							//FileID -> 16 Byte
+							//OP_SENDINGPART: 4 + 4 ->24
+							//OP_COMPRESSEDPART: 4 + 4 ->24
+							//OP_SENDINGPART_I64: 8 + 8 -> 32
+							//OP_COMPRESSEDPART_I64: 8 + 4 -> 28
+							uint8 headersize;
+							if(pendingPacket->opcode == OP_SENDINGPART || pendingPacket->opcode == OP_COMPRESSEDPART)
+								headersize=24;
+							else if(pendingPacket->opcode == OP_COMPRESSEDPART_I64)
+								headersize=28;
+							else
+								headersize=32;
+							uint32 receivedBytes = (toCopy > headersize) ? (toCopy - headersize) : 0;
+							client->AddDownloadRate(receivedBytes); 
+							theApp.pBandWidthControl->AddeMuleIn(receivedBytes);
+						}
+						else {
+							client->AddDownloadRate(toCopy); 
+							theApp.pBandWidthControl->AddeMuleIn(toCopy);
+						}
+					}
+				}
+				break;
+		}
+		// Maella end
+
 		// Copy Bytes from Global buffer to packet's internal buffer
 		memcpy(&pendingPacket->pBuffer[pendingPacketSize], rptr, toCopy);
 		pendingPacketSize += toCopy;
 		rptr += toCopy;
-		
+
 		// Check if packet is complet
 		ASSERT(pendingPacket->size >= pendingPacketSize);
 		if(pendingPacket->size == pendingPacketSize){
@@ -446,7 +692,12 @@ void CEMSocket::SetDownloadLimit(uint32 limit){
 	
 	// CPU load improvement
 	if(limit > 0 && pendingOnReceive == true){
+		//Xman include ACK
+		/*
 		OnReceive(0);
+		*/
+		ProcessReceiveData();
+		//Xman end
 	}
 }
 
@@ -455,7 +706,12 @@ void CEMSocket::DisableDownloadLimit(){
 
 	// CPU load improvement
 	if(pendingOnReceive == true){
+		//Xman include ACK
+		/*
 		OnReceive(0);
+		*/
+		ProcessReceiveData();
+		//Xman end
 	}
 }
 
@@ -483,8 +739,10 @@ void CEMSocket::DisableDownloadLimit(){
 void CEMSocket::SendPacket(Packet* packet, bool delpacket, bool controlpacket, uint32 actualPayloadSize, bool bForceImmediateSend){
 	//EMTrace("CEMSocket::OnSenPacked1 linked: %i, controlcount %i, standartcount %i, isbusy: %i",m_bLinkedPackets, controlpacket_queue.GetCount(), standartpacket_queue.GetCount(), IsBusy());
 
-    if (byConnected == ES_DISCONNECTED)
-	{
+    sendLocker.Lock();
+
+    if (byConnected == ES_DISCONNECTED) {
+        sendLocker.Unlock();
         if(delpacket) {
 			delete packet;
         }
@@ -500,31 +758,140 @@ void CEMSocket::SendPacket(Packet* packet, bool delpacket, bool controlpacket, u
         //if(m_startSendTick > 0) {
         //    m_lastSendLatency = ::GetTickCount() - m_startSendTick;
         //}
-		sendLocker.Lock();
+
         if (controlpacket) {
 	        controlpacket_queue.AddTail(packet);
 
             // queue up for controlpacket
-            theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
-	    } else {
+            //Xman Code Improvement
+            if(isreadyforsending)
+            {
+	        if(!IsSocketUploading()) //Xman improved socket queuing
+                        theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
+            }
+        } else {
+            //Xman unused
+            /*
             bool first = !((sendbuffer && !m_currentPacket_is_controlpacket) || !standartpacket_queue.IsEmpty());
+            */
+            //Xman end
             StandardPacketQueueEntry queueEntry = { actualPayloadSize, packet };
-		    standartpacket_queue.AddTail(queueEntry);
+            standartpacket_queue.AddTail(queueEntry);
 
             // reset timeout for the first time
+            //Xman unused
+            /*
             if (first) {
                 lastFinishedStandard = ::GetTickCount();
                 m_bAccelerateUpload = true;	// Always accelerate first packet in a block
             }
-	    }
+            */
+            //Xman end
+        }
     }
 
     sendLocker.Unlock();
 	if (bForceImmediateSend){
 		ASSERT( controlpacket_queue.GetSize() == 1 );
+		//Xman // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		/*
 		Send(1024, 0, true);
+		*/
+		SocketSentBytes socketSentBytes = Send(1024, 0, true); 
+		if(socketSentBytes.sentBytesControlPackets > 0)
+		{		
+			theApp.pBandWidthControl->AddeMuleOutOverallNoHeader(socketSentBytes.sentBytesControlPackets);
+		}
+		//Xman end
 	}
 }
+
+// ==> Send Array Packet [SiRoB] - Mephisto
+#ifndef DONT_USE_SEND_ARRAY_PACKET
+void CEMSocket::SendPacket(Packet* packet[], uint32 npacket, bool delpacket, bool controlpacket, uint32 actualPayloadSize, bool bForceImmediateSend){
+	//EMTrace("CEMSocket::OnSenPacked1 linked: %i, controlcount %i, standartcount %i, isbusy: %i",m_bLinkedPackets, controlpacket_queue.GetCount(), standartpacket_queue.GetCount(), IsBusy());
+
+    sendLocker.Lock();
+
+    if (byConnected == ES_DISCONNECTED) {
+        sendLocker.Unlock();
+        for (uint32 i = 0; i < npacket; i++) {
+			if(delpacket) {
+				delete packet[i];
+			}
+        }
+		return;
+    } else {
+        if (!delpacket){
+            for (uint32 i = 0; i < npacket; i++) {
+				//ASSERT ( !packet[i]->IsSplitted() );
+				Packet* copy = new Packet(packet[i]->opcode,packet[i]->size);
+				memcpy(copy->pBuffer,packet[i]->pBuffer,packet[i]->size);
+				packet[i] = copy;
+			}
+	    }
+
+        //if(m_startSendTick > 0) {
+        //    m_lastSendLatency = ::GetTickCount() - m_startSendTick;
+        //}
+
+        if (controlpacket) {
+	        for (uint32 i = 0; i < npacket; i++) {
+				controlpacket_queue.AddTail(packet[i]);
+			}
+
+            // queue up for controlpacket
+            //Xman Code Improvement
+            if(isreadyforsending)
+            {
+	        if(!IsSocketUploading()) //Xman improved socket queuing
+                        theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
+            }
+        } else {
+            //Xman unused
+            /*
+            bool first = !((sendbuffer && !m_currentPacket_is_controlpacket) || !standartpacket_queue.IsEmpty());
+            */
+            //Xman end
+            uint32 payloadSize = actualPayloadSize/npacket;
+			while (payloadSize <= actualPayloadSize) {
+				actualPayloadSize -= payloadSize;
+				if(actualPayloadSize < payloadSize) {
+					payloadSize += actualPayloadSize;
+				}
+				StandardPacketQueueEntry queueEntry = { payloadSize, *packet++ };
+				standartpacket_queue.AddTail(queueEntry);
+			}
+
+            // reset timeout for the first time
+            //Xman unused
+            /*
+            if (first) {
+                lastFinishedStandard = ::GetTickCount();
+                m_bAccelerateUpload = true;	// Always accelerate first packet in a block
+            }
+            */
+            //Xman end
+        }
+    }
+
+    sendLocker.Unlock();
+	if (bForceImmediateSend){
+		ASSERT( controlpacket_queue.GetSize() == 1 );
+		//Xman // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		/*
+		Send(1024, 0, true);
+		*/
+		SocketSentBytes socketSentBytes = Send(1024, 0, true); 
+		if(socketSentBytes.sentBytesControlPackets > 0)
+		{		
+			theApp.pBandWidthControl->AddeMuleOutOverallNoHeader(socketSentBytes.sentBytesControlPackets);
+		}
+		//Xman end
+	}
+}
+#endif
+// <== Send Array Packet [SiRoB] - Mephisto
 
 uint64 CEMSocket::GetSentBytesCompleteFileSinceLastCallAndReset() {
     sendLocker.Lock();
@@ -548,6 +915,8 @@ uint64 CEMSocket::GetSentBytesPartFileSinceLastCallAndReset() {
     return sentBytes;
 }
 
+//Xman: this mothod seems not to be used
+/*
 uint64 CEMSocket::GetSentBytesControlPacketSinceLastCallAndReset() {
     sendLocker.Lock();
 
@@ -558,10 +927,10 @@ uint64 CEMSocket::GetSentBytesControlPacketSinceLastCallAndReset() {
 
     return sentBytes;
 }
+*/
+//Xman end
 
-uint64 CEMSocket::GetSentPayloadSinceLastCall(bool bReset) {
-	if (!bReset)
-		return m_actualPayloadSizeSent;
+uint64 CEMSocket::GetSentPayloadSinceLastCallAndReset() {
     sendLocker.Lock();
 
     uint64 sentBytes = m_actualPayloadSizeSent;
@@ -583,23 +952,42 @@ void CEMSocket::OnSend(int nErrorCode){
 	//EMTrace("CEMSocket::OnSend linked: %i, controlcount %i, standartcount %i, isbusy: %i",m_bLinkedPackets, controlpacket_queue.GetCount(), standartpacket_queue.GetCount(), IsBusy());
 	CEncryptedStreamSocket::OnSend(0);
 
-    m_bBusy = false;
+    sendLocker.Lock();
+
+	m_bBusy = false;
 
     // stopped sending here.
     //StoppedSendSoUpdateStats();
 
     if (byConnected == ES_DISCONNECTED) {
+        sendLocker.Unlock();
 		return;
     } else
 		byConnected = ES_CONNECTED;
 
+	//Xman Code Improvement
+	/*
     if(m_currentPacket_is_controlpacket) {
         // queue up for control packet
-        theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
+		theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
     }
+	*/
+	//Xman improved socket queuing
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+	if(sendblenWithoutControlPacket != sendblen - sent/*m_currentPacket_is_controlpacket == true*/ || !controlpacket_queue.IsEmpty()) {
+#else
+	if((m_currentPacket_is_controlpacket && sendbuffer!=NULL) || !controlpacket_queue.IsEmpty()) {
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+		// queue up for control packet
+		if(!IsSocketUploading())
+			theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
+	}
+	isreadyforsending=true;
+	//Xman end
 
-	if (!m_bOverlappedSending && (!standartpacket_queue.IsEmpty() || sendbuffer != NULL))
-		theApp.uploadBandwidthThrottler->SocketAvailable();
+    sendLocker.Unlock();
 }
 
 //void CEMSocket::StoppedSendSoUpdateStats() {
@@ -628,20 +1016,6 @@ void CEMSocket::OnSend(int nErrorCode){
 //    }
 //}
 
-
-SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket)
-{
-    if (byConnected == ES_DISCONNECTED)
-	{
-        SocketSentBytes returnVal = { false, 0, 0 };
-        return returnVal;
-    }
-	if (m_bOverlappedSending)
-		return SendOv(maxNumberOfBytesToSend, minFragSize, onlyAllowedToSendControlPacket);
-	else
-		return SendStd(maxNumberOfBytesToSend, minFragSize, onlyAllowedToSendControlPacket);
-}
-
 /**
  * Try to put queued up data on the socket.
  *
@@ -662,14 +1036,23 @@ SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSiz
  *
  * @return the actual number of bytes that were put on the socket.
  */
-SocketSentBytes CEMSocket::SendStd(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket) {
+//Xman
+/*
+SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket) {
 	//EMTrace("CEMSocket::Send linked: %i, controlcount %i, standartcount %i, isbusy: %i",m_bLinkedPackets, controlpacket_queue.GetCount(), standartpacket_queue.GetCount(), IsBusy());
-	sendLocker.Lock();
+    sendLocker.Lock();
+
+    if (byConnected == ES_DISCONNECTED) {
+        sendLocker.Unlock();
+        SocketSentBytes returnVal = { false, 0, 0 };
+        return returnVal;
+    }
+
     bool anErrorHasOccured = false;
     uint32 sentStandardPacketBytesThisCall = 0;
     uint32 sentControlPacketBytesThisCall = 0;
 
-    if(byConnected == ES_CONNECTED && IsEncryptionLayerReady()) {
+    if(byConnected == ES_CONNECTED && IsEncryptionLayerReady() && !(m_bBusy && onlyAllowedToSendControlPacket)) {
         if(minFragSize < 1) {
             minFragSize = 1;
         }
@@ -835,162 +1218,770 @@ SocketSentBytes CEMSocket::SendStd(uint32 maxNumberOfBytesToSend, uint32 minFrag
     SocketSentBytes returnVal = { !anErrorHasOccured, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
     return returnVal;
 }
+*/
+//SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket) {
+//	//EMTrace("CEMSocket::Send linked: %i, controlcount %i, standartcount %i, isbusy: %i",m_bLinkedPackets, controlpacket_queue.GetCount(), standartpacket_queue.GetCount(), IsBusy());
+//
+//	//Xman  Code Improvement
+//	//there is no need to lock when testing m_bBusy, because we have only one caller (uploadbandwidththrottler)
+//	//the worse case is ONSend is triggered at the same time we are at this point.. but then we only have to wait until next uploadbandwidththrottler-loop
+//	if (m_bBusy && onlyAllowedToSendControlPacket) 
+//	{
+//			SocketSentBytes returnVal = { true, 0, 0 };
+//			return returnVal;
+//	}
+//	//Xman Code Improvement end
+//	
+//
+//
+//	sendLocker.Lock();
+//
+//	//Xman 5.1.1: //Xman improved socket queuing
+//	//due to the new socket-queueing this should only happen in very very rare cases
+//	//no need for an extra check.. let it happen
+//	/*
+//	//Xman uploadbandwidththrottler: a uploading client shouldn't get data on the control-packet-sending-loop (see uploadbandwidththrottler)
+//	//this little improvement allow a bit better upload-control
+//	if(IsSocketUploading() && onlyAllowedToSendControlPacket)
+//	{
+//		sendLocker.Unlock();
+//		theApp.QueueDebugLogLine(false, _T("-=-> uploading socket tries to send control packets"));
+//		SocketSentBytes returnVal = { true, 0, 0 };
+//		return returnVal;
+//	}
+//	*/
+//	//Xman end
+//
+//
+//    //if (byConnected == ES_DISCONNECTED) {
+//	if (byConnected != ES_CONNECTED) { //Xman changed 5.1.1
+//        sendLocker.Unlock();
+//        SocketSentBytes returnVal = { false, 0, 0 };
+//        return returnVal;
+//    }
+//
+//
+//    if(minFragSize < 1) {
+//        minFragSize = 1;
+//    }
+//
+//	//Xman Xtreme Upload
+//	//don't add the header of standardpackage:
+//	bool newdatapacket=false;
+//	uint8 sendingdata_opcode=0;
+//	uint32	IPHeaderThisCall=0;
+//	//Xman end
+//
+//    maxNumberOfBytesToSend = GetNextFragSize(maxNumberOfBytesToSend, minFragSize);
+//
+//    bool bWasLongTimeSinceSend = (::GetTickCount() - lastSent) > 1000;
+//
+//    lastCalledSend = ::GetTickCount();
+//
+//    bool anErrorHasOccured = false;
+//    uint32 sentStandardPacketBytesThisCall = 0;
+//    uint32 sentControlPacketBytesThisCall = 0;
+//
+//
+//    while(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall < maxNumberOfBytesToSend && anErrorHasOccured == false && // don't send more than allowed. Also, there should have been no error in earlier loop
+//          (!controlpacket_queue.IsEmpty() || !standartpacket_queue.IsEmpty() || sendbuffer != NULL) && // there must exist something to send
+//          (onlyAllowedToSendControlPacket == false || // this means we are allowed to send both types of packets, so proceed
+//           sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall > 0 && (sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall) % minFragSize != 0 ||
+//           sendbuffer == NULL && !controlpacket_queue.IsEmpty() || // There's a control packet in queue, and we are not currently sending anything, so we will handle the control packet next
+//           sendbuffer != NULL && m_currentPacket_is_controlpacket == true || // We are in the progress of sending a control packet. We are always allowed to send those
+//           sendbuffer != NULL && m_currentPacket_is_controlpacket == false && bWasLongTimeSinceSend && !controlpacket_queue.IsEmpty() && standartpacket_queue.IsEmpty() && (sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall) < minFragSize // We have waited to long to clean the current packet (which may be a standard packet that is in the way). Proceed no matter what the value of onlyAllowedToSendControlPacket.
+//          )
+//         ) {
+//
+//        // If we are currently not in the progress of sending a packet, we will need to find the next one to send
+//        if(sendbuffer == NULL) {
+//            Packet* curPacket = NULL;
+//            if(!controlpacket_queue.IsEmpty()) {
+//                // There's a control packet to send
+//                m_currentPacket_is_controlpacket = true;
+//                curPacket = controlpacket_queue.RemoveHead();
+//            } else if(!standartpacket_queue.IsEmpty() 
+//				&& onlyAllowedToSendControlPacket == false) { //Xman look for 4.2: I use this code, although it is redundant, but there were a few very suspicious crashes at this point
+//                // There's a standard packet to send
+//                m_currentPacket_is_controlpacket = false;
+//                StandardPacketQueueEntry queueEntry = standartpacket_queue.RemoveHead();
+//                curPacket = queueEntry.packet;
+//                m_actualPayloadSize = queueEntry.actualPayloadSize;
+//				//Xman Xtreme Upload
+//				// we have to remember, that a data package has begone
+//				// after sending (particular), subtract the header
+//                // remember this for statistics purposes.
+//				newdatapacket=true;
+//				sendingdata_opcode=curPacket->opcode;
+//                m_currentPackageIsFromPartFile = curPacket->IsFromPF();
+//            } else {
+//                // Just to be safe. Shouldn't happen?
+//                sendLocker.Unlock();
+//
+//                // if we reach this point, then there's something wrong with the while condition above!
+//                ASSERT(0);
+//                theApp.QueueDebugLogLine(true,_T("EMSocket: Couldn't get a new packet! There's an error in the first while condition in EMSocket::Send()"));
+//
+//                SocketSentBytes returnVal = { true, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+//                return returnVal;
+//            }
+//
+//            // We found a package to send. Get the data to send from the
+//            // package container and dispose of the container.
+//            sendblen = curPacket->GetRealPacketSize();
+//            sendbuffer = curPacket->DetachPacket();
+//            sent = 0;
+//            delete curPacket;
+//        }
+//
+//        // At this point we've got a packet to send in sendbuffer. Try to send it. Loop until entire packet
+//        // is sent, or until we reach maximum bytes to send for this call, or until we get an error.
+//        // NOTE! If send would block (returns WSAEWOULDBLOCK), we will return from this method INSIDE this loop.
+//        while (sent < sendblen &&
+//               sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall < maxNumberOfBytesToSend &&
+//               (
+//                onlyAllowedToSendControlPacket == false || // this means we are allowed to send both types of packets, so proceed
+//                m_currentPacket_is_controlpacket ||
+//                bWasLongTimeSinceSend && (sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall) < minFragSize ||
+//                (sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall) % minFragSize != 0
+//               ) &&
+//               anErrorHasOccured == false) {
+//		    uint32 tosend = sendblen-sent;
+//            if(!onlyAllowedToSendControlPacket || m_currentPacket_is_controlpacket) {
+//    		    if (maxNumberOfBytesToSend >= sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall && tosend > maxNumberOfBytesToSend-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall))
+//                    tosend = maxNumberOfBytesToSend-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall);
+//            } else if(bWasLongTimeSinceSend && (sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall) < minFragSize) {
+//    		    if (minFragSize >= sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall && tosend > minFragSize-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall))
+//                    tosend = minFragSize-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall);
+//            } else {
+//                uint32 nextFragMaxBytesToSent = GetNextFragSize(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall, minFragSize);
+//    		    if (nextFragMaxBytesToSent >= sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall && tosend > nextFragMaxBytesToSent-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall))
+//                    tosend = nextFragMaxBytesToSent-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall);
+//            }
+//		    ASSERT (tosend != 0 && tosend <= sendblen-sent);
+//    		
+//            //DWORD tempStartSendTick = ::GetTickCount();
+//
+//            lastSent = ::GetTickCount();
+//
+//			//Xman count block/success send
+//			if(!onlyAllowedToSendControlPacket)
+//				sendcount++;
+//
+//		    uint32 result = CAsyncSocketEx::Send(sendbuffer+sent,tosend); // deadlake PROXYSUPPORT - changed to AsyncSocketEx
+//		    if (result == (uint32)SOCKET_ERROR){
+//			    uint32 error = GetLastError();
+//			    if (error == WSAEWOULDBLOCK){
+//                    m_bBusy = true;
+//
+//
+//					//Xman 4.8.2 moved here
+//					//Xman count the blocksend to remove such clients if needed
+//					if(!onlyAllowedToSendControlPacket)
+//						blockedsendcount++;
+//					//Xman end
+//
+//                    //m_wasBlocked = true;
+//                    sendLocker.Unlock();
+//
+//                    SocketSentBytes returnVal = { true, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+//                    return returnVal; // Send() blocked, onsend will be called when ready to send again
+//			    } else{
+//                    // Send() gave an error
+//                    anErrorHasOccured = true;
+//                    //DEBUG_ONLY( AddDebugLogLine(true,"EMSocket: An error has occured: %i", error) );
+//                }
+//            } else {
+//				// we managed to send some bytes. Perform bookkeeping.
+//                m_bBusy = false;
+//                m_hasSent = true;
+//
+//                sent += result;
+//
+//
+//                // Log send bytes in correct class
+//                //Xman Xtreme Upload
+//				//after sending a complete package we have to remove the header size
+//				// Remove: header+FileId+StartPos+EndPos 
+//				if(m_currentPacket_is_controlpacket == false) {
+//					uint32 packetheadersize=0;
+//					if(newdatapacket)
+//					{
+//						//Header -> 6 Bytes
+//						//FileID -> 16 Byte
+//						//OP_SENDINGPART: 4 + 4 ->30
+//						//OP_COMPRESSEDPART: 4 + 4 ->30
+//						//OP_SENDINGPART_I64: 8 + 8 -> 36
+//						//OP_COMPRESSEDPART_I64: 8 + 4 -> 32
+//						switch(sendingdata_opcode)
+//						{
+//							case OP_SENDINGPART:
+//							case OP_COMPRESSEDPART:
+//							{
+//								packetheadersize=  (result > 30) ? 30 : result;
+//								break;
+//							}
+//							case OP_COMPRESSEDPART_I64:
+//							{
+//								packetheadersize=  (result > 32) ? 32 : result;
+//								break;
+//							}
+//							case OP_SENDINGPART_I64:
+//							{
+//								packetheadersize=  (result > 36) ? 36 : result;
+//								break;
+//							}
+//							default:
+//								ASSERT(0);
+//						}
+//					}
+//                    if(m_currentPackageIsFromPartFile == true) {
+//                        m_numberOfSentBytesPartFile += (result-packetheadersize);
+//                    } else {
+//                        m_numberOfSentBytesCompleteFile += (result-packetheadersize);
+//                    }
+//					sentStandardPacketBytesThisCall += (result-packetheadersize);
+//					sentControlPacketBytesThisCall += packetheadersize;
+//                } else {
+//                    sentControlPacketBytesThisCall += result;
+//                    //m_numberOfSentBytesControlPacket += result; //Xman unused
+//                }
+//				newdatapacket=false; //to be sure if sending two (mini)data packets
+//				// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+//				IPHeaderThisCall+= (20+20); //Header
+//				//Xman end
+//            }
+//	    }
+//
+//        if (sent == sendblen){
+//            // we are done sending the current package. Delete it and set
+//            // sendbuffer to NULL so a new packet can be fetched.
+//		    delete[] sendbuffer;
+//		    sendbuffer = NULL;
+//			sendblen = 0;
+//			
+//
+//            if(!m_currentPacket_is_controlpacket) {
+//                m_actualPayloadSizeSent += m_actualPayloadSize;
+//                m_actualPayloadSize = 0;
+//
+//				//Xman unused
+//                //lastFinishedStandard = ::GetTickCount(); // reset timeout
+//                //m_bAccelerateUpload = false; // Safe until told otherwise
+//            }
+//
+//            sent = 0;
+//        }
+//    }
+//
+//	if(onlyAllowedToSendControlPacket && (!controlpacket_queue.IsEmpty() || sendbuffer != NULL && m_currentPacket_is_controlpacket)) {
+//        // enter control packet send queue
+//        // we might enter control packet queue several times for the same package,
+//        // but that costs very little overhead. Less overhead than trying to make sure
+//        // that we only enter the queue once.
+//		theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
+//    }
+//
+//    //CleanSendLatencyList();
+//
+//	// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+//	sentControlPacketBytesThisCall+=IPHeaderThisCall;
+//	//Xman end
+//
+//    sendLocker.Unlock();
+//
+//    SocketSentBytes returnVal = { !anErrorHasOccured, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+//    return returnVal;
+//}
 
-/**
- * Try to put queued up data on the socket with Overlapped methods.
- *
- * Control packets have higher priority, and will be sent first, if possible.
- *
- * @param maxNumberOfBytesToSend This is the maximum number of bytes that is allowed to be put on the socket
- *                               this call. The actual number of sent bytes will be returned from the method.
- *
- * @param onlyAllowedToSendControlPacket This call we only try to put control packets on the sockets.
- *
- * @return the actual number of bytes that were put on the socket.
- */
-SocketSentBytes CEMSocket::SendOv(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket) {
+
+//Xman 5.2 new version 
+//remark: minFragSize is now unused. maxNumberOfBytesToSend must be the size of MSS or MSS *2
+// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+// Note: we need minFragSize to determine the number amount of IP headers that were sent
+SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket) {
+#else
+SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 /*minFragSize*/, bool onlyAllowedToSendControlPacket) {
+#endif
+// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 	//EMTrace("CEMSocket::Send linked: %i, controlcount %i, standartcount %i, isbusy: %i",m_bLinkedPackets, controlpacket_queue.GetCount(), standartpacket_queue.GetCount(), IsBusy());
-    ASSERT( m_pProxyLayer == NULL );
+
+
+
 	sendLocker.Lock();
-    bool anErrorHasOccured = false;
-    uint32 sentStandardPacketBytesThisCall = 0;
-    uint32 sentControlPacketBytesThisCall = 0;
-    
-	if(byConnected == ES_CONNECTED && IsEncryptionLayerReady() && !IsBusyExtensiveCheck() && maxNumberOfBytesToSend > 0) {
-        if(minFragSize < 1) {
-            minFragSize = 1;
-        }
 
-        maxNumberOfBytesToSend = GetNextFragSize(maxNumberOfBytesToSend, minFragSize);
-        lastCalledSend = ::GetTickCount();
-		ASSERT( m_pPendingSendOperation == NULL && m_aBufferSend.IsEmpty());
-		sint32 nBytesLeft = maxNumberOfBytesToSend;
-		if (sendbuffer != NULL || !controlpacket_queue.IsEmpty() || !standartpacket_queue.IsEmpty())
+	//Can happen after resort of sockets (peercache)
+	//let uploading sockets only send when the uploadbandwidththrottler allow it
+	if(onlyAllowedToSendControlPacket && IsSocketUploading())
+	{
+		sendLocker.Unlock();
+		SocketSentBytes returnVal = { true, 0, 0 };
+		return returnVal;
+	}
+
+
+	if (byConnected != ES_CONNECTED) 
+	{ 
+		sendLocker.Unlock();
+		SocketSentBytes returnVal = { false, 0, 0 };
+		return returnVal;
+	}
+
+
+	//minFragsize should always be valid: see uploadbandwiththrottler
+	//if(minFragSize < 1) {
+	//	minFragSize = 1;
+	//}
+
+	//Xman Xtreme Upload
+	//don't add the header of standardpackage:
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
+	bool newdatapacket=false;
+	uint8 sendingdata_opcode=0;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+	uint32	IPHeaderThisCall=0;
+	//Xman end
+
+	bool anErrorHasOccured = false;
+	uint32 sentStandardPacketBytesThisCall = 0;
+	uint32 sentControlPacketBytesThisCall = 0;
+
+	if(IsEncryptionLayerReady())
+	{
+		lastCalledSend = ::GetTickCount();
+
+		// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+		if(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall < maxNumberOfBytesToSend && anErrorHasOccured == false && // don't send more than allowed. Also, there should have been no error in earlier loop
+			(!controlpacket_queue.IsEmpty() || !standartpacket_queue.IsEmpty() || sendblen/*sendbuffer*/ != NULL)  // there must exist something to send
+			) 
+#else
+		while(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall < maxNumberOfBytesToSend && anErrorHasOccured == false && // don't send more than allowed. Also, there should have been no error in earlier loop
+			(!controlpacket_queue.IsEmpty() || !standartpacket_queue.IsEmpty() || sendbuffer != NULL)  // there must exist something to send
+			) 
+#endif
+		// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 		{
-			// WSASend takes multiple buffers which is quite nice for our case, as we have to call send
-			// only once regardless how many packets we want to ship without memorymoving. But before
-			// we can do this, collect all buffers we want to send in this call
 
-			// first send the existing sendbuffer (already started packet)
-			if (sendbuffer != NULL)
-			{
-				WSABUF pCurBuf;;
-				pCurBuf.len = min(sendblen - sent, (uint32)nBytesLeft);
-				pCurBuf.buf = new CHAR[pCurBuf.len];
-				memcpy(pCurBuf.buf, sendbuffer + sent, pCurBuf.len);
-				sent += pCurBuf.len;
-				m_aBufferSend.Add(pCurBuf);
-				nBytesLeft -= pCurBuf.len;
-				if (sent == sendblen) //finished the buffer
-				{
-					delete[] sendbuffer;
-					sendbuffer = NULL;
-					sendblen = 0;
-				}
-				sentStandardPacketBytesThisCall += pCurBuf.len; // Sendbuffer is always a standard packet in this method
-				lastFinishedStandard = ::GetTickCount();
-				m_bAccelerateUpload = false;
-				m_actualPayloadSizeSent += m_actualPayloadSize;
-				m_actualPayloadSize = 0;
-				if(m_currentPackageIsFromPartFile)
-					m_numberOfSentBytesPartFile += pCurBuf.len;
-				else
-					m_numberOfSentBytesCompleteFile += pCurBuf.len;
-			}
+				// If we are currently not in the progress of sending a packet, we will need to find the next one to send
+				// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+			ASSERT(sendblen>=sent);
+			while ((!controlpacket_queue.IsEmpty() || !standartpacket_queue.IsEmpty()) && sendblen-sent+sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall < maxNumberOfBytesToSend) {
+				bool bcontrolpacket;
+				bool bnewdatapacket = false;
+				uint32 ipacketpayloadsize = 0;
+#else
+				if(sendbuffer == NULL) {
+#endif
+				// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+					Packet* curPacket = NULL;
+					if(!controlpacket_queue.IsEmpty()) {
+						// There's a control packet to send
+						// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+						bcontrolpacket = true;
+#else
+						m_currentPacket_is_controlpacket = true;
+#endif
+						// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+						curPacket = controlpacket_queue.RemoveHead();
+					} else if(!standartpacket_queue.IsEmpty() 
+						&& onlyAllowedToSendControlPacket == false) { //Xman look for 4.2: I use this code, although it is redundant, but there were a few very suspicious crashes at this point
+							// There's a standard packet to send
+							// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+							bcontrolpacket = false;
+							bnewdatapacket = true;
+#else
+							m_currentPacket_is_controlpacket = false;
+#endif
+							// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+							StandardPacketQueueEntry queueEntry = standartpacket_queue.RemoveHead();
+							curPacket = queueEntry.packet;
+							// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+							ipacketpayloadsize = queueEntry.actualPayloadSize;
+#else
+							m_actualPayloadSize = queueEntry.actualPayloadSize;
+							//Xman Xtreme Upload
+							// we have to remember, that a data package has begone
+							// after sending (particular), subtract the header
+							// remember this for statistics purposes.
+							newdatapacket=true;
+							sendingdata_opcode=curPacket->opcode;
+							m_currentPackageIsFromPartFile = curPacket->IsFromPF();
+#endif
+							// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+						} else {
+							// Just to be safe. Shouldn't happen?
+							sendLocker.Unlock();
 
-			// next send all control packets if there are any and we have bytes left
-			while (!controlpacket_queue.IsEmpty() && nBytesLeft > 0)
-			{
-				// send controlpackets always completely, ignoring the limit by a few bytes if we must
-				WSABUF pCurBuf;
-				Packet* curPacket = controlpacket_queue.RemoveHead();
-				pCurBuf.len = curPacket->GetRealPacketSize();
-				pCurBuf.buf = curPacket->DetachPacket();
-				delete curPacket;
-				// encrypting which cannot be done transparent by base class
-				CryptPrepareSendData((uchar*)pCurBuf.buf, pCurBuf.len);
-				m_aBufferSend.Add(pCurBuf);
-				nBytesLeft -= pCurBuf.len;
-				sentControlPacketBytesThisCall += pCurBuf.len;
-			}
+							// if we reach this point, then there's something wrong with the while condition above!
+							ASSERT(0);
+							theApp.QueueDebugLogLine(true,_T("EMSocket: Couldn't get a new packet! There's an error in the first while condition in EMSocket::Send()"));
 
-			// and now finally the standard packets if there are any and we have bytes left and we are allowed to
-			while (!standartpacket_queue.IsEmpty() && nBytesLeft > 0 && !onlyAllowedToSendControlPacket)
-			{
-				StandardPacketQueueEntry queueEntry = standartpacket_queue.RemoveHead();
-				WSABUF pCurBuf;
-				Packet* curPacket = queueEntry.packet;
-				m_currentPackageIsFromPartFile = curPacket->IsFromPF();
-				
-				// can we send it right away or only a part of it?
-				if (queueEntry.packet->GetRealPacketSize() <= (uint32)nBytesLeft)
+							SocketSentBytes returnVal = { true, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+							return returnVal;
+						}
+
+						// We found a package to send. Get the data to send from the
+						// package container and dispose of the container.
+						// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#if !defined DONT_USE_SOCKET_BUFFERING
+						uint32 packetsize = curPacket->GetRealPacketSize();
+						uint32 sendbufferlimit = packetsize;
+						if (sendbufferlimit > 10*1024*1024)
+							sendbufferlimit = 10*1024*1024;
+						else if (sendbufferlimit < 8192)
+							sendbufferlimit = 8192;
+						if (m_uCurrentSendBufferSize != sendbufferlimit) {
+							SetSockOpt(SO_SNDBUF, &sendbufferlimit, sizeof(sendbufferlimit), SOL_SOCKET);
+						}
+						int ilen = sizeof(int);
+						GetSockOpt(SO_SNDBUF, &sendbufferlimit, &ilen, SOL_SOCKET);
+						m_uCurrentSendBufferSize = sendbufferlimit;
+						if (sendbuffer) {
+							if (sent > (currentBufferSize>>1) || currentBufferSize < sendblen+packetsize){
+								ASSERT(sendblen>=sent);
+								sendblen-=sent;
+								if (currentBufferSize < sendblen+packetsize) {
+									currentBufferSize = max(sendblen+packetsize, 2*m_uCurrentSendBufferSize);
+									char* newsendbuffer = new char[currentBufferSize];
+									memcpy(newsendbuffer, sendbuffer+sent, sendblen);
+									delete[] sendbuffer;
+									sendbuffer = newsendbuffer;
+								} else {
+									memmove(sendbuffer, sendbuffer+sent, sendblen);
+								}
+								sent = 0;
+							}
+							char* packetcore = curPacket->DetachPacket();
+							// encrypting which cannot be done transparent by base class
+							CryptPrepareSendData((uchar*)packetcore, packetsize);
+							memcpy(sendbuffer+sendblen, packetcore, packetsize);
+							delete[] packetcore;
+							sendblen+=packetsize;
+						} else {
+							ASSERT (sent == 0);
+							sendbuffer = curPacket->DetachPacket();
+							sendblen = packetsize;
+							// encrypting which cannot be done transparent by base class
+							CryptPrepareSendData((uchar*)sendbuffer, packetsize);
+							currentBufferSize = packetsize;
+						}
+						if (bcontrolpacket == false)
+							sendblenWithoutControlPacket+=packetsize;
+						BufferedPacket* newitem = new BufferedPacket;
+						newitem->remainpacketsize = packetsize;
+						newitem->isforpartfile = curPacket->IsFromPF();
+						newitem->iscontrolpacket = bcontrolpacket;
+						newitem->packetpayloadsize = ipacketpayloadsize;
+						newitem->newdatapacket = bnewdatapacket;
+						newitem->sendingdata_opcode = curPacket->opcode;
+						m_currentPacket_in_buffer_list.AddTail(newitem);
+						delete curPacket;
+#else
+						sendblen = curPacket->GetRealPacketSize();
+						sendbuffer = curPacket->DetachPacket();
+						sent = 0;
+						delete curPacket;
+
+						// encrypting which cannot be done transparent by base class
+						CryptPrepareSendData((uchar*)sendbuffer, sendblen);
+#endif
+						// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+				}
+
+				// At this point we've got a packet to send in sendbuffer. Try to send it. Loop until entire packet
+				// is sent, or until we reach maximum bytes to send for this call, or until we get an error.
+				// NOTE! If send would block (returns WSAEWOULDBLOCK), we will return from this method INSIDE this loop.
+				while (sent < sendblen &&
+					sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall < maxNumberOfBytesToSend &&
+					anErrorHasOccured == false) 
 				{
-					// yay
-					pCurBuf.len = curPacket->GetRealPacketSize();
-					pCurBuf.buf = curPacket->DetachPacket();
-					CryptPrepareSendData((uchar*)pCurBuf.buf, pCurBuf.len);// encrypting which cannot be done transparent by base class
-					m_actualPayloadSizeSent += queueEntry.actualPayloadSize;
-					lastFinishedStandard = ::GetTickCount();
-					m_bAccelerateUpload = false;
-				}
-				else
-				{	// aww, well first stuff everything into the sendbuffer and then send what we can of it
-					ASSERT( sendbuffer == NULL );
-					m_actualPayloadSize = queueEntry.actualPayloadSize;
-					sendblen = curPacket->GetRealPacketSize();
-					sendbuffer = curPacket->DetachPacket();
-					sent = 0;
-					CryptPrepareSendData((uchar*)sendbuffer, sendblen); // encrypting which cannot be done transparent by base class
-					pCurBuf.len = min(sendblen - sent, (uint32)nBytesLeft);
-					pCurBuf.buf = new CHAR[pCurBuf.len];
-					memcpy(pCurBuf.buf, sendbuffer, pCurBuf.len);
-					sent += pCurBuf.len;
-					ASSERT (sent < sendblen);
-					m_currentPacket_is_controlpacket = false;
-				}
-				delete curPacket;
-				m_aBufferSend.Add(pCurBuf);
-				nBytesLeft -= pCurBuf.len;
-				sentStandardPacketBytesThisCall += pCurBuf.len;
-				if(m_currentPackageIsFromPartFile)
-					m_numberOfSentBytesPartFile += pCurBuf.len;
-				else
-					m_numberOfSentBytesCompleteFile += pCurBuf.len;
-			}
-			// allright, prepare to send our collected buffers
-			m_pPendingSendOperation = new WSAOVERLAPPED;
-			ZeroMemory(m_pPendingSendOperation, sizeof(WSAOVERLAPPED));
-			m_pPendingSendOperation->hEvent = theApp.uploadBandwidthThrottler->GetSocketAvailableEvent();
-			DWORD dwBytesSent = 0;
-			if (CEncryptedStreamSocket::SendOv(m_aBufferSend, dwBytesSent, m_pPendingSendOperation) == 0)
-			{
-				ASSERT( dwBytesSent > 0 );
-				CleanUpOverlappedSendOperation(false);
-			}
-			else
-			{
-				int nError = WSAGetLastError();
-				if (nError != WSA_IO_PENDING)
-				{
-					anErrorHasOccured = true;
-					theApp.QueueDebugLogLineEx(ERROR, _T("WSASend() Error: %u, %s"), nError, GetErrorMessage(nError));
-				}
+						uint32 tosend = sendblen-sent;
+						if (maxNumberOfBytesToSend >= sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall && tosend > maxNumberOfBytesToSend-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall))
+							tosend = maxNumberOfBytesToSend-(sentStandardPacketBytesThisCall + sentControlPacketBytesThisCall);
+						ASSERT (tosend != 0 && tosend <= sendblen-sent);
+
+
+						//Xman count block/success send
+						if(!onlyAllowedToSendControlPacket)
+						{
+							sendcount++;
+							sendcount_overall++;
+						}
+
+						uint32 result = CEncryptedStreamSocket::Send(sendbuffer+sent,tosend); // deadlake PROXYSUPPORT - changed to AsyncSocketEx
+
+						if (result == (uint32)SOCKET_ERROR){
+							uint32 error = GetLastError();
+							if (error == WSAEWOULDBLOCK){
+								m_bBusy = true;
+
+
+								//Xman 4.8.2 moved here
+								//Xman count block/success send
+								if(!onlyAllowedToSendControlPacket)
+								{
+									blockedsendcount++;
+									blockedsendcount_overall++;
+								}
+								//Xman end
+
+								//m_wasBlocked = true;
+								sendLocker.Unlock();
+
+								SocketSentBytes returnVal = { true, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+								return returnVal; // Send() blocked, onsend will be called when ready to send again
+							} else{
+								// Send() gave an error
+								anErrorHasOccured = true;
+								//DEBUG_ONLY( AddDebugLogLine(true,"EMSocket: An error has occured: %i", error) );
+							}
+						} else {
+							// we managed to send some bytes. Perform bookkeeping.
+							m_bBusy = false;
+							m_hasSent = true;
+
+							if(result>0) 
+							{
+								sent += result;
+
+
+								// Log send bytes in correct class
+								//Xman Xtreme Upload
+								//after sending a complete package we have to remove the header size
+								// Remove: header+FileId+StartPos+EndPos 
+								// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+								uint32 sumofpacketsizesent = 0;
+								uint32 sumofnocontrolpacketsizesent = 0;
+								uint32 sumofpacketpartfilesizesent = 0;
+								while (result > sumofpacketsizesent && result-sumofpacketsizesent >= m_currentPacket_in_buffer_list.GetHead()->remainpacketsize) {
+									BufferedPacket* pPacket = m_currentPacket_in_buffer_list.RemoveHead();
+									if(pPacket->iscontrolpacket == false) {
+										uint32 packetheadersize=0;
+										if(pPacket->newdatapacket)
+										{
+											//Header -> 6 Bytes
+											//FileID -> 16 Byte
+											//OP_SENDINGPART: 4 + 4 ->30
+											//OP_COMPRESSEDPART: 4 + 4 ->30
+											//OP_SENDINGPART_I64: 8 + 8 -> 36
+											//OP_COMPRESSEDPART_I64: 8 + 4 -> 32
+											switch(pPacket->sendingdata_opcode)
+											{
+											case OP_SENDINGPART:
+											case OP_COMPRESSEDPART:
+												{
+													packetheadersize=  (result > 30) ? 30 : result;
+													break;
+												}
+											case OP_COMPRESSEDPART_I64:
+												{
+													packetheadersize=  (result > 32) ? 32 : result;
+													break;
+												}
+											case OP_SENDINGPART_I64:
+												{
+													packetheadersize=  (result > 36) ? 36 : result;
+													break;
+												}
+											default:
+												ASSERT(0);
+											}
+										}
+										sumofnocontrolpacketsizesent += pPacket->remainpacketsize-packetheadersize;
+										if(pPacket->isforpartfile == true)
+											sumofpacketpartfilesizesent += pPacket->remainpacketsize-packetheadersize;
+
+										if(0 < pPacket->packetpayloadsize) {
+											//statsLocker.Lock();
+											m_actualPayloadSizeSent += pPacket->packetpayloadsize;
+											//statsLocker.Unlock();
+										} else {
+											ASSERT(0);
+										}
+										sendblenWithoutControlPacket -= pPacket->remainpacketsize-packetheadersize;
+									} else {
+										sentControlPacketBytesThisCall += result;
+										//m_numberOfSentBytesControlPacket += result; //Xman unused
+									}
+									pPacket->newdatapacket=false; //to be sure if sending two (mini)data packets
+									sumofpacketsizesent += pPacket->remainpacketsize;
+									delete pPacket;
+								}
+
+								if (result > sumofpacketsizesent) {
+									BufferedPacket* pPacket = m_currentPacket_in_buffer_list.GetHead();
+									uint32 partialpacketsizesent = result-sumofpacketsizesent;
+									if (pPacket->iscontrolpacket == false) {
+										uint32 packetheadersize=0;
+										if(pPacket->newdatapacket)
+										{
+											//Header -> 6 Bytes
+											//FileID -> 16 Byte
+											//OP_SENDINGPART: 4 + 4 ->30
+											//OP_COMPRESSEDPART: 4 + 4 ->30
+											//OP_SENDINGPART_I64: 8 + 8 -> 36
+											//OP_COMPRESSEDPART_I64: 8 + 4 -> 32
+											switch(pPacket->sendingdata_opcode)
+											{
+											case OP_SENDINGPART:
+											case OP_COMPRESSEDPART:
+												{
+													packetheadersize=  (result > 30) ? 30 : result;
+													break;
+												}
+											case OP_COMPRESSEDPART_I64:
+												{
+													packetheadersize=  (result > 32) ? 32 : result;
+													break;
+												}
+											case OP_SENDINGPART_I64:
+												{
+													packetheadersize=  (result > 36) ? 36 : result;
+													break;
+												}
+											default:
+												ASSERT(0);
+											}
+										}
+										sumofnocontrolpacketsizesent += partialpacketsizesent-packetheadersize;
+										if (pPacket->isforpartfile)
+											sumofpacketpartfilesizesent += partialpacketsizesent-packetheadersize;
+										uint32 partialpayloadSentWithThisCall = (uint32)(((double)partialpacketsizesent/(double)(pPacket->remainpacketsize))*pPacket->packetpayloadsize);
+										if(partialpayloadSentWithThisCall <= pPacket->packetpayloadsize) {
+											//statsLocker.Lock();
+											m_actualPayloadSizeSent += partialpayloadSentWithThisCall;
+											//statsLocker.Unlock();
+										} else {
+											ASSERT(0);
+										}
+										pPacket->packetpayloadsize -= partialpayloadSentWithThisCall;
+										sendblenWithoutControlPacket -= partialpacketsizesent-packetheadersize;
+									}
+									pPacket->newdatapacket=false; //to be sure if sending two (mini)data packets
+									pPacket->remainpacketsize -= partialpacketsizesent;
+								}
+
+								// Log send bytes in correct class
+								if(sumofnocontrolpacketsizesent/*m_currentPacket_is_controlpacket == false*/) {
+									sentStandardPacketBytesThisCall += sumofnocontrolpacketsizesent/*result*/;
+									if(sumofpacketpartfilesizesent) {
+										m_numberOfSentBytesPartFile += sumofpacketpartfilesizesent/*result*/;
+										m_numberOfSentBytesCompleteFile += sumofnocontrolpacketsizesent-sumofpacketpartfilesizesent/*result*/;
+									} else {
+										m_numberOfSentBytesCompleteFile += sumofnocontrolpacketsizesent/*result*/;
+									}
+								}
+								sentControlPacketBytesThisCall += result-sumofnocontrolpacketsizesent;
+								// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+								IPHeaderThisCall+= (((sentControlPacketBytesThisCall+sentStandardPacketBytesThisCall)/minFragSize)+(((sentControlPacketBytesThisCall+sentStandardPacketBytesThisCall)%minFragSize)?1:0))*(20+20); //Header
+								//Xman end
+#else
+								if(m_currentPacket_is_controlpacket == false) {
+									uint32 packetheadersize=0;
+									if(newdatapacket)
+									{
+										//Header -> 6 Bytes
+										//FileID -> 16 Byte
+										//OP_SENDINGPART: 4 + 4 ->30
+										//OP_COMPRESSEDPART: 4 + 4 ->30
+										//OP_SENDINGPART_I64: 8 + 8 -> 36
+										//OP_COMPRESSEDPART_I64: 8 + 4 -> 32
+										switch(sendingdata_opcode)
+										{
+										case OP_SENDINGPART:
+										case OP_COMPRESSEDPART:
+											{
+												packetheadersize=  (result > 30) ? 30 : result;
+												break;
+											}
+										case OP_COMPRESSEDPART_I64:
+											{
+												packetheadersize=  (result > 32) ? 32 : result;
+												break;
+											}
+										case OP_SENDINGPART_I64:
+											{
+												packetheadersize=  (result > 36) ? 36 : result;
+												break;
+											}
+										default:
+											ASSERT(0);
+										}
+									}
+									if(m_currentPackageIsFromPartFile == true) {
+										m_numberOfSentBytesPartFile += (result-packetheadersize);
+									} else {
+										m_numberOfSentBytesCompleteFile += (result-packetheadersize);
+									}
+									sentStandardPacketBytesThisCall += (result-packetheadersize);
+									sentControlPacketBytesThisCall += packetheadersize;
+								} else {
+									sentControlPacketBytesThisCall += result;
+									//m_numberOfSentBytesControlPacket += result; //Xman unused
+								}
+								newdatapacket=false; //to be sure if sending two (mini)data packets
+								// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+								IPHeaderThisCall+= (20+20); //Header
+								//Xman end
+#endif
+								// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+							}//end if(result>0)
+						}
+					}
+
+					if (sent == sendblen){
+						// we are done sending the current package. Delete it and set
+						// sendbuffer to NULL so a new packet can be fetched.
+						delete[] sendbuffer;
+						sendbuffer = NULL;
+						sendblen = 0;
+
+
+						// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
+						if(!m_currentPacket_is_controlpacket) {
+							m_actualPayloadSizeSent += m_actualPayloadSize;
+							m_actualPayloadSize = 0;
+						}
+#endif
+						// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+
+						sent = 0;
+					}
 			}
 		}
-    }
 
-    if(onlyAllowedToSendControlPacket && !controlpacket_queue.IsEmpty())
-	{
-        // enter control packet send queue
-        // we might enter control packet queue several times for the same package,
-        // but that costs very little overhead. Less overhead than trying to make sure
-        // that we only enter the queue once.
-        theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
-    }
+		// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+		if(onlyAllowedToSendControlPacket && (!controlpacket_queue.IsEmpty() || sendblenWithoutControlPacket != sendblen - sent /*m_currentPacket_is_controlpacket == true*/)) {
+#else
+		if(onlyAllowedToSendControlPacket && (!controlpacket_queue.IsEmpty() || sendbuffer != NULL && m_currentPacket_is_controlpacket)) {
+#endif
+		// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+		    // enter control packet send queue
+		    // we might enter control packet queue several times for the same package,
+		    // but that costs very little overhead. Less overhead than trying to make sure
+		    // that we only enter the queue once.
+			theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this, HasSent());
+		}
 
-    sendLocker.Unlock();
-    SocketSentBytes returnVal = { !anErrorHasOccured, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
-    return returnVal;
+		// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		sentControlPacketBytesThisCall+=IPHeaderThisCall;
+		//Xman end
+
+		sendLocker.Unlock();
+
+		SocketSentBytes returnVal = { !anErrorHasOccured, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+		return returnVal;
 }
 
 uint32 CEMSocket::GetNextFragSize(uint32 current, uint32 minFragSize) {
@@ -1006,6 +1997,7 @@ uint32 CEMSocket::GetNextFragSize(uint32 current, uint32 minFragSize) {
  * 
  * @author SlugFiller
  */
+/* //Xman Xtreme Upload
 uint32 CEMSocket::GetNeededBytes() {
 	sendLocker.Lock();
 	if (byConnected == ES_DISCONNECTED) {
@@ -1053,6 +2045,7 @@ uint32 CEMSocket::GetNeededBytes() {
 	else
 		return 1;
 }
+*/
 
 // pach2:
 // written this overriden Receive to handle transparently FIN notifications coming from calls to recv()
@@ -1069,10 +2062,15 @@ int CEMSocket::Receive(void* lpBuf, int nBufLen, int nFlags)
 		//EMTrace("CEMSocket::##Received FIN on %d, maxSize=%d",(SOCKET)this,nBufLen);
 		// FIN received on socket // Connection is being closed by peer
 		//ASSERT (false);
+		//Xman improved socket closing
+		//removed this old patch. At least the FD-WRITE is wrong here
+		/*
 		if ( 0 == AsyncSelect(FD_CLOSE|FD_WRITE) ) { // no more READ notifications ...
 			//int waserr = GetLastError(); // oups, AsyncSelect failed !!!
 			ASSERT(false);
 		}
+		*/
+		//Xman end
 		return 0;
 	case SOCKET_ERROR:
 		switch(GetLastError()) {
@@ -1141,11 +2139,11 @@ int CEMSocket::OnLayerCallback(const CAsyncSocketExLayer *pLayer, int nType, int
 		/*CString logline;
 		if (pLayer==m_pProxyLayer)
 		{
-			//logline.Format(_T("ProxyLayer changed state from %d to %d"), wParam, nCode);
-			//AddLogLine(false,logline);
+		//logline.Format(_T("ProxyLayer changed state from %d to %d"), wParam, nCode);
+		//AddLogLine(false,logline);
 		}else
-			//logline.Format(_T("Layer @ %d changed state from %d to %d"), pLayer, wParam, nCode);
-			//AddLogLine(false,logline);*/
+		//logline.Format(_T("Layer @ %d changed state from %d to %d"), pLayer, wParam, nCode);
+		//AddLogLine(false,logline);*/
 		return 1;
 	}
 	else if (nType == LAYERCALLBACK_LAYERSPECIFIC)
@@ -1154,31 +2152,31 @@ int CEMSocket::OnLayerCallback(const CAsyncSocketExLayer *pLayer, int nType, int
 		{
 			switch (nCode)
 			{
-				case PROXYERROR_NOCONN:
-					// We failed to connect to the proxy.
-					m_bProxyConnectFailed = true;
-					/* fall through */
-				case PROXYERROR_REQUESTFAILED:
-					// We are connected to the proxy but it failed to connect to the peer.
-					if (thePrefs.GetVerbose()) {
-						m_strLastProxyError = GetProxyError(nCode);
-						if (lParam && ((LPCSTR)lParam)[0] != '\0') {
-							m_strLastProxyError += _T(" - ");
-							m_strLastProxyError += (LPCSTR)lParam;
-						}
-						// Appending the Winsock error code is actually not needed because that error code
-						// gets reported by to the original caller anyway and will get reported eventually
-						// by calling 'GetFullErrorMessage',
-						/*if (wParam) {
-							CString strErrInf;
-							if (GetErrorMessage(wParam, strErrInf, 1))
-								m_strLastProxyError += _T(" - ") + strErrInf;
-						}*/
-					}
-					break;
-				default:
+			case PROXYERROR_NOCONN:
+				// We failed to connect to the proxy.
+				m_bProxyConnectFailed = true;
+				/* fall through */
+			case PROXYERROR_REQUESTFAILED:
+				// We are connected to the proxy but it failed to connect to the peer.
+				if (thePrefs.GetVerbose()) {
 					m_strLastProxyError = GetProxyError(nCode);
-					LogWarning(false, _T("Proxy-Error: %s"), m_strLastProxyError);
+					if (lParam && ((LPCSTR)lParam)[0] != '\0') {
+						m_strLastProxyError += _T(" - ");
+						m_strLastProxyError += (LPCSTR)lParam;
+					}
+					// Appending the Winsock error code is actually not needed because that error code
+					// gets reported by to the original caller anyway and will get reported eventually
+					// by calling 'GetFullErrorMessage',
+					/*if (wParam) {
+					CString strErrInf;
+					if (GetErrorMessage(wParam, strErrInf, 1))
+					m_strLastProxyError += _T(" - ") + strErrInf;
+					}*/
+				}
+				break;
+			default:
+				m_strLastProxyError = GetProxyError(nCode);
+				LogWarning(false, _T("Proxy-Error: %s"), m_strLastProxyError);
 			}
 		}
 	}
@@ -1227,14 +2225,34 @@ void CEMSocket::AssertValid() const
 	(void)sent;
 	controlpacket_queue.AssertValid();
 	standartpacket_queue.AssertValid();
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+	m_currentPacket_in_buffer_list.AssertValid();
+#else
 	CHECK_BOOL(m_currentPacket_is_controlpacket);
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
     //(void)sendLocker;
     (void)m_numberOfSentBytesCompleteFile;
     (void)m_numberOfSentBytesPartFile;
+    //Xman unused
+    /*
     (void)m_numberOfSentBytesControlPacket;
+    */
+    //Xman end
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+    (void)sendblenWithoutControlPacket;
+#else
     CHECK_BOOL(m_currentPackageIsFromPartFile);
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
     (void)lastCalledSend;
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
     (void)m_actualPayloadSize;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
     (void)m_actualPayloadSizeSent;
 
 	const_cast<CEMSocket*>(this)->sendLocker.Unlock();
@@ -1288,6 +2306,8 @@ CString CEMSocket::GetFullErrorMessage(DWORD nErrorCode)
 	return strError;
 }
 
+// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
 // increases the send buffer to a bigger size
 bool CEMSocket::UseBigSendBuffer()
 {
@@ -1304,7 +2324,7 @@ bool CEMSocket::UseBigSendBuffer()
 	val = 0;
 	vallen = sizeof(int);
 	GetSockOpt(SO_SNDBUF, &val, &vallen);
-#if defined(_DEBUG) || defined(_BETA) || defined(_DEVBUILD)
+#if defined(_DEBUG) || defined(_BETA)
 	if (val == BIGSIZE)
 		theApp.QueueDebugLogLine(false, _T("Increased Sendbuffer for uploading socket from %uKB to %uKB"), oldval/1024, val/1024);
 	else
@@ -1312,83 +2332,27 @@ bool CEMSocket::UseBigSendBuffer()
 #endif
 	return val == BIGSIZE;
 }
+#endif
+// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 
-bool CEMSocket::IsBusyExtensiveCheck()
+//Xman 4.8.2
+//Threadsafe Statechange
+void CEMSocket::SetConnectedState(const uint8 state)
 {
-	
-	if (!m_bOverlappedSending)
-		return m_bBusy;
+	if(byConnected == state)
+		return;
 
-	CSingleLock lockSend(&sendLocker, TRUE);
-	if (m_pPendingSendOperation == NULL)
-		return false;
-	else
-	{
-		DWORD dwTransferred = 0;
-		DWORD dwFlags;
-		if (WSAGetOverlappedResult(GetSocketHandle(), m_pPendingSendOperation, &dwTransferred, FALSE, &dwFlags) == TRUE)
-		{
-			CleanUpOverlappedSendOperation(false);
-			OnSend(0);
-			return false;
-		}
-		else
-		{
-			int nError = WSAGetLastError();
-			if (nError == WSA_IO_INCOMPLETE)
-				return true;
-			else
-			{
-				CleanUpOverlappedSendOperation(false);
-				theApp.QueueDebugLogLineEx(LOG_ERROR, _T("WSAGetOverlappedResult return error: %s"), GetErrorMessage(nError));
-				return false;
-			}
-		}
-	}
+	sendLocker.Lock();
+	byConnected = state;
+	sendLocker.Unlock();
 }
-
-// won't always deliver the proper result (sometimes reports busy even if it isn't anymore and thread related errors) but doesn't needs locks or function calls
-bool CEMSocket::IsBusyQuickCheck() const
-{
-	if (!m_bOverlappedSending)
-		return m_bBusy;
-	else 
-		return m_pPendingSendOperation != NULL;
+//Xman end
+// netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+void CEMSocket::SetMSSFromSocket(SOCKET socket){
+#ifdef HAVE_VISTA_SDK
+	m_dwMSS = theNetF.GetMSSFromSocket(socket);
+#else
+	m_dwMSS = 0;
+#endif
 }
-
-void CEMSocket::CleanUpOverlappedSendOperation(bool bCancelRequestFirst)
-{
-	CSingleLock lockSend(&sendLocker, TRUE);
-	if (m_pPendingSendOperation != NULL)
-	{
-		if (bCancelRequestFirst)
-			CancelIo((HANDLE)GetSocketHandle());
-		delete m_pPendingSendOperation;
-		m_pPendingSendOperation = NULL;
-		for (int i = 0; i < m_aBufferSend.GetCount(); i++)
-		{
-			WSABUF pDel = m_aBufferSend[i];
-			delete[] pDel.buf;
-		}
-		 m_aBufferSend.RemoveAll();
-	}
-}
-
-bool CEMSocket::HasQueues(bool bOnlyStandardPackets) const
-{
-	// not trustworthy threaded? but it's ok if we don't get the correct result now and then
-	return sendbuffer || standartpacket_queue.GetCount() > 0 || (controlpacket_queue.GetCount() > 0 && !bOnlyStandardPackets);
-} 
-
-bool CEMSocket::IsEnoughFileDataQueued(uint32 nMinFilePayloadBytes) const
-{
-	// check we have at least nMinFilePayloadBytes Payload data in our standardqueue
-	for (POSITION pos = standartpacket_queue.GetHeadPosition(); pos != NULL; standartpacket_queue.GetNext(pos))
-	{
-		if (standartpacket_queue.GetAt(pos).actualPayloadSize > nMinFilePayloadBytes)
-			return true;
-		else
-			nMinFilePayloadBytes -= standartpacket_queue.GetAt(pos).actualPayloadSize;
-	}
-	return false;
-}
+// netfinity: end

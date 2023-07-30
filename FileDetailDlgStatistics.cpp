@@ -24,6 +24,10 @@
 #include "SharedFileList.h"
 #include "UploadQueue.h"
 #include "emuledlg.h"
+//Xman [MoNKi: -Downloaded History-]
+#include "SharedFilesWnd.h"
+#include "HistoryListCtrl.h"
+//Xman end
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -176,6 +180,11 @@ void CFileDetailDlgStatistics::RefreshData()
 		if (!(*m_paFiles)[i]->IsKindOf(RUNTIME_CLASS(CKnownFile)))
 			continue;
 		const CKnownFile* pFile = (CKnownFile*)(*m_paFiles)[i];
+		//Xman [MoNKi: -Downloaded History-]
+		if (theApp.emuledlg->sharedfileswnd->historylistctrl.IsWindowVisible())
+			;
+		else
+		//Xman end
 		if (theApp.sharedfiles->GetFileByIdentifier(pFile->GetFileIdentifierC()) == NULL)
 			continue;
 		iFiles++;
@@ -232,7 +241,12 @@ void CFileDetailDlgStatistics::RefreshData()
 		SetDlgItemText(IDC_FS_UPLOADING_VAL,  CastItoXBytes(theApp.uploadqueue->GetDatarateForFile(*m_paFiles), false, true));
 
 
+		//Xman [MoNKi: -Downloaded History-]
+		/*
 		if (iFiles == 1)
+		*/
+		if (iFiles == 1 && !theApp.emuledlg->sharedfileswnd->historylistctrl.IsWindowVisible())
+		//Xmane end
 		{
 			if (m_bDataChanged || nLastRequestCount != theApp.knownfiles->m_nRequestedTotal)
 			{

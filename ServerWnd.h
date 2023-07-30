@@ -53,13 +53,15 @@ public:
 	{
 		PaneServerInfo	= 0, // those are CTabCtrl item indices
 		PaneLog			= 1,
-		PaneVerboseLog	= 2
+		PaneVerboseLog	= 2,
+		PaneLeecherLog	= 3	 //Xman Anti-Leecher-Log
 	};
 
 	CServerListCtrl serverlistctrl;
 	CHTRichEditCtrl* servermsgbox;
 	CHTRichEditCtrl* logbox;
 	CHTRichEditCtrl* debuglog;
+	CHTRichEditCtrl* leecherlog; //Xman Anti-Leecher-Log
 	CClosableTabCtrl StatusSelector;
 	CSplitterControl m_wndSplitter;
 
@@ -82,6 +84,9 @@ private:
 	CHARFORMAT m_cfBold;
 	CCustomAutoComplete* m_pacServerMetURL;
 	CString m_strClickNewVersion;
+	//Xman versions check
+	CString m_strClickNewXtremeVersion;
+	//Xman end
 
 protected:
 	void SetAllIcons();
@@ -105,4 +110,11 @@ protected:
 	afx_msg void OnStnDblclickServlstIco();
 	afx_msg void OnSplitterMoved(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+	afx_msg void OnBnClickedServerLists(); // Links for Server list and nodes file [Stulle] - Stulle
+	// ==> Design Settings [eWombat/Stulle] - Max
+	CBrush m_brMyBrush;
+	COLORREF clrSrvColor;
+public:
+	void OnBackcolor();
+	// <== Design Settings [eWombat/Stulle] - Max
 };

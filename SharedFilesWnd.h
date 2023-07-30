@@ -21,6 +21,7 @@
 #include "SplitterControl.h"
 #include "EditDelayed.h"
 #include "ListViewWalkerPropertySheet.h"
+#include "HistoryListCtrl.h" //Xman [MoNKi: -Downloaded History-]
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // CSharedFileDetailsModelessSheet
@@ -66,7 +67,12 @@ public:
 	uint32	GetFilterColumn() const				{ return m_nFilterColumn; }
 	void OnVolumesChanged()						{ m_ctlSharedDirTree.OnVolumesChanged(); }
 	void OnSingleFileShareStatusChanged()		{ m_ctlSharedDirTree.FileSystemTreeUpdateBoldState(NULL); }
+	//Xman [MoNKi: -Downloaded History-]
+	/*
 	void ShowSelectedFilesDetails(bool bForce = false);
+	*/
+	void ShowSelectedFilesDetails(bool bForce = false, bool bHistory = false);
+	//Xman end
 	void ShowDetailsPanel(bool bShow);
 
 // Dialog Data
@@ -108,4 +114,18 @@ protected:
 	afx_msg void OnShowWindow(BOOL bShow, UINT nStatus);
 	afx_msg void OnBnClickedSfHideshowdetails();
 	afx_msg void OnLvnItemchangedSflist(NMHDR *pNMHDR, LRESULT *pResult);
+	//Xman [MoNKi: -Downloaded History-]
+public:
+	CHistoryListCtrl historylistctrl;
+protected:
+	afx_msg void OnLvnItemActivateHistorylist(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnNMClickHistorylist(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnLvnItemchangedHlist(NMHDR *pNMHDR, LRESULT *pResult);
+	//Xman end
+	// ==> Design Settings [eWombat/Stulle] - Max
+	CBrush m_brMyBrush;
+	COLORREF crSharedColor;
+public:
+	void OnBackcolor(); 
+	// <== Design Settings [eWombat/Stulle] - Max
 };

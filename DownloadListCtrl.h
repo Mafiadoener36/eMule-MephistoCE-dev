@@ -16,9 +16,15 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #pragma once
 #include "MuleListCtrl.h"
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 #include "TitleMenu.h"
+*/
+#include "MenuXP.h"
+// <== XP Style Menu [Xanatos] - Stulle
 #include <map>
 #include "ListCtrlItemWalk.h"
+#include "SettingsSaver.h" // File Settings [sivka/Stulle] - Stulle
 
 #define COLLAPSE_ONLY	0
 #define EXPAND_ONLY		1
@@ -41,7 +47,14 @@ class CtrlItem_Struct : public CObject
 	DECLARE_DYNAMIC(CtrlItem_Struct)
 
 public:
+
+#ifdef PRINT_STATISTIC
+	static uint32	amount;
+	CtrlItem_Struct()	{amount++;}
+	~CtrlItem_Struct() { status.DeleteObject(); amount--;}
+#else
 	~CtrlItem_Struct() { status.DeleteObject(); }
+#endif
 
 	ItemType         type;
 	CPartFile*       owner;
@@ -110,23 +123,50 @@ public:
 	void	UpdateCurrentCategoryView();
 	void	UpdateCurrentCategoryView(CPartFile* thisfile);
 	CImageList *CreateDragImage(int iItem, LPPOINT lpPoint);
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	void	FillCatsMenu(CMenu& rCatsMenu, int iFilesInCats = (-1));
+	*/
+	void	FillCatsMenu(CTitleMenu& rCatsMenu, int iFilesInCats = (-1));
+	// <== XP Style Menu [Xanatos] - Stulle
 	CTitleMenu* GetPrioMenu();
 	float	GetFinishedSize();
 	bool	ReportAvailableCommands(CList<int>& liAvailableCommands);
+
+	//Xman Xtreme Downloadmanager
+	void    StopSingleClient (CUpDownClient* single);	
+
+#ifdef PRINT_STATISTIC
+	void	PrintStatistic();
+#endif
 
 protected:
 	CImageList  m_ImageList;
 	CTitleMenu	m_PrioMenu;
 	CTitleMenu	m_FileMenu;
 	CTitleMenu	m_PreviewMenu;
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu		m_SourcesMenu;
+	CMenu		m_DropMenu; //Xman Xtreme Downloadmanager
+	*/
+	CTitleMenu		m_SourcesMenu;
+	CTitleMenu		m_DropMenu;
+	// <== XP Style Menu [Xanatos] - Stulle
 	bool		m_bRemainSort;
 	typedef std::pair<void*, CtrlItem_Struct*> ListItemsPair;
 	typedef std::multimap<void*, CtrlItem_Struct*> ListItems;
     ListItems	m_ListItems;
 	CFont		m_fontBold; // may contain a locally created bold font
 	CFont*		m_pFontBold;// points to the bold font which is to be used (may be the locally created or the default bold font)
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	/*
+	//Xman narrow font at transferwindow
+	CFont		m_fontNarrowBold;
+	//Xman end
+	*/
+	// <== Design Settings [eWombat/Stulle] - Stulle
+	CImageList  m_overlayimages; // Mod Icons - Stulle
 	CToolTipCtrlX* m_tooltip;
 	uint32		m_dwLastAvailableCommandsCheck;
 	bool		m_availableCommandsDirty;
@@ -136,7 +176,11 @@ protected:
 	void SetAllIcons();
 	void DrawFileItem(CDC *dc, int nColumn, LPCRECT lpRect, UINT uDrawTextAlignment, CtrlItem_Struct *pCtrlItem);
 	void DrawSourceItem(CDC *dc, int nColumn, LPCRECT lpRect, UINT uDrawTextAlignment, CtrlItem_Struct *pCtrlItem);
+	//Xman see all sources
+	/*
 	int GetFilesCountInCurCat();
+	*/
+	//Xman end
 	void GetFileItemDisplayText(CPartFile *lpPartFile, int iSubItem, LPTSTR pszText, int cchTextMax);
 	void GetSourceItemDisplayText(const CtrlItem_Struct *pCtrlItem, int iSubItem, LPTSTR pszText, int cchTextMax);
 
@@ -156,4 +200,11 @@ protected:
 	afx_msg void OnLvnItemActivate(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnNmDblClk(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnSysColorChange();
+
+	CTitleMenu m_FollowTheMajorityMenu; // Follow The Majority [AndCycle/Stulle] - Stulle
+
+	// ==> show global HL - Stulle
+public:
+	uint32 GlobalHardLimit;
+	// <== show global HL - Stulle
 };

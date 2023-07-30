@@ -83,7 +83,7 @@ void CIndexed::ReadFile(void)
 CIndexed::~CIndexed()
 { 
 	if (!m_bDataLoaded){
-		// the user clicked on disconnect/close just after he started kad (and probably just before posting in the forum that emule doesnt works :P )
+		// the user clicked on disconnect/close just after he started kad (on probably just before posting in the forum the emule doenst works :P )
 		// while the loading thread is still busy. First tell the thread to abort its loading, afterwards wait for it to terminate
 		// and then delete all loaded items without writing them to the files (as they are incomplete and unchanged)
 		DebugLogWarning(_T("Kad stopping while still loading CIndexed data, waiting for abort"));
@@ -115,15 +115,6 @@ CIndexed::~CIndexed()
 			delete pCurrSrcHash;
 		}
 
-		pos1 = m_mapLoad.GetStartPosition();
-		while (pos1 != NULL)
-		{
-			CCKey key1;
-			Load* pLoad;
-			m_mapLoad.GetNextAssoc(pos1, key1, pLoad);
-			delete pLoad;
-		}
-
 		pos1 = m_mapKeyword.GetStartPosition();
 		while( pos1 != NULL )
 		{
@@ -152,7 +143,7 @@ CIndexed::~CIndexed()
 		CKeyEntry::ResetGlobalTrackingMap();
 	}
 	else {
-		// standard cleanup with sotring
+		// standart cleanup with sotring
 		try
 		{
 			uint32 uTotalSource = 0;
@@ -165,8 +156,14 @@ CIndexed::~CIndexed()
 				setvbuf(fileLoad.m_pStream, NULL, _IOFBF, 32768);
 				uint32 uVersion = 1;
 				fileLoad.WriteUInt32(uVersion);
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+				/*
 				fileLoad.WriteUInt32(time(NULL));
 				fileLoad.WriteUInt32(m_mapLoad.GetCount());
+				*/
+				fileLoad.WriteUInt32((uint32) time(NULL));
+				fileLoad.WriteUInt32((uint32) m_mapLoad.GetCount());
+				// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 				POSITION pos1 = m_mapLoad.GetStartPosition();
 				while( pos1 != NULL )
 				{
@@ -189,8 +186,14 @@ CIndexed::~CIndexed()
 				setvbuf(fileSource.m_pStream, NULL, _IOFBF, 32768);
 				uint32 uVersion = 2;
 				fileSource.WriteUInt32(uVersion);
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+				/*
 				fileSource.WriteUInt32(time(NULL)+KADEMLIAREPUBLISHTIMES);
 				fileSource.WriteUInt32(m_mapSources.GetCount());
+				*/
+				fileSource.WriteUInt32((uint32) time(NULL)+KADEMLIAREPUBLISHTIMES);
+				fileSource.WriteUInt32((uint32) m_mapSources.GetCount());
+				// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 				POSITION pos1 = m_mapSources.GetStartPosition();
 				while( pos1 != NULL )
 				{
@@ -199,18 +202,33 @@ CIndexed::~CIndexed()
 					m_mapSources.GetNextAssoc( pos1, key1, pCurrSrcHash );
 					fileSource.WriteUInt128(pCurrSrcHash->uKeyID);
 					CKadSourcePtrList* keyHashSrcMap = &pCurrSrcHash->ptrlistSource;
+					// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+					/*
 					fileSource.WriteUInt32(keyHashSrcMap->GetCount());
+					*/
+					fileSource.WriteUInt32((uint32) keyHashSrcMap->GetCount());
+					// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 					POSITION pos2 = keyHashSrcMap->GetHeadPosition();
 					while( pos2 != NULL )
 					{
 						Source* pCurrSource = keyHashSrcMap->GetNext(pos2);
 						fileSource.WriteUInt128(pCurrSource->uSourceID);
 						CKadEntryPtrList* srcEntryList = &pCurrSource->ptrlEntryList;
+						// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+						/*
 						fileSource.WriteUInt32(srcEntryList->GetCount());
+						*/
+						fileSource.WriteUInt32((uint32) srcEntryList->GetCount());
+						// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 						for(POSITION pos3 = srcEntryList->GetHeadPosition(); pos3 != NULL; )
 						{
 							CEntry* pCurrName = srcEntryList->GetNext(pos3);
+							// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+							/*
 							fileSource.WriteUInt32(pCurrName->m_tLifetime);
+							*/
+							fileSource.WriteUInt32((uint32) pCurrName->m_tLifetime);
+							// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 							pCurrName->WriteTagList(&fileSource);
 							delete pCurrName;
 							uTotalSource++;
@@ -230,9 +248,16 @@ CIndexed::~CIndexed()
 				setvbuf(fileKey.m_pStream, NULL, _IOFBF, 32768);
 				uint32 uVersion = 4;
 				fileKey.WriteUInt32(uVersion);
+				// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+				/*
 				fileKey.WriteUInt32(time(NULL)+KADEMLIAREPUBLISHTIMEK);
 				fileKey.WriteUInt128(Kademlia::CKademlia::GetPrefs()->GetKadID());
 				fileKey.WriteUInt32(m_mapKeyword.GetCount());
+				*/
+				fileKey.WriteUInt32((uint32) time(NULL)+KADEMLIAREPUBLISHTIMEK);
+				fileKey.WriteUInt128(Kademlia::CKademlia::GetPrefs()->GetKadID());
+				fileKey.WriteUInt32((uint32) m_mapKeyword.GetCount());
+				// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 				POSITION pos1 = m_mapKeyword.GetStartPosition();
 				while( pos1 != NULL )
 				{
@@ -241,7 +266,12 @@ CIndexed::~CIndexed()
 					m_mapKeyword.GetNextAssoc( pos1, key1, pCurrKeyHash );
 					fileKey.WriteUInt128(pCurrKeyHash->uKeyID);
 					CSourceKeyMap* keySrcKeyMap = &pCurrKeyHash->mapSource;
+					// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+					/*
 					fileKey.WriteUInt32(keySrcKeyMap->GetCount());
+					*/
+					fileKey.WriteUInt32((uint32) keySrcKeyMap->GetCount());
+					// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 					POSITION pos2 = keySrcKeyMap->GetStartPosition();
 					while( pos2 != NULL )
 					{
@@ -250,12 +280,22 @@ CIndexed::~CIndexed()
 						keySrcKeyMap->GetNextAssoc( pos2, key2, pCurrSource );
 						fileKey.WriteUInt128(pCurrSource->uSourceID);
 						CKadEntryPtrList* srcEntryList = &pCurrSource->ptrlEntryList;
+						// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+						/*
 						fileKey.WriteUInt32(srcEntryList->GetCount());
+						*/
+						fileKey.WriteUInt32((uint32) srcEntryList->GetCount());
+						// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 						for(POSITION pos3 = srcEntryList->GetHeadPosition(); pos3 != NULL; )
 						{
 							CKeyEntry* pCurrName = (CKeyEntry*)srcEntryList->GetNext(pos3);
 							ASSERT( pCurrName->IsKeyEntry() );
+							// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+							/*
 							fileKey.WriteUInt32(pCurrName->m_tLifetime);
+							*/
+							fileKey.WriteUInt32((uint32) pCurrName->m_tLifetime);
+							// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 							pCurrName->WritePublishTrackingDataToFile(&fileKey);
 							pCurrName->WriteTagList(&fileKey);
 							pCurrName->DirtyDeletePublishData();
@@ -404,8 +444,8 @@ void CIndexed::Clean(void)
 			}
 		}
 
-		m_uTotalIndexSource = uTotalSource - uRemovedSource;;
-		m_uTotalIndexKeyword = uTotalKey - uRemovedKey;;
+		m_uTotalIndexSource = uTotalSource;
+		m_uTotalIndexKeyword = uTotalKey;
 		AddDebugLogLine( false, _T("Removed %u keyword out of %u and %u source out of %u"), uRemovedKey, uTotalKey, uRemovedSource, uTotalSource);
 		m_tLastClean = time(NULL) + MIN2S(30);
 	}
@@ -459,7 +499,12 @@ bool CIndexed::AddKeyword(const CUInt128& uKeyID, const CUInt128& uSourceID, Kad
 	}
 	else
 	{
+		// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+		/*
 		uint32 uIndexTotal = pCurrKeyHash->mapSource.GetCount();
+		*/
+		uint32 uIndexTotal = (uint32) pCurrKeyHash->mapSource.GetCount();
+		// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 		if ( uIndexTotal > KADEMLIAMAXINDEX )
 		{
 			uLoad = 100;
@@ -550,7 +595,12 @@ bool CIndexed::AddSources(const CUInt128& uKeyID, const CUInt128& uSourceID, Kad
 	}
 	else
 	{
+		// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+		/*
 		uint32 uSize = pCurrSrcHash->ptrlistSource.GetSize();
+		*/
+		uint32 uSize = (uint32) pCurrSrcHash->ptrlistSource.GetSize();
+		// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 		for(POSITION pos1 = pCurrSrcHash->ptrlistSource.GetHeadPosition(); pos1 != NULL; )
 		{
 			Source* pCurrSource = pCurrSrcHash->ptrlistSource.GetNext(pos1);
@@ -629,7 +679,12 @@ bool CIndexed::AddNotes(const CUInt128& uKeyID, const CUInt128& uSourceID, Kadem
 	}
 	else
 	{
+		// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+		/*
 		uint32 uSize = pCurrNoteHash->ptrlistSource.GetSize();
+		*/
+		uint32 uSize = (uint32) pCurrNoteHash->ptrlistSource.GetSize();
+		// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 		for(POSITION pos1 = pCurrNoteHash->ptrlistSource.GetHeadPosition(); pos1 != NULL; )
 		{
 			Source* pCurrNote = pCurrNoteHash->ptrlistSource.GetNext(pos1);
@@ -650,7 +705,7 @@ bool CIndexed::AddNotes(const CUInt128& uKeyID, const CUInt128& uSourceID, Kadem
 				pCurrNote->ptrlEntryList.AddHead(pEntry);
 				ASSERT(0);
 				uLoad = (uint8)((uSize*100)/KADEMLIAMAXNOTESPERFILE);
-				m_uTotalIndexNotes++;
+				m_uTotalIndexKeyword++;
 				return true;
 			}
 		}
@@ -671,7 +726,7 @@ bool CIndexed::AddNotes(const CUInt128& uKeyID, const CUInt128& uSourceID, Kadem
 			pCurrNote->ptrlEntryList.AddHead(pEntry);
 			pCurrNoteHash->ptrlistSource.AddHead(pCurrNote);
 			uLoad = (uint8)((uSize*100)/KADEMLIAMAXNOTESPERFILE);
-			m_uTotalIndexNotes++;
+			m_uTotalIndexKeyword++;
 			return true;
 		}
 	}
@@ -1031,7 +1086,12 @@ uint32 CIndexed::GetFileKeyCount()
 		return 0;
 	}
 
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	return m_mapKeyword.GetCount();
+	*/
+	return (uint32) m_mapKeyword.GetCount();
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 }
 
 SSearchTerm::SSearchTerm()

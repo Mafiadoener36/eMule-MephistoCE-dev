@@ -34,6 +34,13 @@
 #include "OtherFunctions.h"
 #include "ListViewSearchDlg.h"
 #include <atlimage.h>
+// ==> Design Settings [eWombat/Stulle] - Stulle
+#include "Preferences.h"
+#include "UpDownClient.h"
+#include "PartFile.h"
+#include "ShareableFile.h"
+#include "KnownFile.h"
+// <== Design Settings [eWombat/Stulle] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -79,12 +86,18 @@ BEGIN_MESSAGE_MAP(CMuleListCtrl, CListCtrl)
 	ON_WM_KEYDOWN()
 	ON_WM_MEASUREITEM_REFLECT()
 	ON_WM_SYSCOLORCHANGE()
+	// ==> XP Style Menu [Xanatos] - Stulle
+	ON_WM_MEASUREITEM()
+	ON_WM_MENUCHAR()
+	// <== XP Style Menu [Xanatos] - Stulle
 END_MESSAGE_MAP()
 
 CMuleListCtrl::CMuleListCtrl(PFNLVCOMPARE pfnCompare, DWORD dwParamSort)
 {
 	m_SortProc = pfnCompare;
 	m_dwParamSort = dwParamSort;
+
+	UpdateSortHistory(m_dwParamSort, 0); // SLUGFILLER: multiSort - fail-safe, ensure it's in the sort history(no inverse check)
 
 	m_bCustomDraw = false;
 	m_iCurrentSortItem = -1;
@@ -172,7 +185,14 @@ int CMuleListCtrl::IndexToOrder(CHeaderCtrl* pHeader, int iIndex) {
 void CMuleListCtrl::HideColumn(int iColumn) {
 	CHeaderCtrl* pHeaderCtrl = GetHeaderCtrl();
 	int iCount = pHeaderCtrl->GetItemCount();
+	//Xman
+	//>>> WiZaRd::FiX
+	//needs a rework, sometimes more columns are loaded than inserted (older/corrupt prefs)
+	/*
 	if(iColumn < 1 || iColumn >= iCount || m_aColumns[iColumn].bHidden)
+	*/
+	if(iColumn < 1 || iColumn >= iCount || iColumn >= m_iColumnsTracked || m_aColumns[iColumn].bHidden)
+	//<<< WiZaRd::FiX 
 		return;
 
 	//stop it from redrawing
@@ -212,21 +232,46 @@ void CMuleListCtrl::HideColumn(int iColumn) {
 void CMuleListCtrl::ShowColumn(int iColumn) {
 	CHeaderCtrl* pHeaderCtrl = GetHeaderCtrl();
 	int iCount = pHeaderCtrl->GetItemCount();
+	//Xman
+	//>>> WiZaRd::FiX
+	//needs a rework, sometimes more columns are loaded than inserted (older/corrupt prefs)
+	/*
 	if(iColumn < 1 || iColumn >= iCount || !m_aColumns[iColumn].bHidden)
+	*/
+	if(iColumn < 1 || iColumn >= iCount || iColumn >= m_iColumnsTracked || !m_aColumns[iColumn].bHidden)
+	//<<< WiZaRd::FiX
 		return;
 
 	//stop it from redrawing
 	SetRedraw(FALSE);
 
 	//restore position in list
+	//Xman
+	//>>> WiZaRd::FiX - just to be sure!
+	/*
 	INT *piArray = new INT[m_iColumnsTracked];
 	pHeaderCtrl->GetOrderArray(piArray, m_iColumnsTracked);
 	int iCurrent = IndexToOrder(pHeaderCtrl, iColumn);
+	*/
+	int iCurrent = IndexToOrder(pHeaderCtrl, iColumn);
+	if(iCurrent == -1)
+		return;
+	INT *piArray = new INT[m_iColumnsTracked];
+	pHeaderCtrl->GetOrderArray(piArray, m_iColumnsTracked);
+	//<<< WiZaRd::FiX - just to be sure!
 
 	for(; iCurrent < IndexToOrder(pHeaderCtrl, 0) && iCurrent < m_iColumnsTracked - 1; iCurrent++ )
 		piArray[iCurrent] = piArray[iCurrent + 1];
+	//Xman
+	//>>> WiZaRd::FiX
+	//first, test the validity of iCurrent before accessing an element!
+	/*
 	for(; m_aColumns[iColumn].iLocation > m_aColumns[pHeaderCtrl->OrderToIndex(iCurrent + 1)].iLocation &&
-	      iCurrent < m_iColumnsTracked - 1; iCurrent++)
+		iCurrent < m_iColumnsTracked - 1; iCurrent++)
+	*/
+	for(; iCurrent < m_iColumnsTracked - 1 && 
+		m_aColumns[iColumn].iLocation > m_aColumns[pHeaderCtrl->OrderToIndex(iCurrent + 1)].iLocation; iCurrent++)
+	//<<< WiZaRd::FiX
 		piArray[iCurrent] = piArray[iCurrent + 1];
 	piArray[iCurrent] = iColumn;
 	pHeaderCtrl->SetOrderArray(m_iColumnsTracked, piArray);
@@ -252,13 +297,21 @@ void CMuleListCtrl::SaveSettings()
 	
 	ASSERT(GetHeaderCtrl()->GetItemCount() == m_iColumnsTracked);
 
+	//Xman possible fix
+	/*
 	if (m_Name.IsEmpty() || GetHeaderCtrl()->GetItemCount() != m_iColumnsTracked)
+	*/
+	ASSERT(this->m_hWnd!=NULL);
+	if (this->m_hWnd==NULL || m_Name.IsEmpty() || GetHeaderCtrl()->GetItemCount() != m_iColumnsTracked)
+	//Xman end
 		return;
 
 	CIni ini(thePrefs.GetConfigFile(), _T("ListControlSetup"));
 
 	ShowWindow(SW_HIDE);
 
+	// SLUGFILLER: multiSort - store unlimited sorts
+	/*
 	int* piSortHist  = new int[MAX_SORTORDERHISTORY];
 	int i=0;
 	POSITION pos1, pos2;
@@ -268,6 +321,19 @@ void CMuleListCtrl::SaveSettings()
 		piSortHist[i++]=m_liSortHistory.GetAt(pos2)+1;
 	}
 	ini.SerGet(false, piSortHist, i, m_Name + _T("SortHistory"));
+	*/
+	int i;
+	CString strSortHist;
+	POSITION pos = m_liSortHistory.GetTailPosition();
+	if (pos != NULL) {
+		strSortHist.Format(_T("%d"), m_liSortHistory.GetPrev(pos));
+		while (pos != NULL) {
+			strSortHist.AppendChar(_T(','));
+			strSortHist.AppendFormat(_T("%d"), m_liSortHistory.GetPrev(pos));
+		}
+	}
+	ini.WriteString(m_Name + _T("SortHistory"), strSortHist);
+	// SLUGFILLER: multiSort
 	// store additional settings
 	ini.WriteInt(m_Name + _T("TableSortItem"), GetSortItem());
 	ini.WriteInt(m_Name + _T("TableSortAscending"), GetSortType(m_atSortArrow));
@@ -293,7 +359,11 @@ void CMuleListCtrl::SaveSettings()
 	
 	ShowWindow(SW_SHOW);
 
+	// SLUGFILLER: multiSort remove - unused
+	/*
 	delete[] piSortHist;
+	*/
+	// SLUGFILLER: multiSort remove - unused
 	delete[] piColOrders;
 	delete[] piColWidths;
 	delete[] piColHidden;
@@ -329,6 +399,8 @@ void CMuleListCtrl::LoadSettings()
 	CHeaderCtrl* pHeaderCtrl = GetHeaderCtrl();
 
 	// sort history
+	// SLUGFILLER: multiSort - read unlimited sorts
+	/*
 	int* piSortHist = new int[MAX_SORTORDERHISTORY];
 	ini.SerGet(true, piSortHist, MAX_SORTORDERHISTORY, m_Name + _T("SortHistory"));
 	m_liSortHistory.RemoveAll();
@@ -337,6 +409,16 @@ void CMuleListCtrl::LoadSettings()
 			m_liSortHistory.AddTail(piSortHist[i]-1);
 		else 
 			break;
+	*/
+	CString strSortHist = ini.GetString(m_Name + _T("SortHistory"));
+	int nOffset = 0;
+	CString strTemp;
+	nOffset = ini.Parse(strSortHist, nOffset, strTemp);
+	while (!strTemp.IsEmpty()) {
+		UpdateSortHistory((int)_tstoi(strTemp), 0); // avoid duplicates(cannot detect inverse, but it does half the job)
+		nOffset = ini.Parse(strSortHist, nOffset, strTemp);
+	}
+	// SLUGFILLER: multiSort
 	
 	m_iCurrentSortItem = ini.GetInt(m_Name + _T("TableSortItem"), 0);
 	m_atSortArrow = GetArrowType(ini.GetInt(m_Name + _T("TableSortAscending"), 1));
@@ -380,7 +462,27 @@ void CMuleListCtrl::LoadSettings()
 	delete[] piColOrders;
 	delete[] piColWidths;
 	delete[] piColHidden;
+	// SLUGFILLER: multiSort remove - unused
+	/*
 	delete[] piSortHist;
+	*/
+	// SLUGFILLER: multiSort remove - unused
+
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	/*
+	//Xman narrow font at transferwindow
+	{
+		CFont* pFont = GetFont();
+		LOGFONT lfFont = {0};
+		pFont->GetLogFont(&lfFont);
+		_tcscpy(lfFont.lfFaceName, _T("Arial Narrow"));
+		if(m_fontNarrow.m_hObject==NULL)
+			m_fontNarrow.CreateFontIndirect(&lfFont);
+	}
+	//Xman end
+	*/
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
 }
 
 HBITMAP LoadImageAsPARGB(LPCTSTR pszPath)
@@ -604,6 +706,12 @@ int CMuleListCtrl::MoveItem(int iOldIndex, int iNewIndex)
 	if (iNewIndex > iOldIndex)
 		iNewIndex--;
 
+	//Xman
+	// netfinity start: Don't move item if new index is the same as the old one
+	if(iNewIndex == iOldIndex)
+		return iNewIndex;
+	// netf end
+
 	// copy item
 	LVITEM lvi;
 	TCHAR szText[256];
@@ -687,7 +795,12 @@ int CMuleListCtrl::UpdateLocation(int iItem) {
 	if(notFirst) {
 		int iNewIndex = iItem - 1;
 		POSITION pos = m_Params.FindIndex(iNewIndex);
+		// SLUGFILLER: multiSort
+		/*
 		int iResult = m_SortProc(dwpItemData, GetParamAt(pos, iNewIndex), m_dwParamSort);
+		*/
+		int iResult = MultiSortProc(dwpItemData, GetParamAt(pos, iNewIndex));
+		// SLUGFILLER End
 		if(iResult < 0) {
 			POSITION posPrev = pos;
 			int iDist = iNewIndex / 2;
@@ -695,7 +808,12 @@ int CMuleListCtrl::UpdateLocation(int iItem) {
 				for(int i = 0; i < iDist; i++)
 					m_Params.GetPrev(posPrev);
 
+				// SLUGFILLER: multiSort
+				/*
 				if(m_SortProc(dwpItemData, GetParamAt(posPrev, iNewIndex - iDist), m_dwParamSort) < 0) {
+				*/
+				if(MultiSortProc(dwpItemData, GetParamAt(posPrev, iNewIndex - iDist)) < 0) {
+				// SLUGFILLER End
 					iNewIndex = iNewIndex - iDist;
 					pos = posPrev;
 				} else {
@@ -705,7 +823,12 @@ int CMuleListCtrl::UpdateLocation(int iItem) {
 			}
 			while(--iNewIndex >= 0) {
 				m_Params.GetPrev(pos);
+				// SLUGFILLER: multiSort
+				/*
 				if(m_SortProc(dwpItemData, GetParamAt(pos, iNewIndex), m_dwParamSort) >= 0)
+				*/
+				if(MultiSortProc(dwpItemData, GetParamAt(pos, iNewIndex)) >= 0)
+				// SLUGFILLER End
 					break;
 			}
 			MoveItem(iItem, iNewIndex + 1);
@@ -716,7 +839,12 @@ int CMuleListCtrl::UpdateLocation(int iItem) {
 	if(notLast) {
 		int iNewIndex = iItem + 1;
 		POSITION pos = m_Params.FindIndex(iNewIndex);
+		// SLUGFILLER: multiSort
+		/*
 		int iResult = m_SortProc(dwpItemData, GetParamAt(pos, iNewIndex), m_dwParamSort);
+		*/
+		int iResult = MultiSortProc(dwpItemData, GetParamAt(pos, iNewIndex));
+		// SLUGFILLER End
 		if(iResult > 0) {
 			POSITION posNext = pos;
 			int iDist = (GetItemCount() - iNewIndex) / 2;
@@ -724,7 +852,12 @@ int CMuleListCtrl::UpdateLocation(int iItem) {
 				for(int i = 0; i < iDist; i++)
 					m_Params.GetNext(posNext);
 
+				// SLUGFILLER: multiSort
+				/*
 				if(m_SortProc(dwpItemData, GetParamAt(posNext, iNewIndex + iDist), m_dwParamSort) > 0) {
+				*/
+				if(MultiSortProc(dwpItemData, GetParamAt(posNext, iNewIndex + iDist)) > 0) {
+				// SLUGFILLER End
 					iNewIndex = iNewIndex + iDist;
 					pos = posNext;
 				} else {
@@ -734,7 +867,12 @@ int CMuleListCtrl::UpdateLocation(int iItem) {
 			}
 			while(++iNewIndex < iItemCount) {
 				m_Params.GetNext(pos);
+				// SLUGFILLER: multiSort
+				/*
 				if(m_SortProc(dwpItemData, GetParamAt(pos, iNewIndex), m_dwParamSort) <= 0)
+				*/
+				if(MultiSortProc(dwpItemData, GetParamAt(pos, iNewIndex)) <= 0)
+				// SLUGFILLER End
 					break;
 			}
 			MoveItem(iItem, iNewIndex);
@@ -768,6 +906,7 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 
 				CTitleMenu tmColumnMenu;
 				tmColumnMenu.CreatePopupMenu();
+				tmColumnMenu.AddMenuTitle(GetResString(IDS_COLUMNS)); // XP Style Menu [Xanatos] - Stulle
 
 				CHeaderCtrl *pHeaderCtrl = GetHeaderCtrl();
 				int iCount = pHeaderCtrl->GetItemCount();
@@ -950,7 +1089,16 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 
 	case LVM_SORTITEMS:
 		m_dwParamSort = (LPARAM)wParam;
+
+		UpdateSortHistory(m_dwParamSort, 0); // SLUGFILLER: multiSort - fail-safe, ensure it's in the sort history(no inverse check)
+
 		m_SortProc = (PFNLVCOMPARE)lParam;
+
+		// SLUGFILLER: multiSort - hook our own callback for automatic layered sorting
+		lParam = (LPARAM)MultiSortCallback;
+		wParam = (WPARAM)this;
+		// SLUGFILLER: multiSort
+
 		for(POSITION pos = m_Params.GetHeadPosition(); pos != NULL; m_Params.GetNext(pos))
 			m_Params.SetAt(pos, MLC_MAGIC);
 		break;
@@ -979,7 +1127,12 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 			if(notFirst) {
 				int iNewIndex = iItem - 1;
 				POSITION pos = m_Params.FindIndex(iNewIndex);
+				// SLUGFILLER: multiSort
+				/*
 				int iResult = m_SortProc(pItem->lParam, GetParamAt(pos, iNewIndex), m_dwParamSort);
+				*/
+				int iResult = MultiSortProc(pItem->lParam, GetParamAt(pos, iNewIndex));
+				// SLUGFILLER End
 				if(iResult < 0) {
 					POSITION posPrev = pos;
 					int iDist = iNewIndex / 2;
@@ -987,7 +1140,12 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 						for(int i = 0; i < iDist; i++)
 							m_Params.GetPrev(posPrev);
 
+						// SLUGFILLER: multiSort
+						/*
 						if(m_SortProc(pItem->lParam, GetParamAt(posPrev, iNewIndex - iDist), m_dwParamSort) < 0) {
+						*/
+						if(MultiSortProc(pItem->lParam, GetParamAt(posPrev, iNewIndex - iDist)) < 0) {
+						// SLUGFILLER End
 							iNewIndex = iNewIndex - iDist;
 							pos = posPrev;
 						} else {
@@ -997,7 +1155,12 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 					}
 					while(--iNewIndex >= 0) {
 						m_Params.GetPrev(pos);
+						// SLUGFILLER: multiSort
+						/*
 						if(m_SortProc(pItem->lParam, GetParamAt(pos, iNewIndex), m_dwParamSort) >= 0)
+						*/
+						if(MultiSortProc(pItem->lParam, GetParamAt(pos, iNewIndex)) >= 0)
+						// SLUGFILLER End
 							break;
 					}
 					pItem->iItem = iNewIndex + 1;
@@ -1008,7 +1171,12 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 			if(notLast) {
 				int iNewIndex = iItem;
 				POSITION pos = m_Params.FindIndex(iNewIndex);
+				// SLUGFILLER: multiSort
+				/*
 				int iResult = m_SortProc(pItem->lParam, GetParamAt(pos, iNewIndex), m_dwParamSort);
+				*/
+				int iResult = MultiSortProc(pItem->lParam, GetParamAt(pos, iNewIndex));
+				// SLUGFILLER End
 				if(iResult > 0) {
 					POSITION posNext = pos;
 					int iDist = (GetItemCount() - iNewIndex) / 2;
@@ -1016,7 +1184,12 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 						for(int i = 0; i < iDist; i++)
 							m_Params.GetNext(posNext);
 
+						// SLUGFILLER: multiSort
+						/*
 						if(m_SortProc(pItem->lParam, GetParamAt(posNext, iNewIndex + iDist), m_dwParamSort) > 0) {
+						*/
+						if(MultiSortProc(pItem->lParam, GetParamAt(posNext, iNewIndex + iDist)) > 0) {
+						// SLUGFILLER End
 							iNewIndex = iNewIndex + iDist;
 							pos = posNext;
 						} else {
@@ -1026,7 +1199,12 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 					}
 					while(++iNewIndex < iItemCount) {
 						m_Params.GetNext(pos);
+						// SLUGFILLER: multiSort
+						/*
 						if(m_SortProc(pItem->lParam, GetParamAt(pos, iNewIndex), m_dwParamSort) <= 0)
+						*/
+						if(MultiSortProc(pItem->lParam, GetParamAt(pos, iNewIndex)) <= 0)
+						// SLUGFILLER End
 							break;
 					}
 					pItem->iItem = iNewIndex;
@@ -1052,7 +1230,19 @@ BOOL CMuleListCtrl::OnWndMsg(UINT message, WPARAM wParam, LPARAM lParam, LRESULT
 		break;
 
 	case WM_DESTROY:
-		SaveSettings();
+		//Xman 4.3
+		//few users had a crash on exit at this point. (in savesettings, when showing the columns)
+		//until now I don't have any idea what's going wrong here.
+		//because this part of code isn't a problematic one, the easiest way to avoid the crash
+		//is a try catch
+		try
+		{
+			SaveSettings();
+		}
+		catch(...)
+		{
+			//nope
+		}
 		break;
 
 	case LVM_UPDATE:
@@ -1163,7 +1353,17 @@ BOOL CMuleListCtrl::OnChildNotify(UINT message, WPARAM wParam, LPARAM lParam, LR
 	return TRUE;
 }
 
+// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+/*
 void CMuleListCtrl::InitItemMemDC(CMemDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused)
+*/
+//Xman narrow font at transferwindow
+/*
+void CMuleListCtrl::InitItemMemDC(CMemoryDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused)
+*//*
+void CMuleListCtrl::InitItemMemDC(CMemoryDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused, bool bTransferWnd)
+//Xman end
+// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 {
 	bCtrlFocused = ((GetFocus() == this) || (GetStyle() & LVS_SHOWSELALWAYS));
 
@@ -1189,15 +1389,140 @@ void CMuleListCtrl::InitItemMemDC(CMemDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct,
 	}
 
 	dc->SetTextColor((lpDrawItemStruct->itemState & ODS_SELECTED) ? m_crHighlightText : m_crWindowText);
+	//Xman narrow font at transferwindow
+	/*
 	dc->SetFont(GetFont());
+	*//*
+	dc->SetFont((thePrefs.UseNarrowFont() && bTransferWnd) ? &m_fontNarrow : GetFont());
+	//Xman end
 }
+*/
+void CMuleListCtrl::InitItemMemDC(CMemoryDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused, bool bTransferWnd, int nList)
+{
+	int iStyle = 0;
+	StylesStruct style;
+	bool bOverrideBk = false;
+	switch(nList)
+	{
+	case style_b_clientlist:
+	case style_b_queuelist:
+		{
+			const CUpDownClient* client = (CUpDownClient*)lpDrawItemStruct->itemData;
+			iStyle = client->GetClientStyle(true,true,true,false);
+			thePrefs.GetStyle(client_styles, iStyle, &style);
+		} break;
+	case style_b_dlclientlist:
+		{
+			const CUpDownClient* client = (CUpDownClient*)lpDrawItemStruct->itemData;
+			iStyle = client->GetClientStyle(false,true,false,true);
+			thePrefs.GetStyle(client_styles, iStyle, &style);
+		} break;
+	case style_b_uploadlist:
+		{
+			const CUpDownClient* client = (CUpDownClient*)lpDrawItemStruct->itemData;
+			iStyle = client->GetClientStyle(true,false,true,false);
+			thePrefs.GetStyle(client_styles, iStyle, &style);
+		} break;
+	case style_b_downloadlist:
+		{
+			int iMaster = 0;
+			CtrlItem_Struct* content = (CtrlItem_Struct*)lpDrawItemStruct->itemData;
+			if(content->type == FILE_TYPE)
+			{
+				iStyle = ((const CPartFile*)content->value)->GetPfStyle();
+				iMaster = download_styles;
+			}
+			else if(content->type == UNAVAILABLE_SOURCE || content->type == AVAILABLE_SOURCE)
+			{
+				iStyle = ((const CUpDownClient*)content->value)->GetClientStyle(true,true,false,true);
+				iMaster = client_styles;
+			}
+			thePrefs.GetStyle(iMaster, iStyle, &style);
+		} break;
+	case style_b_sharedlist:
+		{
+			CShareableFile* file = (CShareableFile*)lpDrawItemStruct->itemData;
+			if (file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+			{
+				CKnownFile* pKnownFile = (CKnownFile*)file;
+				if(pKnownFile->IsPartFile() && thePrefs.GetStyleOnOff(share_styles, style_s_incomplete)!=0)
+					iStyle = style_s_incomplete;
+				else 
+					iStyle = pKnownFile->GetKnownStyle();
+			}
+			else if(thePrefs.GetStyleOnOff(share_styles, style_s_shareable)!=0)
+				iStyle = style_s_shareable;
+			thePrefs.GetStyle(share_styles, iStyle, &style);
+		} break;
+	default:
+		ASSERT( false ); // this should not happen! proceed to default
+	case -1:
+		thePrefs.GetStyle(master_count, 0, &style); // initialize to avoid warning
+		break;
+	}
+
+	COLORREF crTempColor = GetBkColor();
+	if (nList != -1 && style.nBackColor != CLR_DEFAULT)
+	{
+		crTempColor = style.nBackColor;
+		bOverrideBk = true;
+	}
+
+	bCtrlFocused = ((GetFocus() == this) || (GetStyle() & LVS_SHOWSELALWAYS));
+
+	if (lpDrawItemStruct->itemState & ODS_SELECTED)
+	{
+		if (bCtrlFocused)
+			dc->FillBackground(m_crHighlight);
+		else
+			dc->FillBackground(m_crNoHighlight);
+	}
+	else
+	{
+		if (!bOverrideBk && m_crWindowTextBk == CLR_NONE)
+		{
+			DefWindowProc(WM_ERASEBKGND, (WPARAM)(HDC)*dc, 0);
+			dc->SetBkMode(TRANSPARENT);
+		}
+		else
+		{
+			// We disable this ASSERT because we set the items background indipendently from the list background
+			//ASSERT( m_crWindowTextBk == GetBkColor() );
+			dc->FillBackground(crTempColor);
+		}
+	}
+
+	crTempColor = m_crWindowText;
+	if(nList != -1 && style.nFontColor != CLR_DEFAULT)
+		crTempColor = style.nFontColor;
+
+	dc->SetTextColor((lpDrawItemStruct->itemState & ODS_SELECTED) ? m_crHighlightText : crTempColor);
+	dc->SetFont((nList != -1) ? theApp.GetFontByStyle(style.nFlags, (thePrefs.UseNarrowFont() && bTransferWnd)) : GetFont());
+}
+// <== Design Settings [eWombat/Stulle] - Stulle
 
 void CMuleListCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
-	//set up our flicker free drawing
+	//MORPH START - Added by SiRoB, Don't draw hidden Rect
+	RECT clientRect;
+	GetClientRect(&clientRect);
 	CRect rcItem(lpDrawItemStruct->rcItem);
+	if (rcItem.top >= clientRect.bottom || rcItem.bottom <= clientRect.top)
+		return;
+	//MORPH END   - Added by SiRoB, Don't draw hidden Rect
+
+	//set up our flicker free drawing
+	//MORPH - Moved by SiRoB, Don't draw hidden Rect
+	/*
+	CRect rcItem(lpDrawItemStruct->rcItem);
+	*/
 	CDC *oDC = CDC::FromHandle(lpDrawItemStruct->hDC);
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+	/*
 	CMemDC pDC(oDC, &rcItem, m_crWindow);
+	*/
+	CMemoryDC pDC(oDC, &rcItem, m_crWindow);
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 	CFont *pOldFont = pDC->SelectObject(GetFont());
 	CRect rcClient;
 	GetClientRect(&rcClient);
@@ -1258,17 +1583,32 @@ void CMuleListCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		if(bCtrlFocused) 
 		{
+			//Xman Code Improvement: FillSolidRect
+			/*
 			pDC->FillRect(rcHighlight, &CBrush(m_crHighlight));
+			*/
+			pDC->FillSolidRect(rcHighlight, m_crHighlight);
+			//Xman End
 			pDC->SetBkColor(m_crHighlight);
 		}
 		else if(bGlowing)
 		{
+			//Xman Code Improvement: FillSolidRect
+			/*
 			pDC->FillRect(rcHighlight, &CBrush(m_crGlow));
+			*/
+			pDC->FillSolidRect(rcHighlight, m_crGlow);
+			//Xman End
 			pDC->SetBkColor(m_crGlow);
 		}
 		else 
 		{
+			//Xman Code Improvement: FillSolidRect
+			/*
 			pDC->FillRect(rcHighlight, &CBrush(m_crNoHighlight));
+			*/
+			pDC->FillSolidRect(rcHighlight, m_crNoHighlight);
+			//Xman End
 			pDC->SetBkColor(m_crNoHighlight);
 		}
 	} 
@@ -1276,7 +1616,12 @@ void CMuleListCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		if(bGlowing)
 		{
+			//Xman Code Improvement: FillSolidRect
+			/*
 			pDC->FillRect(rcHighlight, &CBrush(m_crGlow));
+			*/
+			pDC->FillSolidRect(rcHighlight, m_crGlow);
+			//Xman End
 			pDC->SetBkColor(m_crGlow);
 		}
 		else
@@ -1284,7 +1629,12 @@ void CMuleListCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			if (m_crWindowTextBk == CLR_NONE)
 				DefWindowProc(WM_ERASEBKGND, (WPARAM)pDC->m_hDC, 0);
 			else
+				//Xman Code Improvement: FillSolidRect
+				/*
 				pDC->FillRect(rcHighlight, &CBrush(m_crWindow));
+				*/
+				pDC->FillSolidRect(rcHighlight, m_crWindow);
+				//Xman End
 			pDC->SetBkColor(m_crWindow);
 		}
 	}
@@ -1370,7 +1720,12 @@ void CMuleListCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	DrawFocusRect(pDC, rcHighlight, lvi.state & LVIS_FOCUSED, bCtrlFocused, lvi.state & LVIS_SELECTED);
 
+	//Xman Code Improvement
+	//not needed
+	/*
 	pDC->Flush();
+	*/
+	//Xman end
 	pDC->SelectObject(pOldFont);
 }
 
@@ -1650,7 +2005,12 @@ void CMuleListCtrl::AutoSelectItem()
 }
 
 void CMuleListCtrl::UpdateSortHistory(int dwNewOrder, int dwInverseValue){
+	// SLUGFILLER: multiSort - changed to >= for sort #0
+	/*
 	int dwInverse = (dwNewOrder > dwInverseValue) ? (dwNewOrder-dwInverseValue) : (dwNewOrder+dwInverseValue);
+	*/
+	int dwInverse = (dwNewOrder >= dwInverseValue) ? (dwNewOrder-dwInverseValue) : (dwNewOrder+dwInverseValue);
+	// SLUGFILLER End
 	// delete the value (or its inverse sorting value) if it appears already in the list
 	POSITION pos1, pos2;
 	for (pos1 = m_liSortHistory.GetHeadPosition();( pos2 = pos1 ) != NULL;)
@@ -1661,8 +2021,12 @@ void CMuleListCtrl::UpdateSortHistory(int dwNewOrder, int dwInverseValue){
 	}
 	m_liSortHistory.AddHead(dwNewOrder);
 	// limit it to MAX_SORTORDERHISTORY entries for now, just for performance
+	// SLUGFILLER: multiSort remove - do not limit, unlimited saving and loading available
+	/*
 	if (m_liSortHistory.GetSize() > MAX_SORTORDERHISTORY)
 		m_liSortHistory.RemoveTail();
+	*/
+	// SLUGFILLER End
 }
 
 int	CMuleListCtrl::GetNextSortOrder(int dwCurrentSortOrder) const{
@@ -1740,3 +2104,22 @@ int CMuleListCtrl::InsertColumn(int nCol, LPCTSTR lpszColumnHeading, int nFormat
 		m_liDefaultHiddenColumns.AddTail(nCol);
 	return CListCtrl::InsertColumn(nCol, lpszColumnHeading, nFormat, nWidth, nSubItem);
 }
+
+// ==> XP Style Menu [Xanatos] - Stulle
+void CMuleListCtrl::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct) 
+{
+	HMENU hMenu = AfxGetThreadState()->m_hTrackingMenu;
+	if(CMenu *pMenu = CMenu::FromHandle(hMenu))
+		pMenu->MeasureItem(lpMeasureItemStruct);
+	
+	CListCtrl::OnMeasureItem(nIDCtl, lpMeasureItemStruct);
+}
+
+LRESULT CMuleListCtrl::OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu) 
+{
+	if (pMenu->IsKindOf(RUNTIME_CLASS(CTitleMenu)) )
+		return CTitleMenu::OnMenuChar(nChar, nFlags, pMenu);
+
+	return CListCtrl::OnMenuChar(nChar, nFlags, pMenu);
+}
+// <== XP Style Menu [Xanatos] - Stulle

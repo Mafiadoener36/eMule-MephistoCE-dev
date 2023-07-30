@@ -80,6 +80,7 @@ END_MESSAGE_MAP()
 CIPFilterDlg::CIPFilterDlg(CWnd* pParent /*=NULL*/)
 	: CResizableDialog(CIPFilterDlg::IDD, pParent)
 {
+	theApp.ipdlgisopen=true; //Xman dynamic IP-Filters
 	m_uIPFilterItems = 0;
 	m_ppIPFilterItems = NULL;
 	m_icoDlg = NULL;
@@ -99,6 +100,7 @@ CIPFilterDlg::~CIPFilterDlg()
 	sm_iSortColumn = m_ipfilter.GetSortColumn();
 	if (m_icoDlg)
 		VERIFY( ::DestroyIcon(m_icoDlg) );
+	theApp.ipdlgisopen=false; //Xman dynamic IP-Filters
 }
 
 void CIPFilterDlg::DoDataExchange(CDataExchange* pDX)

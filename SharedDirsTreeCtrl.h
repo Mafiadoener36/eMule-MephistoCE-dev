@@ -16,7 +16,12 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #pragma once
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 #include "TitleMenu.h"
+*/
+#include "MenuXP.h"
+// <== XP Style Menu [Xanatos] - Stulle
 
 enum ESpecialDirectoryItems{
 	SDI_NO = 0,
@@ -25,6 +30,7 @@ enum ESpecialDirectoryItems{
 	SDI_TEMP,				// "Incomplete Files" node
 	SDI_DIRECTORY,			// "Shared Directories" node
 	SDI_CATINCOMING,		// Category subnode in the "Incoming Files" node
+	SDI_ED2KFILETYPE, // Avi3k: SharedView Ed2kType
 	SDI_UNSHAREDDIRECTORY,
 	SDI_FILESYSTEMPARENT	// "All Directories" (the file system)
 };
@@ -75,6 +81,8 @@ public:
 	bool			ShowSharedDirectory(const CString& strDir);
 	void			ShowAllSharedFiles();
 
+	CDirectoryItem*		pHistory; //Xman [MoNKi: -Downloaded History-]
+
 protected:
 	virtual BOOL	OnCommand(WPARAM wParam, LPARAM lParam);
 	void			CreateMenues();
@@ -97,9 +105,19 @@ protected:
 	afx_msg void	OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void	OnCancelMode();
 
+	// ==> XP Style Menu [Xanatos] - Stulle
+	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
+	afx_msg LRESULT OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu);
+	// <== XP Style Menu [Xanatos] - Stulle
+
 	CTitleMenu			m_SharedFilesMenu;
 	CTitleMenu			m_ShareDirsMenu;
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu				m_PrioMenu;
+	*/
+	CTitleMenu			m_PrioMenu;
+	// <== XP Style Menu [Xanatos] - Stulle
 	CDirectoryItem*		m_pRootDirectoryItem;
 	CDirectoryItem*		m_pRootUnsharedDirectries;
 	CDirectoryItem*		m_pDraggingItem;

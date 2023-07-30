@@ -20,6 +20,8 @@
 #include "MMServer.h"
 #include "Preferences.h"
 #include "Log.h"
+//Xman
+#include "Bandwidthcontrol.h"  // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -79,6 +81,12 @@ void CMMSocket::OnReceive(int nErrorCode){
 	if(dwSize == SOCKET_ERROR || dwSize == 0){
 		return;
 	}
+	//Xman
+	// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	if (dwSize > 0)
+		theApp.pBandWidthControl->AddeMuleInTCPOverall(dwSize);
+	// Maella end
+
 	if (m_dwBufSize < dwSize + m_dwRecv)
 	{
 		// reallocate
@@ -173,9 +181,9 @@ bool CMMSocket::SendPacket(CMMPacket* packet, bool bQueueFirst){
 		char szBuf[0x1000];
 		int nLen;
 		if (!packet->m_bSpecialHeader)
-			nLen = _snprintf(szBuf, _countof(szBuf), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %ld\r\n\r\n",m_pOwner->GetContentType(), (uint32)packet->m_pBuffer->GetLength());
+			nLen = _snprintf(szBuf, _countof(szBuf), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %ld\r\n\r\n",m_pOwner->GetContentType(), packet->m_pBuffer->GetLength());
 		else
-			nLen = _snprintf(szBuf, _countof(szBuf), "Content-Length: %ld\r\n\r\n", (uint32)packet->m_pBuffer->GetLength());
+			nLen = _snprintf(szBuf, _countof(szBuf), "Content-Length: %ld\r\n\r\n", packet->m_pBuffer->GetLength());
 		m_nSendLen = nLen + (UINT)packet->m_pBuffer->GetLength();
 		m_pSendBuffer =	new char[m_nSendLen];
 		memcpy(m_pSendBuffer,szBuf,nLen);
@@ -200,6 +208,11 @@ bool CMMSocket::SendPacket(CMMPacket* packet, bool bQueueFirst){
 			return false;
 		}
 		else{
+			//Xman
+			// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+			theApp.pBandWidthControl->AddeMuleOutTCPOverall(m_nSent);		
+			//Xman end
+
 			if (m_nSent == m_nSendLen){
 				delete[] m_pSendBuffer;
 				m_pSendBuffer = NULL;
@@ -334,10 +347,30 @@ CListenMMSocket::~CListenMMSocket(void)
 {
 	while(!m_socket_list.IsEmpty())
 		delete m_socket_list.RemoveHead();
+
+	//==> UPnP support [MoNKi] - leuk_he
+	theApp.m_UPnP_IGDControlPoint->DeletePortMapping(thePrefs.GetMMPort(),
+		CUPnP_IGDControlPoint::UNAT_TCP,
+		_T("MobileMule"));
+	//<== UPnP support [MoNKi] - leuk_he
 }
 
 bool  CListenMMSocket::Create(){
+	//==> UPnP support [MoNKi] - leuk_he
+	/*
 	return CAsyncSocket::Create(thePrefs.GetMMPort(),SOCK_STREAM,FD_ACCEPT) && Listen();;
+	*/
+	if(CAsyncSocket::Create(thePrefs.GetMMPort(),SOCK_STREAM,FD_ACCEPT) && Listen()){
+		if(theApp.m_UPnP_IGDControlPoint->IsUpnpAcceptsPorts()){
+			theApp.m_UPnP_IGDControlPoint->AddPortMapping(thePrefs.GetMMPort(),
+				CUPnP_IGDControlPoint::UNAT_TCP,
+				_T("MobileMule"));
+		}
+		return true;
+	}
+	else
+		return false;
+	//<== UPnP support [MoNKi] - leuk_he
 }
 
 

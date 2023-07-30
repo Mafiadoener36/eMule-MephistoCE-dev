@@ -28,12 +28,30 @@ class Packet;
 
 #define PACKET_HEADER_SIZE	6
 
+//Xman Xtreme Upload
+// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+class CUpDownClient;
+// Maella end
+
 struct StandardPacketQueueEntry {
 	uint32 actualPayloadSize;
 	Packet* packet;
 };
 
-class CEMSocket : public CEncryptedStreamSocket, public ThrottledFileSocket // ZZ:UploadBandWithThrottler
+// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+struct BufferedPacket {
+		UINT	remainpacketsize;
+		UINT	packetpayloadsize;
+		bool	iscontrolpacket;
+		bool	isforpartfile;
+		bool	newdatapacket;
+		uint8	sendingdata_opcode;
+};
+#endif
+// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+
+class CEMSocket : public CEncryptedStreamSocket, public ThrottledFileSocket // ZZ:UploadBandWithThrottler (UDP)
 {
 	DECLARE_DYNAMIC(CEMSocket)
 public:
@@ -41,18 +59,24 @@ public:
 	virtual ~CEMSocket();
 
 	virtual void 	SendPacket(Packet* packet, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0, bool bForceImmediateSend = false);
+    // ==> Send Array Packet [SiRoB] - Mephisto
+#ifndef DONT_USE_SEND_ARRAY_PACKET
+	virtual void 	SendPacket(Packet* packet[], uint32 npacket, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0, bool bForceImmediateSend = false);
+#endif
+	// <== Send Array Packet [SiRoB] - Mephisto
 	bool	IsConnected() const {return byConnected == ES_CONNECTED;}
 	uint8	GetConState() const {return byConnected;}
 	virtual bool IsRawDataMode() const { return false; }
 	void	SetDownloadLimit(uint32 limit);
 	void	DisableDownloadLimit();
 	BOOL	AsyncSelect(long lEvent);
-	virtual bool IsBusyExtensiveCheck();
-	virtual bool IsBusyQuickCheck() const;
-    virtual bool HasQueues(bool bOnlyStandardPackets = false) const;
-	virtual bool IsEnoughFileDataQueued(uint32 nMinFilePayloadBytes) const;
+	virtual bool IsBusy() const			{return m_bBusy;}
+    virtual bool HasQueues() const		{return (sendbuffer || standartpacket_queue.GetCount() > 0 || controlpacket_queue.GetCount() > 0);} // not trustworthy threaded? but it's ok if we don't get the correct result now and then
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
 	virtual bool UseBigSendBuffer();
-	int			 DbgGetStdQueueCount() const	{return standartpacket_queue.GetCount();}
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 
 	virtual UINT GetTimeOut() const;
 	virtual void SetTimeOut(UINT uTimeOut);
@@ -70,14 +94,93 @@ public:
 	DWORD GetLastCalledSend() { return lastCalledSend; }
 	uint64 GetSentBytesCompleteFileSinceLastCallAndReset();
 	uint64 GetSentBytesPartFileSinceLastCallAndReset();
+	//Xman unused
+	/*
 	uint64 GetSentBytesControlPacketSinceLastCallAndReset();
-	uint64 GetSentPayloadSinceLastCall(bool bReset);
+	*/
+	//Xman end
+	uint64 GetSentPayloadSinceLastCallAndReset();
 	void TruncateQueues();
 
     virtual SocketSentBytes SendControlData(uint32 maxNumberOfBytesToSend, uint32 minFragSize) { return Send(maxNumberOfBytesToSend, minFragSize, true); };
     virtual SocketSentBytes SendFileAndControlData(uint32 maxNumberOfBytesToSend, uint32 minFragSize) { return Send(maxNumberOfBytesToSend, minFragSize, false); };
 
+
+	//Xman Xtreme Upload
+	/*
     uint32	GetNeededBytes();
+	*/
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	CUpDownClient*	client; // Quick and dirty
+	// Maella end
+
+	//Xman Full Chunk
+	//bool StandardPacketQueueIsEmpty() const {return standartpacket_queue.IsEmpty()!=0;}
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+	bool StandardPacketQueueIsEmpty() const {return standartpacket_queue.IsEmpty()!=0 && (sendbuffer==NULL || sendblenWithoutControlPacket != sendblen - sent/*m_currentPacket_is_controlpacket == true*/);} //Xman 4.3
+#else
+	bool StandardPacketQueueIsEmpty() const {return standartpacket_queue.IsEmpty()!=0 && (sendbuffer==NULL || sendbuffer!=NULL && m_currentPacket_is_controlpacket==true);} //Xman 4.3
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+	//remark: this method isn't threadsave at uploadclient... but there is no need for
+	// this method is threadsave at uploadbandwidththrottler!
+
+	//Xman include ACK
+	//zz_fly
+	//netfinity: Special case when socket is closing but data still in buffer, need to empty buffer or deadlock forever
+	/*
+	void ProcessReceiveData();
+	*/
+	void ProcessReceiveData(int nErrorCode = 0);
+	//zz_fly end
+
+	//Xman count block/success send
+	typedef CList<float> BlockHistory;
+	BlockHistory m_blockhistory;
+	float avg_block_ratio; //the average block of last 20 seconds
+	float sum_blockhistory; //the sum of all stored ratio samples
+
+	uint32 blockedsendcount;
+	uint32 sendcount;
+	uint32 blockedsendcount_overall;
+	uint32 sendcount_overall;
+
+	float GetBlockRatio_overall() const {return sendcount_overall>0 ? 100.0f*blockedsendcount_overall/sendcount_overall : 0.0f;}
+
+	float GetBlockRatio() const {return avg_block_ratio;}
+	float GetandStepBlockRatio() {
+			float newsample  = sendcount>0 ? 100.0f*blockedsendcount/sendcount : 0.0f;
+			m_blockhistory.AddHead(newsample);
+			sum_blockhistory += newsample;
+			if(m_blockhistory.GetSize()>HISTORY_SIZE) // ~ 20 seconds
+			{
+				const float& substract = m_blockhistory.RemoveTail(); //susbtract the old element
+				sum_blockhistory -= substract;
+				if(sum_blockhistory<0)
+					sum_blockhistory=0; //fix possible rounding error
+			}
+			blockedsendcount=0;
+			sendcount=0;
+			avg_block_ratio = sum_blockhistory / m_blockhistory.GetSize();
+			return avg_block_ratio;
+	}
+	//Xman end count block/success send
+
+	//Xman 
+	//Threadsafe Statechange
+	void			SetConnectedState(const uint8 state);
+
+	// netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+	void		SetMSSFromSocket(SOCKET socket);
+
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifndef DONT_USE_SOCKET_BUFFERING
+		uint32	GetSendBufferSize() { return m_uCurrentSendBufferSize; };
+		uint32	GetRecvBufferSize() { return m_uCurrentRecvBufferSize; };
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+
 #ifdef _DEBUG
 	// Diagnostic Support
 	virtual void AssertValid() const;
@@ -93,6 +196,10 @@ protected:
 	virtual void	OnClose(int nErrorCode);
 	virtual void	OnSend(int nErrorCode);
 	virtual void	OnReceive(int nErrorCode);
+	//Xman
+	virtual void	OnConnect(int nErrorCode); // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	//Xman end
+
 	uint8	byConnected;
 	UINT	m_uTimeOut;
 	bool	m_bProxyConnectFailed;
@@ -101,14 +208,14 @@ protected:
 
 private:
     virtual SocketSentBytes Send(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket);
-	SocketSentBytes SendStd(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket);
-	SocketSentBytes SendOv(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket);
 	void	ClearQueues();
 	virtual int Receive(void* lpBuf, int nBufLen, int nFlags = 0);
-	void	CleanUpOverlappedSendOperation(bool bCancelRequestFirst);
 
     uint32 GetNextFragSize(uint32 current, uint32 minFragSize);
     bool    HasSent() { return m_hasSent; }
+
+	//Xman Code Improvement
+	bool	isreadyforsending;
 
 	// Download (pseudo) rate control
 	uint32	downloadLimit;
@@ -127,25 +234,57 @@ private:
 	char*	sendbuffer;
 	uint32	sendblen;
 	uint32	sent;
-	LPWSAOVERLAPPED m_pPendingSendOperation;
-	CArray<WSABUF> m_aBufferSend;
 
 	CTypedPtrList<CPtrList, Packet*> controlpacket_queue;
 	CList<StandardPacketQueueEntry> standartpacket_queue;
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
 	bool m_currentPacket_is_controlpacket;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 	CCriticalSection sendLocker;
 	uint64 m_numberOfSentBytesCompleteFile;
 	uint64 m_numberOfSentBytesPartFile;
+	//Xman unused
+	/*
 	uint64 m_numberOfSentBytesControlPacket;
+	*/
+	//Xman end
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
 	bool m_currentPackageIsFromPartFile;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
+	//Xman unused
+	/*
 	bool m_bAccelerateUpload;
+	*/
+	//Xman end
 	DWORD lastCalledSend;
     DWORD lastSent;
+	//Xman unused
+	/*
 	uint32 lastFinishedStandard;
-	uint32 m_actualPayloadSize;			// Payloadsize of the data currently in sendbuffer
+	*/
+	//Xman end
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
+	uint32 m_actualPayloadSize;
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 	uint32 m_actualPayloadSizeSent;
     bool m_bBusy;
     bool m_hasSent;
+	// ==> Dynamic Socket Buffering [SiRoB] - Mephisto
+#ifdef DONT_USE_SOCKET_BUFFERING
 	bool m_bUsesBigSendBuffers;
-	bool m_bOverlappedSending;
+#else
+	CList<BufferedPacket*> m_currentPacket_in_buffer_list;
+
+	uint32	m_uCurrentRecvBufferSize;
+	uint32	m_uCurrentSendBufferSize;
+	uint32	currentBufferSize;
+	uint32 sendblenWithoutControlPacket; //Used to know if a controlpacket is already buffered
+#endif
+	// <== Dynamic Socket Buffering [SiRoB] - Mephisto
 };

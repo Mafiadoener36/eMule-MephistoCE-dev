@@ -16,6 +16,7 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #pragma once
 #include "EMSocket.h"
+#include "updownclient.h" //Xman
 
 class CUpDownClient;
 class CPacket;
@@ -38,7 +39,12 @@ public:
 	CClientReqSocket(CUpDownClient* in_client = NULL);
 
 	void	SetClient(CUpDownClient* pClient);
+	// Maella -Upload Stop Reason-
+	/*
 	void	Disconnect(LPCTSTR pszReason);
+	*/
+	void	Disconnect(LPCTSTR pszReason, CUpDownClient::UpStopReason reason = CUpDownClient::USR_NONE);
+	//Xman end
 	void	WaitForOnConnect();
 	void	ResetTimeOutTimer();
 	bool	CheckTimeOut();
@@ -47,13 +53,28 @@ public:
 	
 	bool	Create();
 	virtual void SendPacket(Packet* packet, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0, bool bForceImmediateSend = false);
+    // ==> Send Array Packet [SiRoB] - Mephisto
+#ifndef DONT_USE_SEND_ARRAY_PACKET
+	virtual void SendPacket(Packet* packet[], uint32 npacket, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0, bool bForceImmediateSend = false);
+#endif
+	// <== Send Array Packet [SiRoB] - Mephisto
     virtual SocketSentBytes SendControlData(uint32 maxNumberOfBytesToSend, uint32 overchargeMaxBytesToSend);
     virtual SocketSentBytes SendFileAndControlData(uint32 maxNumberOfBytesToSend, uint32 overchargeMaxBytesToSend);
 
 	void	DbgAppendClientInfo(CString& str);
 	CString DbgGetClientInfo();
 
+	//Xman Xtreme Upload
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	//declare this in emsocket
+	/*
 	CUpDownClient*	client;
+	*/
+	//Xman improved socket closing
+	void	CloseSocket();
+	//Xman end
+	uint32	GetTimeOutTimer()	const	{return timeout_timer;} //zz_fly :: Drop stalled downloads :: netfinity
+
 	void		 OnReceive(int nErrorCode);
 protected:
 	virtual ~CClientReqSocket();
@@ -72,7 +93,14 @@ protected:
 
 	bool	ProcessPacket(const BYTE* packet, uint32 size,UINT opcode);
 	bool	ProcessExtPacket(const BYTE* packet, uint32 size, UINT opcode, UINT uRawSize);
+	//Xman
+	// Maella -Dump information of unknown packet in debug tab-
+	/*
 	void	PacketToDebugLogLine(LPCTSTR protocol, const uchar* packet, uint32 size, UINT opcode);
+	*/
+	void    PacketToDebugLogLine(bool isOpcodeKnown, const uchar* packet, uint32 size, UINT opcode);
+	// Maella end
+
 	void	SetConState(SocketState val);
 
 	uint32	timeout_timer;
@@ -107,6 +135,15 @@ public:
 	void	ReStartListening();
 	void	Debug_ClientDeleted(CUpDownClient* deleted);
 	bool	Rebind();
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	bool	RebindUPnP(); //ACAT UPnP :: Rebind UPnP on IP-change
+#endif //zz_fly :: dual upnp
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	bool	SendPortTestReply(char result,bool disconnect=false);
 
 	void	UpdateConnectionsStatus();
@@ -118,6 +155,10 @@ public:
 	uint16	GetConnectedPort()			{ return m_port; }
 	uint32	GetTotalHalfCon()			{ return m_nHalfOpen; }
 	uint32	GetTotalComp()				{ return m_nComp; }
+
+	//Xman NAFC
+	bool boundcheck;
+	//Xman end
 
 private:
 	bool bListening;

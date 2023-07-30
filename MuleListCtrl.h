@@ -3,7 +3,12 @@
 #include "resource.h"
 
 class CIni;
+// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+/*
 class CMemDC;
+*/
+class CMemoryDC;
+// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 
 ///////////////////////////////////////////////////////////////////////////////
 // CMuleListCtrl
@@ -188,12 +193,31 @@ protected:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSysColorChange();
 	afx_msg void OnLvnGetInfoTip(NMHDR *pNMHDR, LRESULT *pResult);
+	// ==> XP Style Menu [Xanatos] - Stulle
+	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
+	afx_msg LRESULT OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu);
+	// <== XP Style Menu [Xanatos] - Stulle
 
 	int UpdateLocation(int iItem);
 	int MoveItem(int iOldIndex, int iNewIndex);
 	void SetColors();
 	void DrawFocusRect(CDC *pDC, const CRect &rcItem, BOOL bItemFocused, BOOL bCtrlFocused, BOOL bItemSelected);
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+	/*
 	void InitItemMemDC(CMemDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused);
+	*/
+	//Xman narrow font at transferwindow
+	/*
+	void InitItemMemDC(CMemoryDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused);
+	*/
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	/*
+	void InitItemMemDC(CMemoryDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused, bool bTransferWnd = false);
+	//Xman end
+	*/
+	void InitItemMemDC(CMemoryDC *dc, LPDRAWITEMSTRUCT lpDrawItemStruct, BOOL &bCtrlFocused, bool bTransferWnd = false,int nList = -1);
+	// <== Design Settings [eWombat/Stulle] - Stulle
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 
 	static __inline bool HaveIntersection(const CRect &rc1, const CRect &rc2) {
         return (rc1.left   < rc2.right  &&
@@ -239,6 +263,16 @@ protected:
 	void OnFindNext();
 	void OnFindPrev();
 
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	/*
+	//Xman narrow font at transferwindow
+	CFont		m_fontNarrow;
+	*/
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
+	//Xman client percentage
+	CFont		m_fontBoldSmaller;
+
 private:
 	static int	IndexToOrder(CHeaderCtrl* pHeader, int iIndex);
 
@@ -273,6 +307,25 @@ private:
 	}
 
 	CList<int> m_liDefaultHiddenColumns;
+
+	// SLUGFILLER: multiSort
+	int MultiSortProc(LPARAM lParam1, LPARAM lParam2) {
+		for (POSITION pos = m_liSortHistory.GetHeadPosition(); pos != NULL; ) {
+			// Use sort history for layered sorting
+			int dwParamSort = m_liSortHistory.GetNext(pos);
+
+			int ret = m_SortProc(lParam1, lParam2, dwParamSort);
+			if (ret)
+				return ret;
+		}
+
+		return 0; // Failed to sort
+	}
+	static int CALLBACK MultiSortCallback(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort) {
+		return ((CMuleListCtrl*)lParamSort)->MultiSortProc(lParam1, lParam2);
+	}
+	// SLUGFILLER: multiSort
+
 };
 
 void GetContextMenuPosition(CListCtrl& lv, CPoint& point);

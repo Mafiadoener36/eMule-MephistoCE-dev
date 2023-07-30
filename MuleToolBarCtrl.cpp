@@ -78,8 +78,23 @@ END_MESSAGE_MAP()
 
 CMuleToolbarCtrl::CMuleToolbarCtrl()
 {
+	// ==> High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	/*
 	m_sizBtnBmp.cx = thePrefs.GetToolbarIconSize().cx;
 	m_sizBtnBmp.cy = thePrefs.GetToolbarIconSize().cy;
+	*/
+	// always show big icons when speedmeter enabled!
+	if(thePrefs.GetShowSpeedMeter())
+	{
+		m_sizBtnBmp.cx = 32;
+		m_sizBtnBmp.cy = 32;
+	}
+	else
+	{
+		m_sizBtnBmp.cx = thePrefs.GetToolbarIconSize().cx;
+		m_sizBtnBmp.cy = thePrefs.GetToolbarIconSize().cy;
+	}
+	// <== High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
 	m_iPreviousHeight = 0;
 	m_iLastPressedButton = -1;
 	m_buttoncount = 0;
@@ -293,6 +308,10 @@ void CMuleToolbarCtrl::OnSize(UINT nType, int cx, int cy)
 {
 	CToolBarCtrl::OnSize(nType, cx, cy);
 
+	// ==> High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	theApp.emuledlg->Reposition_TrafficGraph();
+	// <== High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+
 	SetAllButtonsWidth();
 	AutoSize();
 }
@@ -406,8 +425,15 @@ void CMuleToolbarCtrl::OnNmRClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	///////////////////////////////////////////////////////////////////////////
 	// "Toolbar Bitmap" sub menu
 	//
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu menuBitmaps;
 	menuBitmaps.CreateMenu();
+	*/
+	CTitleMenu menuBitmaps;
+	menuBitmaps.CreatePopupMenu();
+	menuBitmaps.AddMenuTitle(GetResString(IDS_TOOLBARSKINS), false, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	menuBitmaps.AppendMenu(MF_STRING, MP_SELECTTOOLBARBITMAP, GetResString(IDS_SELECTTOOLBARBITMAP));
 	menuBitmaps.AppendMenu(MF_STRING, MP_SELECTTOOLBARBITMAPDIR, GetResString(IDS_SELECTTOOLBARBITMAPDIR));
 	menuBitmaps.AppendMenu(MF_SEPARATOR);
@@ -478,8 +504,15 @@ void CMuleToolbarCtrl::OnNmRClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	///////////////////////////////////////////////////////////////////////////
 	// "Skin Profile" sub menu
 	//
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu menuSkins;
 	menuSkins.CreateMenu();
+	*/
+	CTitleMenu menuSkins;
+	menuSkins.CreatePopupMenu();
+	menuSkins.AddMenuTitle(GetResString(IDS_SKIN_PROF), false, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	menuSkins.AppendMenu(MF_STRING, MP_SELECT_SKIN_FILE, GetResString(IDS_SEL_SKIN));
 	menuSkins.AppendMenu(MF_STRING, MP_SELECT_SKIN_DIR, GetResString(IDS_SEL_SKINDIR));
 	menuSkins.AppendMenu(MF_SEPARATOR);
@@ -550,8 +583,15 @@ void CMuleToolbarCtrl::OnNmRClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	///////////////////////////////////////////////////////////////////////////
 	// "Text Label" sub menu
 	//
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu menuTextLabels;
 	menuTextLabels.CreateMenu();
+	*/
+	CTitleMenu menuTextLabels;
+	menuTextLabels.CreatePopupMenu();
+	menuTextLabels.AddMenuTitle(GetResString(IDS_TEXTLABELS), false, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	ASSERT( MP_NOTEXTLABELS == MP_TEXTLABELS-1 && MP_NOTEXTLABELS == MP_TEXTLABELSONRIGHT-2 );
 	ASSERT( MP_NOTEXTLABELS + (int)NoLabels == MP_NOTEXTLABELS );
 	ASSERT( MP_NOTEXTLABELS + (int)LabelsBelow == MP_TEXTLABELS );
@@ -573,8 +613,15 @@ void CMuleToolbarCtrl::OnNmRClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	///////////////////////////////////////////////////////////////////////////
 	// Toolbar context menu
 	//
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu menuToolbar;
 	menuToolbar.CreatePopupMenu();
+	*/
+	CTitleMenu menuToolbar;
+	menuToolbar.CreatePopupMenu();
+	menuToolbar.AddMenuTitle(GetResString(IDS_COLOR_W10));
+	// <== XP Style Menu [Xanatos] - Stulle
 	menuToolbar.AppendMenu(MF_STRING | MF_POPUP, (UINT_PTR)menuBitmaps.m_hMenu, GetResString(IDS_TOOLBARSKINS));
 	menuToolbar.AppendMenu(MF_STRING | MF_POPUP, (UINT_PTR)menuSkins.m_hMenu, GetResString(IDS_SKIN_PROF));
 	menuToolbar.AppendMenu(MF_STRING | MF_POPUP, (UINT_PTR)menuTextLabels.m_hMenu, GetResString(IDS_TEXTLABELS));
@@ -582,6 +629,13 @@ void CMuleToolbarCtrl::OnNmRClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	CPoint point;
 	GetCursorPos(&point);
 	menuToolbar.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+
+	// ==> XP Style Menu [Xanatos] - Stulle
+	VERIFY( menuBitmaps.DestroyMenu() );
+	VERIFY( menuSkins.DestroyMenu() );
+	VERIFY( menuTextLabels.DestroyMenu() );
+	VERIFY( menuToolbar.DestroyMenu() );
+	// <== XP Style Menu [Xanatos] - Stulle
 
 	*pResult = TRUE;
 }
@@ -747,6 +801,14 @@ BOOL CMuleToolbarCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 			break;
 
        	case MP_SMALLICONS:
+			// ==> High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+			// always show big icons when speedmeter enabled!
+			if(thePrefs.GetShowSpeedMeter())
+			{
+				thePrefs.SetToolbarIconSize(CSize(16,16));
+				break;
+			}
+			// <== High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
 			m_sizBtnBmp.cx = m_sizBtnBmp.cy = 16;
 			ForceRecalcLayout();
 			ChangeToolbarBitmap(thePrefs.GetToolbarBitmapSettings(), true);
@@ -824,6 +886,12 @@ BOOL CMuleToolbarCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 
 void CMuleToolbarCtrl::ChangeTextLabelStyle(EToolbarLabelType eLabelType, bool bRefresh, bool bForceUpdateButtons)
 {
+	// ==> High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	// always show below when speedmeter enabled!
+	if(thePrefs.GetShowSpeedMeter())
+		eLabelType = LabelsBelow;
+	// <== High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+
 	if (m_eLabelType != eLabelType || bForceUpdateButtons)
 	{
 		switch (eLabelType)
@@ -1182,6 +1250,33 @@ void CMuleToolbarCtrl::UpdateBackground()
 	if (theApp.emuledlg->m_ctlMainTopReBar)
 	{
 		HBITMAP hbmp = theApp.LoadImage(_T("MainToolBarBk"), _T("BMP"));
+		// ==> Design Settings [eWombat/Stulle] - Max
+		COLORREF crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_toolbar);
+
+		if(crTempColor == CLR_DEFAULT)
+			crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+		if(crTempColor != CLR_DEFAULT)
+		{
+			REBARBANDINFO rbbi = {0};
+			rbbi.cbSize = sizeof(rbbi);
+			rbbi.fMask = RBBIM_STYLE;
+			if (theApp.emuledlg->m_ctlMainTopReBar.GetBandInfo(MULE_TOOLBAR_BAND_NR, &rbbi))
+			{
+				rbbi.fMask = RBBIM_STYLE | RBBIM_BACKGROUND | RBBIM_COLORS;
+				rbbi.clrFore = crTempColor;
+				rbbi.clrBack = crTempColor;
+				rbbi.fStyle &= ~RBBS_FIXEDBMP;
+				rbbi.hbmBack = NULL;
+				if (theApp.emuledlg->m_ctlMainTopReBar.SetBandInfo(MULE_TOOLBAR_BAND_NR, &rbbi))
+				{
+					if (m_bmpBack.m_hObject)
+						VERIFY( m_bmpBack.DeleteObject() );
+				}
+			}
+		}
+		else
+		// <== Design Settings [eWombat/Stulle] - Max
 		if (hbmp)
 		{
 			REBARBANDINFO rbbi = {0};
@@ -1189,7 +1284,14 @@ void CMuleToolbarCtrl::UpdateBackground()
 			rbbi.fMask = RBBIM_STYLE;
 			if (theApp.emuledlg->m_ctlMainTopReBar.GetBandInfo(MULE_TOOLBAR_BAND_NR, &rbbi))
 			{
+				// ==> Design Settings [eWombat/Stulle] - Max
+				/*
 				rbbi.fMask = RBBIM_STYLE | RBBIM_BACKGROUND;
+				*/
+				rbbi.fMask = RBBIM_STYLE | RBBIM_BACKGROUND | RBBIM_COLORS;
+				rbbi.clrFore = GetSysColor(COLOR_BTNFACE);
+				rbbi.clrBack = GetSysColor(COLOR_BTNFACE);
+				// <== Design Settings [eWombat/Stulle] - Max
 				rbbi.fStyle |= RBBS_FIXEDBMP;
 				rbbi.hbmBack = hbmp;
 				if (theApp.emuledlg->m_ctlMainTopReBar.SetBandInfo(MULE_TOOLBAR_BAND_NR, &rbbi))
@@ -1210,7 +1312,14 @@ void CMuleToolbarCtrl::UpdateBackground()
 			rbbi.fMask = RBBIM_STYLE;
 			if (theApp.emuledlg->m_ctlMainTopReBar.GetBandInfo(MULE_TOOLBAR_BAND_NR, &rbbi))
 			{
+				// ==> Design Settings [eWombat/Stulle] - Max
+				/*
 				rbbi.fMask = RBBIM_STYLE | RBBIM_BACKGROUND;
+				*/
+				rbbi.fMask = RBBIM_STYLE | RBBIM_BACKGROUND | RBBIM_COLORS;
+				rbbi.clrFore = GetSysColor(COLOR_BTNFACE);
+				rbbi.clrBack = GetSysColor(COLOR_BTNFACE);
+				// <== Design Settings [eWombat/Stulle] - Max
 				rbbi.fStyle &= ~RBBS_FIXEDBMP;
 				rbbi.hbmBack = NULL;
 				if (theApp.emuledlg->m_ctlMainTopReBar.SetBandInfo(MULE_TOOLBAR_BAND_NR, &rbbi))
@@ -1222,3 +1331,40 @@ void CMuleToolbarCtrl::UpdateBackground()
 		}
 	}
 }
+
+// ==> High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+void CMuleToolbarCtrl::ShowSpeedMeter(bool bShow)
+{
+	if (bShow)
+	{
+		if (theApp.emuledlg->m_co_UpTrafficGraph.IsWindowVisible() == false ||
+			theApp.emuledlg->m_co_DownTrafficGraph.IsWindowVisible() == false)
+		{
+			theApp.emuledlg->m_co_UpTrafficGraph.EnableWindow(true);
+			theApp.emuledlg->m_co_UpTrafficGraph.ShowWindow(SW_SHOW);
+			theApp.emuledlg->m_co_DownTrafficGraph.EnableWindow(true);
+			theApp.emuledlg->m_co_DownTrafficGraph.ShowWindow(SW_SHOW);
+
+			CRect		r;
+
+			GetWindowRect(&r);
+			OnSize(0,r.Width(),r.Height());
+		}
+	}
+	else
+	{
+		theApp.emuledlg->m_co_UpTrafficGraph.EnableWindow(false);
+		theApp.emuledlg->m_co_UpTrafficGraph.ShowWindow(SW_HIDE);
+		theApp.emuledlg->m_co_DownTrafficGraph.EnableWindow(false);
+		theApp.emuledlg->m_co_DownTrafficGraph.ShowWindow(SW_HIDE);
+
+		CRect		rInvalidateUp, rInvalidateDown;
+		theApp.emuledlg->m_co_UpTrafficGraph.GetWindowRect(&rInvalidateUp);
+		ScreenToClient(rInvalidateUp);
+		InvalidateRect(rInvalidateUp);
+		theApp.emuledlg->m_co_DownTrafficGraph.GetWindowRect(&rInvalidateDown);
+		ScreenToClient(rInvalidateDown);
+		InvalidateRect(rInvalidateDown);
+	}
+}
+// <== High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88

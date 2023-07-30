@@ -55,6 +55,9 @@
 #include "Log.h"
 #include "KnownFileList.h"
 #include "VisualStylesXP.h"
+#include "MassRename.h" //Xman Mass Rename (Morph)
+#include "Log.h" //Xman Mass Rename (Morph)
+#include "UploadQueue.h" // Mephisto Upload - Mephisto
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -242,7 +245,16 @@ CSharedFilesCtrl::CSharedFilesCtrl()
 	nAICHHashing = 0;
 	m_pDirectoryFilter = NULL;
 	SetGeneralPurposeFind(true);
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	/*
 	m_pToolTip = new CToolTipCtrlX;
+	*/
+	// workaround running MFC as service
+	if (!theApp.IsRunningAsService())
+		m_pToolTip = new CToolTipCtrlX;
+	else
+		m_pToolTip = NULL;
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
 	SetSkinKey(L"SharedFilesLv");
 	m_pHighlightedItem = NULL;
 }
@@ -251,7 +263,28 @@ CSharedFilesCtrl::~CSharedFilesCtrl()
 {
 	while (!liTempShareableFilesInDir.IsEmpty())	// delete shareble files
 		delete liTempShareableFilesInDir.RemoveHead();
-	delete m_pToolTip;
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// workaround running MFC as service
+	if (!theApp.IsRunningAsService())
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+		delete m_pToolTip;
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	if (m_PowershareMenu) VERIFY( m_PowershareMenu.DestroyMenu() );
+	if (m_PowerShareLimitMenu) VERIFY( m_PowerShareLimitMenu.DestroyMenu() );
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	if (m_PsAmountLimitMenu) VERIFY( m_PsAmountLimitMenu.DestroyMenu() );
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	if (m_HideOSMenu) VERIFY( m_HideOSMenu.DestroyMenu() );
+	if (m_SelectiveChunkMenu) VERIFY( m_SelectiveChunkMenu.DestroyMenu() );
+	if (m_ShareOnlyTheNeedMenu) VERIFY( m_ShareOnlyTheNeedMenu.DestroyMenu() );
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	// ==> mem leak fix [fafner] - Stulle
+	if (m_PrioMenu) VERIFY( m_PrioMenu.DestroyMenu() );
+	if (m_CollectionsMenu) VERIFY( m_CollectionsMenu.DestroyMenu() );
+	if (m_SharedFilesMenu) VERIFY( m_SharedFilesMenu.DestroyMenu() );
+	// <== mem leak fix [fafner] - Stulle
 }
 
 void CSharedFilesCtrl::Init()
@@ -278,6 +311,20 @@ void CSharedFilesCtrl::Init()
 	InsertColumn(15,GetResString(IDS_LENGTH),			LVCFMT_RIGHT, DFLT_LENGTH_COL_WIDTH,	-1, true);
 	InsertColumn(16,GetResString(IDS_BITRATE),			LVCFMT_RIGHT, DFLT_BITRATE_COL_WIDTH,	-1, true);
 	InsertColumn(17,GetResString(IDS_CODEC),			LVCFMT_LEFT,  DFLT_CODEC_COL_WIDTH,		-1, true);
+	InsertColumn(18,GetResString(IDS_ONQUEUE),			LVCFMT_LEFT,  50); //Xman see OnUploadqueue
+	InsertColumn(19,GetResString(IDS_SHAREFACTOR),			LVCFMT_LEFT,  100); //Xman advanced upload-priority
+	// ==> Spread bars [Slugfiller/MorphXT] - Stulle
+	InsertColumn(20,GetResString(IDS_SF_UPLOADED_PARTS),LVCFMT_LEFT,170,13);
+	InsertColumn(21,GetResString(IDS_SF_TURN_PART),LVCFMT_LEFT,100,14);
+	InsertColumn(22,GetResString(IDS_SF_TURN_SIMPLE),LVCFMT_LEFT,100,15);
+	InsertColumn(23,GetResString(IDS_SF_FULLUPLOAD),LVCFMT_LEFT,100,16);
+	// <== Spread bars [Slugfiller/MorphXT] - Stulle
+	InsertColumn(24,GetResString(IDS_RARE_RATIO),LVCFMT_LEFT,100,17); // push rare file - Stulle
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	InsertColumn(25,GetResString(IDS_HIDEOS),LVCFMT_LEFT,100,18);
+	InsertColumn(26,GetResString(IDS_SHAREONLYTHENEED),LVCFMT_LEFT,100,19);
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	InsertColumn(27,GetResString(IDS_POWERSHARE_COLUMN_LABEL),LVCFMT_LEFT,70,20); // PowerShare [ZZ/MorphXT] - Stulle
 
 	SetAllIcons();
 	CreateMenues();
@@ -292,16 +339,27 @@ void CSharedFilesCtrl::Init()
 	else if (GetSortItem() == 11)
 		m_aSortBySecondValue[3] = GetSortSecondValue();
 	SetSortArrow();
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	/*
 	SortItems(SortProc, GetSortItem() + (GetSortAscending() ? 0 : 20) + (GetSortSecondValue() ? 100 : 0));
+	*/
+	SortItems(SortProc, GetSortItem() + (GetSortAscending() ? 0 : 30)  + (GetSortSecondValue() ? 100 : 0));
+	// <== PowerShare [ZZ/MorphXT] - Stulle
 
-	CToolTipCtrl* tooltip = GetToolTips();
-	if (tooltip){
-		m_pToolTip->SetFileIconToolTip(true);
-		m_pToolTip->SubclassWindow(*tooltip);
-		tooltip->ModifyStyle(0, TTS_NOPREFIX);
-		tooltip->SetDelayTime(TTDT_AUTOPOP, 20000);
-		tooltip->SetDelayTime(TTDT_INITIAL, thePrefs.GetToolTipDelay()*1000);
-	}
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// workaround running MFC as service
+	if (!theApp.IsRunningAsService())
+	{
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+		CToolTipCtrl* tooltip = GetToolTips();
+		if (tooltip){
+			m_pToolTip->SetFileIconToolTip(true);
+			m_pToolTip->SubclassWindow(*tooltip);
+			tooltip->ModifyStyle(0, TTS_NOPREFIX);
+			tooltip->SetDelayTime(TTDT_AUTOPOP, 20000);
+			tooltip->SetDelayTime(TTDT_INITIAL, thePrefs.GetToolTipDelay()*1000);
+		}
+	} // Run eMule as NT Service [leuk_he/Stulle] - Stulle
 
 	m_ShareDropTarget.SetParent(this);
 	VERIFY( m_ShareDropTarget.Register(this) );
@@ -415,6 +473,70 @@ void CSharedFilesCtrl::Localize()
 	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
 	pHeaderCtrl->SetItem(17, &hdi);
 
+	//Xman see OnUploadqueue
+	strRes = GetResString(IDS_ONQUEUE);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(18, &hdi);
+	//Xman end
+
+	//Xman advanced upload-priority
+	strRes = GetResString(IDS_SHAREFACTOR);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(19, &hdi);
+	//Xman end
+
+	// ==> Spread bars [Slugfiller/MorphXT] - Stulle
+	strRes = GetResString(IDS_SF_UPLOADED_PARTS);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(20, &hdi);
+
+	strRes = GetResString(IDS_SF_TURN_PART);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(21, &hdi);
+
+	strRes = GetResString(IDS_SF_TURN_SIMPLE);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(22, &hdi);
+
+	strRes = GetResString(IDS_SF_FULLUPLOAD);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(23, &hdi);
+	// <== Spread bars [Slugfiller/MorphXT] - Stulle
+
+	// ==> push rare file - Stulle
+	strRes = GetResString(IDS_RARE_RATIO);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(24, &hdi);
+	// <== push rare file - Stulle
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+    strRes = GetResString(IDS_HIDEOS);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(25, &hdi);
+
+	strRes = GetResString(IDS_SHAREONLYTHENEED);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(26, &hdi);
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	strRes = GetResString(IDS_POWERSHARE_COLUMN_LABEL);
+	hdi.pszText = const_cast<LPTSTR>((LPCTSTR)strRes);
+	pHeaderCtrl->SetItem(27, &hdi);
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	COLORREF crTempColor = thePrefs.GetStyleBackColor(background_styles, style_b_sharedlist);
+
+	if(crTempColor == CLR_DEFAULT)
+		crTempColor = thePrefs.GetStyleBackColor(background_styles, style_b_default);
+
+	if(crTempColor != CLR_DEFAULT)
+		SetBkColor(crTempColor);
+	else
+		SetBkColor(COLORREF(RGB(255,255,255)));
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
 	CreateMenues();
 
 	int iItems = GetItemCount();
@@ -426,6 +548,11 @@ void CSharedFilesCtrl::Localize()
 
 void CSharedFilesCtrl::AddFile(const CShareableFile* file)
 {
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	if (theApp.IsRunningAsService(SVC_LIST_OPT))
+		return;
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
 	if (!theApp.emuledlg->IsRunning())
 		return;
 	// check filter conditions if we should show this file right now
@@ -474,6 +601,14 @@ void CSharedFilesCtrl::AddFile(const CShareableFile* file)
 				// hard choice, will only show the main for now
 				break;
 
+			// Avi3k: SharedView Ed2kType
+			case SDI_ED2KFILETYPE:
+				{
+					if (m_pDirectoryFilter->m_nCatFilter == -1 || m_pDirectoryFilter->m_nCatFilter != GetED2KFileTypeID(file->GetFileName()))
+						return;
+					break;
+				}
+			// end Avi3k: SharedView Ed2kType
 		}
 	}
 	if (IsFilteredItem(file))
@@ -510,6 +645,7 @@ void CSharedFilesCtrl::AddFile(const CShareableFile* file)
 	int iItem = InsertItem(LVIF_TEXT | LVIF_PARAM, GetItemCount(), LPSTR_TEXTCALLBACK, 0, 0, 0, (LPARAM)file);
 	if (iItem >= 0)
 		Update(iItem);
+	ShowFilesCount(); //Xman Code Improvement for ShowFilesCount
 }
 
 void CSharedFilesCtrl::RemoveFile(const CShareableFile* file, bool bDeletedFromDisk)
@@ -533,15 +669,36 @@ void CSharedFilesCtrl::RemoveFile(const CShareableFile* file, bool bDeletedFromD
 	}
 }
 
+//Xman advanced upload-priority
+/*
 void CSharedFilesCtrl::UpdateFile(const CShareableFile* file, bool bUpdateFileSummary)
+*/
+void CSharedFilesCtrl::UpdateFile(const CShareableFile* file, bool bUpdateFileSummary, bool force)
+//Xman end
 {
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	if (theApp.IsRunningAsService(SVC_LIST_OPT))
+		return;
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
 	if (!file || !theApp.emuledlg->IsRunning())
 		return;
+
+	//MORPH START - SiRoB, Don't Refresh item if not needed
+	if( theApp.emuledlg->activewnd != theApp.emuledlg->sharedfileswnd && !force) //Xman advanced upload-priority 
+		return;
+	//MORPH END   - SiRoB, Don't Refresh item if not needed
+
 	int iItem = FindFile(file);
 	if (iItem != -1)
 	{
 		Update(iItem);
+		//Xman [MoNKi: -Downloaded History-]
+		/*
 		if (bUpdateFileSummary && GetItemState(iItem, LVIS_SELECTED))
+		*/
+		if (bUpdateFileSummary && GetItemState(iItem, LVIS_SELECTED) && IsWindowVisible())
+		//Xman end
 			theApp.emuledlg->sharedfileswnd->ShowSelectedFilesDetails();
 	}
 }
@@ -556,6 +713,13 @@ int CSharedFilesCtrl::FindFile(const CShareableFile* pFile)
 
 void CSharedFilesCtrl::ReloadFileList()
 {
+	//Xman [MoNKi: -Downloaded History-]
+	if(theApp.emuledlg->sharedfileswnd->historylistctrl.IsWindowVisible())
+	{
+		theApp.emuledlg->sharedfileswnd->historylistctrl.Reload();
+		return;
+	}
+	//Xman end
 	DeleteAllItems();
 	theApp.emuledlg->sharedfileswnd->ShowSelectedFilesDetails();
 	
@@ -577,12 +741,26 @@ void CSharedFilesCtrl::ReloadFileList()
 
 void CSharedFilesCtrl::ShowFilesCount()
 {
+	//Xman [MoNKi: -Downloaded History-]
+	/*
 	CString str;
 	if (theApp.sharedfiles->GetHashingCount() + nAICHHashing)
 		str.Format(_T(" (%i, %s %i)"), theApp.sharedfiles->GetCount(), GetResString(IDS_HASHING), theApp.sharedfiles->GetHashingCount() + nAICHHashing);
 	else
 		str.Format(_T(" (%i)"), theApp.sharedfiles->GetCount());
 	theApp.emuledlg->sharedfileswnd->GetDlgItem(IDC_TRAFFIC_TEXT)->SetWindowText(GetResString(IDS_SF_FILES) + str);
+	*/
+	//if(theApp.emuledlg->sharedfileswnd->sharedfilesctrl.IsWindowVisible())
+	if(!theApp.emuledlg->sharedfileswnd->historylistctrl.IsWindowVisible()) //Xman Code Improvement for ShowFilesCount
+	{	
+		CString str;
+		if (theApp.sharedfiles->GetHashingCount() + nAICHHashing)
+			str.Format(_T(" (%i, %s %i)"), theApp.sharedfiles->GetCount(), GetResString(IDS_HASHING), theApp.sharedfiles->GetHashingCount() + nAICHHashing);
+		else
+			str.Format(_T(" (%i)"), theApp.sharedfiles->GetCount());
+		theApp.emuledlg->sharedfileswnd->GetDlgItem(IDC_TRAFFIC_TEXT)->SetWindowText(GetResString(IDS_SF_FILES) + str);
+	}
+	//Xman End
 }
 
 void CSharedFilesCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
@@ -592,16 +770,52 @@ void CSharedFilesCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	if (!lpDrawItemStruct->itemData)
 		return;
 
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+	/*
 	CMemDC dc(CDC::FromHandle(lpDrawItemStruct->hDC), &lpDrawItemStruct->rcItem);
+	*/
+	CMemoryDC dc(CDC::FromHandle(lpDrawItemStruct->hDC), &lpDrawItemStruct->rcItem);
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+	//zz_fly :: we init it ourself :: from DolphinX :: start
+	/*
 	BOOL bCtrlFocused;
 	InitItemMemDC(dc, lpDrawItemStruct, bCtrlFocused);
+	*/
+	//zz_fly :: end
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	BOOL bCtrlFocused;
+	InitItemMemDC(dc, lpDrawItemStruct, bCtrlFocused, false, style_b_sharedlist);
+	// <== Design Settings [eWombat/Stulle] - Stulle
 	CRect cur_rec(lpDrawItemStruct->rcItem);
 	CRect rcClient;
 	GetClientRect(&rcClient);
+
 	/*const*/ CShareableFile* file = (CShareableFile*)lpDrawItemStruct->itemData;
 	CKnownFile* pKnownFile = NULL;
 	if (file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
 		pKnownFile = (CKnownFile*)file;
+
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	/*
+	//zz_fly :: we init it ourself :: from DolphinX :: start
+	BOOL bCtrlFocused = ((GetFocus() == this) || (GetStyle() & LVS_SHOWSELALWAYS));
+	dc.FillBackground((lpDrawItemStruct->itemState & ODS_SELECTED)?
+		((bCtrlFocused)?
+			m_crHighlight
+		:
+			m_crNoHighlight)
+	:
+		//Xman PowerRelease
+		((pKnownFile && pKnownFile->GetUpPriority()==PR_POWER)?
+			RGB(255,210,210)
+		:
+		//Xman end
+			m_crWindow));
+	dc.SetTextColor((lpDrawItemStruct->itemState & ODS_SELECTED) ? m_crHighlightText : m_crWindowText);
+	dc.SetFont(GetFont());
+	//zz_fly :: end
+	*/
+	// <== Design Settings [eWombat/Stulle] - Stulle
 
 	CHeaderCtrl *pHeaderCtrl = GetHeaderCtrl();
 	int iCount = pHeaderCtrl->GetItemCount();
@@ -640,12 +854,16 @@ void CSharedFilesCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 								iState = (file == m_pHighlightedItem) ? CBS_CHECKEDHOT : CBS_CHECKEDNORMAL;
 								iNoStyleState = (file == m_pHighlightedItem) ? (DFCS_PUSHED | DFCS_CHECKED) : DFCS_CHECKED;
 							}
+							// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+							/*
 							else if (!thePrefs.IsShareableDirectory(file->GetPath()))
 							{
 								iState = CBS_DISABLED;
 								iNoStyleState = DFCS_INACTIVE;
 							}
-							
+							*/
+							// SLUGFILLER: SafeHash remove - removed installation dir unsharing							
+
 							HTHEME hTheme = (g_xpStyle.IsThemeActive() && g_xpStyle.IsAppThemed()) ? g_xpStyle.OpenThemeData(NULL, L"BUTTON") : NULL;
 
 							CRect recCheckBox = cur_rec;
@@ -685,7 +903,9 @@ void CSharedFilesCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 						if (pKnownFile != NULL && pKnownFile->GetPartCount()) {
 							cur_rec.bottom--;
 							cur_rec.top++;
+							COLORREF crOldBackColor = dc->GetBkColor(); //Xman Code Improvement: FillSolidRect
 							pKnownFile->DrawShareStatusBar(dc, &cur_rec, false, thePrefs.UseFlatBar());
+							dc.SetBkColor(crOldBackColor); //Xman Code Improvement: FillSolidRect
 							cur_rec.bottom++;
 							cur_rec.top--;
 						}
@@ -703,6 +923,18 @@ void CSharedFilesCtrl::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 							cur_rec.left -= 16;
 						}
 						break;
+
+					// ==> Spread bars [Slugfiller/MorphXT] - Stulle
+					case 20:
+						if(pKnownFile == NULL)
+							break;
+						cur_rec.bottom--;
+						cur_rec.top++;
+						pKnownFile->statistic.DrawSpreadBar(dc,&cur_rec,thePrefs.UseFlatBar());
+						cur_rec.bottom++;
+						cur_rec.top--;
+						break;
+					// <== Spread bars [Slugfiller/MorphXT] - Stulle
 
 					default:
 						dc.DrawText(szItem, -1, &cur_rec, MLC_DT_TEXT | uDrawTextAlignment);
@@ -749,6 +981,11 @@ void CSharedFilesCtrl::GetItemDisplayText(const CShareableFile* file, int iSubIt
 		switch (iSubItem)
 		{			
 			case 3:
+				// ==> PowerShare [ZZ/MorphXT] - Stulle
+				if(pKnownFile->GetPowerShared())
+					_sntprintf(pszText, cchTextMax, _T("%s %s"), GetResString(IDS_POWERSHARE_PREFIX), pKnownFile->GetUpPriorityDisplayString());
+				else
+				// <== PowerShare [ZZ/MorphXT] - Stulle
 				_tcsncpy(pszText, pKnownFile->GetUpPriorityDisplayString(), cchTextMax);
 				break;
 			
@@ -773,12 +1010,36 @@ void CSharedFilesCtrl::GetItemDisplayText(const CShareableFile* file, int iSubIt
 				break;
 			
 			case 10:
+				//Xman show virtual sources (morph) + virtualUploadsources
+				/*
 				if (pKnownFile->m_nCompleteSourcesCountLo == pKnownFile->m_nCompleteSourcesCountHi)
 					_sntprintf(pszText, cchTextMax, _T("%u"), pKnownFile->m_nCompleteSourcesCountLo);
 				else if (pKnownFile->m_nCompleteSourcesCountLo == 0)
 					_sntprintf(pszText, cchTextMax, _T("< %u"), pKnownFile->m_nCompleteSourcesCountHi);
 				else
 					_sntprintf(pszText, cchTextMax, _T("%u - %u"), pKnownFile->m_nCompleteSourcesCountLo, pKnownFile->m_nCompleteSourcesCountHi);
+				*/
+				if(pKnownFile->IsPartFile()==false || thePrefs.UseAdvancedAutoPtio()==false)
+				{
+					if (pKnownFile->m_nCompleteSourcesCountLo == pKnownFile->m_nCompleteSourcesCountHi)
+						_sntprintf(pszText, cchTextMax, _T("%u (%u)"), pKnownFile->m_nCompleteSourcesCountLo, pKnownFile->m_nVirtualCompleteSourcesCount);
+					else if (pKnownFile->m_nCompleteSourcesCountLo == 0)
+						_sntprintf(pszText, cchTextMax, _T("< %u (%u)"), pKnownFile->m_nCompleteSourcesCountHi, pKnownFile->m_nVirtualCompleteSourcesCount);
+					else
+						_sntprintf(pszText, cchTextMax, _T("%u - %u (%u)"), pKnownFile->m_nCompleteSourcesCountLo, pKnownFile->m_nCompleteSourcesCountHi, pKnownFile->m_nVirtualCompleteSourcesCount);
+				}
+				else
+				{
+					//Xman advanced upload-priority
+					if (pKnownFile->m_nCompleteSourcesCountLo == pKnownFile->m_nCompleteSourcesCountHi)
+						_sntprintf(pszText, cchTextMax, _T("%u (%u/%u)"), pKnownFile->m_nCompleteSourcesCountLo, pKnownFile->m_nVirtualCompleteSourcesCount, pKnownFile->m_nVirtualUploadSources);
+					else if (pKnownFile->m_nCompleteSourcesCountLo == 0)
+						_sntprintf(pszText, cchTextMax, _T("< %u (%u/%u)"), pKnownFile->m_nCompleteSourcesCountHi, pKnownFile->m_nVirtualCompleteSourcesCount, pKnownFile->m_nVirtualUploadSources);
+					else
+						_sntprintf(pszText, cchTextMax, _T("%u - %u (%u/%u)"), pKnownFile->m_nCompleteSourcesCountLo, pKnownFile->m_nCompleteSourcesCountHi, pKnownFile->m_nVirtualCompleteSourcesCount, pKnownFile->m_nVirtualUploadSources);
+					//Xman end
+				}
+				//Xman end
 				break;
 			
 			case 11:
@@ -817,6 +1078,122 @@ void CSharedFilesCtrl::GetItemDisplayText(const CShareableFile* file, int iSubIt
 			case 17:
 				_tcsncpy(pszText, GetCodecDisplayName(pKnownFile->GetStrTagValue(FT_MEDIA_CODEC)), cchTextMax);
 				break;
+			//Xman see OnUploadqueue
+			case 18:
+				_sntprintf(pszText, cchTextMax, _T("%u"),pKnownFile->GetOnUploadqueue());
+				break;
+			//Xman end
+
+			//Xman advanced upload-priority
+			case 19:
+			{
+				if(thePrefs.UseAdvancedAutoPtio())
+					_sntprintf(pszText, cchTextMax, _T("%.0f%% / %.0f%%"), pKnownFile->CalculateUploadPriorityPercent(), pKnownFile->statistic.GetAllTimeTransferred()/(float)pKnownFile->GetFileSize()*100);
+				else
+					_sntprintf(pszText, cchTextMax, _T("%.0f%%"), pKnownFile->statistic.GetAllTimeTransferred()/(float)pKnownFile->GetFileSize()*100);
+				break;
+			}
+			//Xman end
+			// ==> Spread bars [Slugfiller/MorphXT] - Stulle
+			case 20:
+				_tcsncpy(pszText, _T("Spreadhars"), cchTextMax);
+				break;
+			case 21:
+				_sntprintf(pszText, cchTextMax, _T("%.2f"),pKnownFile->statistic.GetSpreadSortValue());
+				break;
+			case 22:
+				if (pKnownFile->GetFileSize()>(uint64)0)
+					_sntprintf(pszText, cchTextMax, _T("%.2f"),((double)pKnownFile->statistic.GetAllTimeTransferred())/((double)pKnownFile->GetFileSize()));
+				else
+					_sntprintf(pszText, cchTextMax, _T("%.2f"),0.0f);
+				break;
+			case 23:
+				_sntprintf(pszText, cchTextMax, _T("%.2f"),pKnownFile->statistic.GetFullSpreadCount());
+				break;
+			// <== Spread bars [Slugfiller/MorphXT] - Stulle
+			// ==> push rare file - Stulle
+			case 24:
+				_sntprintf(pszText, cchTextMax, _T("%.1f"),pKnownFile->GetFileRatio());
+				break;
+			// <== push rare file - Stulle
+			// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+			case 25:
+			{
+				CString buffer;
+				UINT hideOSInWork = pKnownFile->HideOSInWork();
+				buffer = _T("[") + GetResString((hideOSInWork>0)?IDS_POWERSHARE_ON_LABEL:IDS_POWERSHARE_OFF_LABEL) + _T("] ");
+				if(pKnownFile->GetHideOS()<0)
+					buffer.Append(_T(" ") + ((CString)GetResString(IDS_DEFAULT)).Left(1) + _T(". "));
+				hideOSInWork = (pKnownFile->GetHideOS()>=0)?pKnownFile->GetHideOS():thePrefs.GetHideOvershares();
+				if (hideOSInWork>0)
+					buffer.AppendFormat(_T("%i"), hideOSInWork);
+				else
+					buffer.AppendFormat(_T("%s"), GetResString(IDS_DISABLED));
+				if (pKnownFile->GetSelectiveChunk()>=0){
+					if (pKnownFile->GetSelectiveChunk())
+						buffer.Append(_T(" + S"));
+				}else
+					if (thePrefs.IsSelectiveShareEnabled())
+						buffer.Append(_T(" + ") + ((CString)GetResString(IDS_DEFAULT)).Left(1) + _T(". S"));
+				_tcsncpy(pszText, buffer, cchTextMax);
+				break;
+			}
+			case 26:
+				if(pKnownFile->GetShareOnlyTheNeed()>=0) {
+					if (pKnownFile->GetShareOnlyTheNeed())
+						_sntprintf(pszText, cchTextMax, _T("%i"), pKnownFile->GetShareOnlyTheNeed());
+					else
+						_tcsncpy(pszText, GetResString(IDS_DISABLED), cchTextMax);
+				} else
+					_sntprintf(pszText, cchTextMax, _T("%s. %s"), ((CString)GetResString(IDS_DEFAULT)).Left(1), GetResString((thePrefs.GetShareOnlyTheNeed()>0)?IDS_ENABLED:IDS_DISABLED));
+				break;
+			// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+			// ==> PowerShare [ZZ/MorphXT] - Stulle
+			case 27:
+			{
+				CString buffer;
+				int powersharemode;
+				bool powershared = pKnownFile->GetPowerShared();
+				buffer = _T("[") + GetResString((powershared)?IDS_POWERSHARE_ON_LABEL:IDS_POWERSHARE_OFF_LABEL) + _T("] ");
+				if (pKnownFile->GetPowerSharedMode()>=0)
+					powersharemode = pKnownFile->GetPowerSharedMode();
+				else {
+					powersharemode = thePrefs.GetPowerShareMode();
+					buffer.Append(_T(" ") + ((CString)GetResString(IDS_DEFAULT)).Left(1) + _T(". "));
+				} //
+				if(powersharemode == 2)
+					buffer.Append(GetResString(IDS_POWERSHARE_AUTO_LABEL));
+				else if (powersharemode == 1)
+					buffer.Append(GetResString(IDS_POWERSHARE_ACTIVATED_LABEL));
+				else if (powersharemode == 3) {
+					buffer.Append(GetResString(IDS_POWERSHARE_LIMITED));
+				if (pKnownFile->GetPowerShareLimit()<0)
+						buffer.AppendFormat(_T(" %s. %i"), ((CString)GetResString(IDS_DEFAULT)).Left(1), thePrefs.GetPowerShareLimit());
+					else
+						buffer.AppendFormat(_T(" %i"), pKnownFile->GetPowerShareLimit());
+					// ==> Limit PS by amount of data uploaded - Stulle
+					if (pKnownFile->GetPsAmountLimit()<0)
+						buffer.AppendFormat(_T(" %s. %i%%"), ((CString)GetResString(IDS_DEFAULT)).Left(1), thePrefs.GetPsAmountLimit());
+					else
+						buffer.AppendFormat(_T(" %i%%"), pKnownFile->GetPsAmountLimit());
+					// <== Limit PS by amount of data uploaded - Stulle
+				}
+				else
+					buffer.Append(GetResString(IDS_POWERSHARE_DISABLED_LABEL));
+				buffer.Append(_T(" ("));
+				if (pKnownFile->GetPowerShareAuto())
+					buffer.Append(GetResString(IDS_POWERSHARE_ADVISED_LABEL));
+				else if (pKnownFile->GetPowerShareLimited() && (powersharemode == 3))
+					buffer.Append(GetResString(IDS_POWERSHARE_LIMITED));
+				else if (pKnownFile->GetPowerShareAuthorized())
+					buffer.Append(GetResString(IDS_POWERSHARE_AUTHORIZED_LABEL));
+				else
+					buffer.Append(GetResString(IDS_POWERSHARE_DENIED_LABEL));
+				buffer.Append(_T(")"));
+				_tcsncpy(pszText, buffer, cchTextMax);
+			}
+			break;
+			// <== PowerShare [ZZ/MorphXT] - Stulle
 		}
 	}
 
@@ -833,6 +1210,24 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	int iSelectedItems = GetSelectedCount();
 	int iCompleteFileSelected = -1;
 	UINT uPrioMenuItem = 0;
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	int iHideOS = -1;
+	UINT uHideOSMenuItem = 0;
+	UINT uSelectiveChunkMenuItem = 0;
+	UINT uShareOnlyTheNeedMenuItem = 0;
+	CString buffer;
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	int iPowerShareLimit = -1;
+	UINT uPowershareMenuItem = 0;
+	UINT uPowerShareLimitMenuItem = 0;
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	int iPsAmountLimit = -1;
+	UINT uPsAmountLimitMenuItem = 0;
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+
 	const CShareableFile* pSingleSelFile = NULL;
 	POSITION pos = GetFirstSelectedItemPosition();
 	while (pos)
@@ -869,6 +1264,10 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 				uCurPrioMenuItem = MP_PRIOHIGH;
 			else if (((CKnownFile*)pFile)->GetUpPriority() == PR_VERYHIGH)
 				uCurPrioMenuItem = MP_PRIOVERYHIGH;
+			//Xman PowerRelease
+			else if (((CKnownFile*)pFile)->GetUpPriority() == PR_POWER)
+				uCurPrioMenuItem = MP_PRIOPOWER;
+			//Xman end
 			else
 				ASSERT(0);
 
@@ -876,6 +1275,96 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 				uPrioMenuItem = uCurPrioMenuItem;
 			else if (uPrioMenuItem != uCurPrioMenuItem)
 				uPrioMenuItem = 0;
+
+			// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+			UINT uCurHideOSMenuItem = 0;
+			int iCurHideOS = ((CKnownFile*)pFile)->GetHideOS();
+			if (iCurHideOS == -1)
+				uCurHideOSMenuItem = MP_HIDEOS_DEFAULT;
+			else
+				uCurHideOSMenuItem = MP_HIDEOS_SET;
+			if (bFirstItem)
+			{
+				uHideOSMenuItem = uCurHideOSMenuItem;
+				iHideOS = iCurHideOS;
+			}
+			else if (uHideOSMenuItem != uCurHideOSMenuItem || iHideOS != iCurHideOS)
+			{
+				uHideOSMenuItem = 0;
+				iHideOS = -1;
+			}
+		
+			UINT uCurSelectiveChunkMenuItem = 0;
+			if (((CKnownFile*)pFile)->GetSelectiveChunk() == -1)
+				uCurSelectiveChunkMenuItem = MP_SELECTIVE_CHUNK;
+			else
+				uCurSelectiveChunkMenuItem = MP_SELECTIVE_CHUNK+1 + ((CKnownFile*)pFile)->GetSelectiveChunk();
+			if (bFirstItem)
+				uSelectiveChunkMenuItem = uCurSelectiveChunkMenuItem;
+			else if (uSelectiveChunkMenuItem != uCurSelectiveChunkMenuItem)
+				uSelectiveChunkMenuItem = 0;
+
+			UINT uCurShareOnlyTheNeedMenuItem = 0;
+			if (((CKnownFile*)pFile)->GetShareOnlyTheNeed() == -1)
+				uCurShareOnlyTheNeedMenuItem = MP_SHAREONLYTHENEED;
+			else
+				uCurShareOnlyTheNeedMenuItem = MP_SHAREONLYTHENEED+1 + ((CKnownFile*)pFile)->GetShareOnlyTheNeed();
+			if (bFirstItem)
+				uShareOnlyTheNeedMenuItem = uCurShareOnlyTheNeedMenuItem ;
+			else if (uShareOnlyTheNeedMenuItem != uCurShareOnlyTheNeedMenuItem)
+				uShareOnlyTheNeedMenuItem = 0;
+			// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+			// ==> PowerShare [ZZ/MorphXT] - Stulle
+			UINT uCurPowershareMenuItem = 0;
+			if (((CKnownFile*)pFile)->GetPowerSharedMode()==-1)
+				uCurPowershareMenuItem = MP_POWERSHARE_DEFAULT;
+			else
+				uCurPowershareMenuItem = MP_POWERSHARE_DEFAULT+1 + ((CKnownFile*)pFile)->GetPowerSharedMode();
+		
+			if (bFirstItem)
+				uPowershareMenuItem = uCurPowershareMenuItem;
+			else if (uPowershareMenuItem != uCurPowershareMenuItem)
+				uPowershareMenuItem = 0;
+
+			UINT uCurPowerShareLimitMenuItem = 0;
+			int iCurPowerShareLimit = ((CKnownFile*)pFile)->GetPowerShareLimit();
+			if (iCurPowerShareLimit==-1)
+				uCurPowerShareLimitMenuItem = MP_POWERSHARE_LIMIT;
+			else
+				uCurPowerShareLimitMenuItem = MP_POWERSHARE_LIMIT_SET;
+		
+			if (bFirstItem)
+			{
+				uPowerShareLimitMenuItem = uCurPowerShareLimitMenuItem;
+				iPowerShareLimit = iCurPowerShareLimit;
+			}
+			else if (uPowerShareLimitMenuItem != uCurPowerShareLimitMenuItem || iPowerShareLimit != iCurPowerShareLimit)
+			{
+				uPowerShareLimitMenuItem = 0;
+				iPowerShareLimit = -1;
+			}
+			// <== PowerShare [ZZ/MorphXT] - Stulle
+
+			// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+			UINT uCurPsAmountLimitMenuItem = 0;
+			int iCurPsAmountLimit = ((CKnownFile*)pFile)->GetPsAmountLimit();
+			if (iCurPsAmountLimit==-1)
+				uCurPsAmountLimitMenuItem = MP_PS_AMOUNT_LIMIT;
+			else
+				uCurPsAmountLimitMenuItem = MP_PS_AMOUNT_LIMIT_SET;
+
+			if (bFirstItem)
+			{
+				uPsAmountLimitMenuItem = uCurPsAmountLimitMenuItem;
+				iPsAmountLimit = iCurPsAmountLimit;
+			}
+			else if (uPsAmountLimitMenuItem != uCurPsAmountLimitMenuItem || iPsAmountLimit != iCurPsAmountLimit)
+			{
+				uPsAmountLimitMenuItem = 0;
+				iPsAmountLimit = -1;
+			}
+			// <== Limit PS by amount of data uploaded [Stulle] - Stulle
 		}
 		else
 			bContainsShareableFiles = true;
@@ -884,7 +1373,12 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	}
 
 	m_SharedFilesMenu.EnableMenuItem((UINT_PTR)m_PrioMenu.m_hMenu, (!bContainsShareableFiles && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
+	//Xman PowerRelease 
+	/*
 	m_PrioMenu.CheckMenuRadioItem(MP_PRIOVERYLOW, MP_PRIOAUTO, uPrioMenuItem, 0);
+	*/
+	m_PrioMenu.CheckMenuRadioItem(MP_PRIOVERYLOW, MP_PRIOPOWER, uPrioMenuItem, 0);
+	//Xman end
 
 	bool bSingleCompleteFileSelected = (iSelectedItems == 1 && (iCompleteFileSelected == 1 || bContainsOnlyShareableFile));
 	m_SharedFilesMenu.EnableMenuItem(MP_OPEN, bSingleCompleteFileSelected ? MF_ENABLED : MF_GRAYED);
@@ -907,6 +1401,9 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 		if (::InsertMenuItem(m_SharedFilesMenu, MP_OPENFOLDER, FALSE, &mii))
 			uInsertedMenuItem = mii.wID;
 	}
+	//Xman PowerRelease
+	m_SharedFilesMenu.EnableMenuItem(MP_PRIOPOWER, (!bContainsShareableFiles && iCompleteFileSelected > 0) ? MF_ENABLED : MF_GRAYED);
+	//Xman end
 	m_SharedFilesMenu.EnableMenuItem(MP_OPENFOLDER, bSingleCompleteFileSelected ? MF_ENABLED : MF_GRAYED);
 	m_SharedFilesMenu.EnableMenuItem(MP_RENAME, (!bContainsShareableFiles && bSingleCompleteFileSelected) ? MF_ENABLED : MF_GRAYED);
 	m_SharedFilesMenu.EnableMenuItem(MP_REMOVE, iCompleteFileSelected > 0 ? MF_ENABLED : MF_GRAYED);
@@ -915,7 +1412,154 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	m_SharedFilesMenu.EnableMenuItem(MP_CMT, (!bContainsShareableFiles && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
 	m_SharedFilesMenu.EnableMenuItem(MP_DETAIL, iSelectedItems > 0 ? MF_ENABLED : MF_GRAYED);
 	m_SharedFilesMenu.EnableMenuItem(thePrefs.GetShowCopyEd2kLinkCmd() ? MP_GETED2KLINK : MP_SHOWED2KLINK, (!bContainsOnlyShareableFile && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	m_SharedFilesMenu.EnableMenuItem((UINT_PTR)m_HideOSMenu.m_hMenu, (iSelectedItems > 0 && iCompleteFileSelected > 0) ? MF_ENABLED : MF_GRAYED);
+	m_SharedFilesMenu.EnableMenuItem((UINT_PTR)m_SelectiveChunkMenu.m_hMenu, iSelectedItems > 0 ? MF_ENABLED : MF_GRAYED);
+	if (thePrefs.GetHideOvershares()==0)
+		buffer.Format(_T(" (%s)"),GetResString(IDS_DISABLED));
+	else
+		buffer.Format(_T(" (%u)"),thePrefs.GetHideOvershares());
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_HideOSMenu.ModifyMenu(MP_HIDEOS_DEFAULT, MF_STRING,MP_HIDEOS_DEFAULT, GetResString(IDS_DEFAULT) + buffer);
+	*/
+	m_HideOSMenu.RemoveMenu(MP_HIDEOS_DEFAULT,MF_BYCOMMAND);
+	m_HideOSMenu.InsertMenu(1,MF_STRING|MF_BYPOSITION,MP_HIDEOS_DEFAULT,GetResString(IDS_DEFAULT) + buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	if (iHideOS==-1)
+		buffer = GetResString(IDS_EDIT);
+	else if (iHideOS==0)
+		buffer = GetResString(IDS_DISABLED);
+	else
+		buffer.Format(_T("%i"), iHideOS);
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_HideOSMenu.ModifyMenu(MP_HIDEOS_SET, MF_STRING,MP_HIDEOS_SET, buffer);
+	*/
+	m_HideOSMenu.RemoveMenu(MP_HIDEOS_SET,MF_BYCOMMAND);
+	m_HideOSMenu.InsertMenu(2,MF_STRING|MF_BYPOSITION,MP_HIDEOS_SET,buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	m_HideOSMenu.CheckMenuRadioItem(MP_HIDEOS_DEFAULT, MP_HIDEOS_SET, uHideOSMenuItem, 0);
+	buffer.Format(_T(" (%s)"),thePrefs.IsSelectiveShareEnabled()?GetResString(IDS_ENABLED):GetResString(IDS_DISABLED));
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_SelectiveChunkMenu.ModifyMenu(MP_SELECTIVE_CHUNK, MF_STRING, MP_SELECTIVE_CHUNK, GetResString(IDS_DEFAULT) + buffer);
+	*/
+	m_SelectiveChunkMenu.RemoveMenu(MP_SELECTIVE_CHUNK,MF_BYCOMMAND);
+	m_SelectiveChunkMenu.InsertMenu(1,MF_STRING|MF_BYPOSITION,MP_SELECTIVE_CHUNK,GetResString(IDS_DEFAULT) + buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	m_SelectiveChunkMenu.CheckMenuRadioItem(MP_SELECTIVE_CHUNK, MP_SELECTIVE_CHUNK_1, uSelectiveChunkMenuItem, 0);
+
+	m_SharedFilesMenu.EnableMenuItem((UINT_PTR)m_ShareOnlyTheNeedMenu.m_hMenu, (iSelectedItems > 0 && iCompleteFileSelected > 0) ? MF_ENABLED : MF_GRAYED);
+	buffer.Format(_T(" (%s)"),thePrefs.GetShareOnlyTheNeed()?GetResString(IDS_ENABLED):GetResString(IDS_DISABLED));
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_ShareOnlyTheNeedMenu.ModifyMenu(MP_SHAREONLYTHENEED, MF_STRING, MP_SHAREONLYTHENEED, GetResString(IDS_DEFAULT) + buffer);
+	*/
+	m_ShareOnlyTheNeedMenu.RemoveMenu(MP_SHAREONLYTHENEED,MF_BYCOMMAND);
+	m_ShareOnlyTheNeedMenu.InsertMenu(1,MF_STRING|MF_BYPOSITION,MP_SHAREONLYTHENEED,GetResString(IDS_DEFAULT) + buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	m_ShareOnlyTheNeedMenu.CheckMenuRadioItem(MP_SHAREONLYTHENEED, MP_SHAREONLYTHENEED_1, uShareOnlyTheNeedMenuItem, 0);
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	m_SharedFilesMenu.EnableMenuItem(MP_SPREADBAR_RESET, iSelectedItems > 0 ? MF_ENABLED : MF_GRAYED); // Spread bars [Slugfiller/MorphXT] - Stulle
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	m_SharedFilesMenu.EnableMenuItem((UINT_PTR)m_PowershareMenu.m_hMenu, (iSelectedItems > 0 && iCompleteFileSelected > 0) ? MF_ENABLED : MF_GRAYED);
+	switch (thePrefs.GetPowerShareMode()){
+		case 0:
+			buffer.Format(_T(" (%s)"),GetResString(IDS_POWERSHARE_DISABLED));
+			break;
+		case 1:
+			buffer.Format(_T(" (%s)"),GetResString(IDS_POWERSHARE_ACTIVATED));
+			break;
+		case 2:
+			buffer.Format(_T(" (%s)"),GetResString(IDS_POWERSHARE_AUTO));
+			break;
+		case 3:
+			buffer.Format(_T(" (%s)"),GetResString(IDS_POWERSHARE_LIMITED));
+			break;
+		default:
+			buffer = _T(" (?)");
+			break;
+	}
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_PowershareMenu.ModifyMenu(MP_POWERSHARE_DEFAULT, MF_STRING,MP_POWERSHARE_DEFAULT, GetResString(IDS_DEFAULT) + buffer);
+	*/
+	m_PowershareMenu.RemoveMenu(MP_POWERSHARE_DEFAULT,MF_BYCOMMAND);
+	m_PowershareMenu.InsertMenu(1,MF_STRING|MF_BYPOSITION,MP_POWERSHARE_DEFAULT,GetResString(IDS_DEFAULT) + buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	m_PowershareMenu.CheckMenuRadioItem(MP_POWERSHARE_DEFAULT, MP_POWERSHARE_LIMITED, uPowershareMenuItem, 0);
+	m_PowershareMenu.EnableMenuItem((UINT_PTR)m_PowerShareLimitMenu.m_hMenu, iSelectedItems > 0 ? MF_ENABLED : MF_GRAYED);
+	if (thePrefs.GetPowerShareLimit()==0)
+		buffer.Format(_T(" (%s)"),GetResString(IDS_DISABLED));
+	else
+		buffer.Format(_T(" (%u)"),thePrefs.GetPowerShareLimit());
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_PowerShareLimitMenu.ModifyMenu(MP_POWERSHARE_LIMIT, MF_STRING,MP_POWERSHARE_LIMIT, GetResString(IDS_DEFAULT) + buffer);
+	*/
+	m_PowerShareLimitMenu.RemoveMenu(MP_POWERSHARE_LIMIT,MF_BYCOMMAND);
+	m_PowerShareLimitMenu.InsertMenu(1,MF_STRING|MF_BYPOSITION,MP_POWERSHARE_LIMIT,GetResString(IDS_DEFAULT) + buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	if (iPowerShareLimit==-1)
+		buffer = GetResString(IDS_EDIT);
+	else if (iPowerShareLimit==0)
+		buffer = GetResString(IDS_DISABLED);
+	else
+		buffer.Format(_T("%i"),iPowerShareLimit);
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_PowerShareLimitMenu.ModifyMenu(MP_POWERSHARE_LIMIT_SET, MF_STRING,MP_POWERSHARE_LIMIT_SET, buffer);
+	*/
+	m_PowerShareLimitMenu.RemoveMenu(MP_POWERSHARE_LIMIT_SET,MF_BYCOMMAND);
+	m_PowerShareLimitMenu.InsertMenu(2,MF_STRING|MF_BYPOSITION,MP_POWERSHARE_LIMIT_SET,buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	m_PowerShareLimitMenu.CheckMenuRadioItem(MP_POWERSHARE_LIMIT, MP_POWERSHARE_LIMIT_SET, uPowerShareLimitMenuItem, 0);
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	m_PowershareMenu.EnableMenuItem((UINT_PTR)m_PsAmountLimitMenu.m_hMenu, iSelectedItems > 0 ? MF_ENABLED : MF_GRAYED);
+	if (iPsAmountLimit==0)
+		buffer.Format(_T(" (%s)"),GetResString(IDS_DISABLED));
+	else
+		buffer.Format(_T(" (%i%%)"),thePrefs.GetPsAmountLimit());
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_PsAmountLimitMenu.ModifyMenu(MP_PS_AMOUNT_LIMIT, MF_STRING,MP_PS_AMOUNT_LIMIT, GetResString(IDS_DEFAULT) + buffer);
+	*/
+	m_PsAmountLimitMenu.RemoveMenu(MP_PS_AMOUNT_LIMIT,MF_BYCOMMAND);
+	m_PsAmountLimitMenu.InsertMenu(1,MF_STRING|MF_BYPOSITION,MP_PS_AMOUNT_LIMIT,GetResString(IDS_DEFAULT) + buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	if (iPsAmountLimit==-1)
+		buffer = GetResString(IDS_EDIT);
+	else if (iPsAmountLimit==0)
+		buffer = GetResString(IDS_DISABLED);
+	else
+		buffer.Format(_T("%i%%"),iPsAmountLimit);
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
+	m_PsAmountLimitMenu.ModifyMenu(MP_PS_AMOUNT_LIMIT_SET, MF_STRING,MP_PS_AMOUNT_LIMIT_SET, buffer);
+	*/
+	m_PsAmountLimitMenu.RemoveMenu(MP_PS_AMOUNT_LIMIT_SET,MF_BYCOMMAND);
+	m_PsAmountLimitMenu.InsertMenu(2,MF_STRING|MF_BYPOSITION,MP_PS_AMOUNT_LIMIT_SET,buffer);
+	// <== XP Style Menu [Xanatos] - Stulle
+	m_PsAmountLimitMenu.CheckMenuRadioItem(MP_PS_AMOUNT_LIMIT, MP_PS_AMOUNT_LIMIT_SET, uPsAmountLimitMenuItem, 0);
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+	// ==> Copy feedback feature [MorphXT] - Stulle
+	/*
+	// Xman: IcEcRacKer Copy UL-feedback
+	m_SharedFilesMenu.EnableMenuItem(MP_ULFEEDBACK, (!bContainsShareableFiles && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
+	//Xman end
+	*/
+	m_SharedFilesMenu.EnableMenuItem(MP_COPYFEEDBACK, (!bContainsShareableFiles && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
+	m_SharedFilesMenu.EnableMenuItem(MP_COPYFEEDBACK_US, (!bContainsShareableFiles && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
+	// <== Copy feedback feature [MorphXT] - Stulle
+
 	m_SharedFilesMenu.EnableMenuItem(MP_FIND, GetItemCount() > 0 ? MF_ENABLED : MF_GRAYED);
+
+	//Xman Mass Rename (Morph)
+	m_SharedFilesMenu.EnableMenuItem(MP_MASSRENAME, (!bContainsShareableFiles && iSelectedItems > 0) ? MF_ENABLED : MF_GRAYED);
+	//Xman end
 
 	m_CollectionsMenu.EnableMenuItem(MP_MODIFYCOLLECTION, (!bContainsShareableFiles && pSingleSelFile != NULL && ((CKnownFile*)pSingleSelFile)->m_pCollection != NULL ) ? MF_ENABLED : MF_GRAYED);
 	m_CollectionsMenu.EnableMenuItem(MP_VIEWCOLLECTION, (!bContainsShareableFiles && pSingleSelFile != NULL && ((CKnownFile*)pSingleSelFile)->m_pCollection != NULL ) ? MF_ENABLED : MF_GRAYED);
@@ -934,7 +1578,12 @@ void CSharedFilesCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 
 	CTitleMenu WebMenu;
 	WebMenu.CreateMenu();
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	WebMenu.AddMenuTitle(NULL, true);
+	*/
+	WebMenu.AddMenuTitle(GetResString(IDS_WEBSERVICES), true, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	int iWebMenuEntries = theWebServices.GetFileMenuEntries(&WebMenu);
 	UINT flag2 = (iWebMenuEntries == 0 || iSelectedItems != 1) ? MF_GRAYED : MF_STRING;
 	m_SharedFilesMenu.AppendMenu(flag2 | MF_POPUP, (UINT_PTR)WebMenu.m_hMenu, GetResString(IDS_WEBSERVICES), _T("WEB"));
@@ -1206,13 +1855,19 @@ BOOL CSharedFilesCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 			case MP_PRIONORMAL:
 			case MP_PRIOHIGH:
 			case MP_PRIOVERYHIGH:
+			case MP_PRIOPOWER:  //Xman PowerRelease
 			case MP_PRIOAUTO:
 				{
-					for (POSITION pos = selectedList.GetHeadPosition(); pos != NULL; selectedList.GetNext(pos))
+					SetRedraw(FALSE); //Xman Code Improvement
+					POSITION pos = selectedList.GetHeadPosition();
+					while (pos != NULL)
 					{
 						if (!selectedList.GetAt(pos)->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+						{
+							selectedList.GetNext(pos); //zz_fly :: bug fix :: DolphinX
 							continue;
-						CKnownFile* file = (CKnownFile*)selectedList.GetAt(pos);
+						}
+						CKnownFile* file = (CKnownFile*)selectedList.GetNext(pos);
 						switch (wParam) {
 							case MP_PRIOVERYLOW:
 								file->SetAutoUpPriority(false);
@@ -1238,20 +1893,414 @@ BOOL CSharedFilesCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 								file->SetAutoUpPriority(false);
 								file->SetUpPriority(PR_VERYHIGH);
 								UpdateFile(file);
-								break;	
+								break;
+							//Xman PowerRelease
+							case MP_PRIOPOWER:
+								if(file->IsPartFile()) //only to be sure
+									break;
+								file->SetAutoUpPriority(false);
+								file->SetUpPriority(PR_POWER);
+								UpdateFile(file);
+								break;
+							//Xman end
 							case MP_PRIOAUTO:
 								file->SetAutoUpPriority(true);
+								//Xman advanced upload-priority
+								if (thePrefs.UseAdvancedAutoPtio())
+#ifdef _BETA
+									file->CalculateAndSetUploadPriority2(); 
+#else
+									file->CalculateAndSetUploadPriority(); 
+#endif
+								else
+								//Xman end
 								file->UpdateAutoUpPriority();
 								UpdateFile(file); 
 								break;
 						}
 					}
+					SetRedraw(TRUE); //Xman Code Improvement
+
 					break;
 				}
+			// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+			case MP_HIDEOS_DEFAULT:
+			case MP_HIDEOS_SET:
+			{
+				POSITION pos = selectedList.GetHeadPosition();
+				int newHideOS = -1;
+				if (wParam==MP_HIDEOS_SET)
+				{
+					InputBox inputbox;
+					CString title=GetResString(IDS_HIDEOS);
+					CString currHideOS;
+					if (pKnownFile)
+						currHideOS.Format(_T("%i"), (pKnownFile->GetHideOS()>=0)?pKnownFile->GetHideOS():thePrefs.GetHideOvershares());
+					else
+						currHideOS = _T("0");
+					inputbox.SetLabels(GetResString(IDS_HIDEOS), GetResString(IDS_HIDEOVERSHARES), currHideOS);
+					inputbox.SetNumber(true);
+					int result = inputbox.DoModal();
+					if (result == IDCANCEL || (newHideOS = inputbox.GetInputInt()) < 0)
+						break;
+				}
+				SetRedraw(FALSE);
+				while (pos != NULL)
+				{
+					CShareableFile* file = selectedList.GetNext(pos);
+					if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+						continue;
+					if  (newHideOS == ((CKnownFile*)file)->GetHideOS())
+						continue;
+					((CKnownFile*)file)->SetHideOS(newHideOS);
+					UpdateFile(file);
+				}
+				SetRedraw(TRUE);
+				break;
+			}
+			// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+			// ==> PowerShare [ZZ/MorphXT] - Stulle
+			case MP_POWERSHARE_ON:
+			case MP_POWERSHARE_OFF:
+			case MP_POWERSHARE_DEFAULT:
+			case MP_POWERSHARE_AUTO:
+			case MP_POWERSHARE_LIMITED:
+			{
+				SetRedraw(FALSE);
+				POSITION pos = selectedList.GetHeadPosition();
+				while (pos != NULL)
+				{
+					CShareableFile* file = selectedList.GetNext(pos);
+					if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+						continue;
+					switch (wParam) {
+						case MP_POWERSHARE_DEFAULT:
+							((CKnownFile*)file)->SetPowerShared(-1);
+							break;
+						case MP_POWERSHARE_ON:
+							((CKnownFile*)file)->SetPowerShared(1);
+							break;
+						case MP_POWERSHARE_OFF:
+							((CKnownFile*)file)->SetPowerShared(0);
+							break;
+						case MP_POWERSHARE_AUTO:
+							((CKnownFile*)file)->SetPowerShared(2);
+							break;
+						case MP_POWERSHARE_LIMITED:
+							((CKnownFile*)file)->SetPowerShared(3);
+							break;
+					}
+					UpdateFile(file);
+				}
+				SetRedraw(TRUE);
+				theApp.uploadqueue->ReSortUploadSlots(true); // Mephisto Upload - Mephisto
+				break;
+			}
+			case MP_POWERSHARE_LIMIT:
+			case MP_POWERSHARE_LIMIT_SET:
+			{
+				POSITION pos = selectedList.GetHeadPosition();
+				int newPowerShareLimit = -1;
+				if (wParam==MP_POWERSHARE_LIMIT_SET)
+				{
+					InputBox inputbox;
+					CString title=GetResString(IDS_POWERSHARE);
+					CString currPowerShareLimit;
+					if (pKnownFile)
+						currPowerShareLimit.Format(_T("%i"), (pKnownFile->GetPowerShareLimit()>=0)?pKnownFile->GetPowerShareLimit():thePrefs.GetPowerShareLimit());
+					else
+						currPowerShareLimit = _T("0");
+					inputbox.SetLabels(GetResString(IDS_POWERSHARE), GetResString(IDS_POWERSHARE_LIMIT), currPowerShareLimit);
+					inputbox.SetNumber(true);
+					int result = inputbox.DoModal();
+					if (result == IDCANCEL || (newPowerShareLimit = inputbox.GetInputInt()) < 0)
+						break;
+				}
+				SetRedraw(FALSE);
+				while (pos != NULL)
+				{
+					CShareableFile* file = selectedList.GetNext(pos);
+					if  (newPowerShareLimit == ((CKnownFile*)file)->GetPowerShareLimit())
+						break;
+					((CKnownFile*)file)->SetPowerShareLimit(newPowerShareLimit);
+					if (((CKnownFile*)file)->IsPartFile())
+						((CPartFile*)file)->UpdatePartsInfo();
+					else
+						((CKnownFile*)file)->UpdatePartsInfo();
+					UpdateFile(file);
+				}
+				SetRedraw(TRUE);
+				break;
+			}
+			// <== PowerShare [ZZ/MorphXT] - Stulle
+			// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+			case MP_PS_AMOUNT_LIMIT:
+			case MP_PS_AMOUNT_LIMIT_SET:
+			{
+				POSITION pos = selectedList.GetHeadPosition();
+				int newPsAmountLimit = -1;
+				if (wParam==MP_PS_AMOUNT_LIMIT_SET)
+				{
+					InputBox inputbox;
+					CString title=GetResString(IDS_POWERSHARE);
+					CString currPsAmountLimit;
+					if (pKnownFile)
+						currPsAmountLimit.Format(_T("%i"), ((pKnownFile->GetPsAmountLimit()>=0.0f)?pKnownFile->GetPsAmountLimit():thePrefs.GetPsAmountLimit()));
+					else
+						currPsAmountLimit = _T("0");
+					inputbox.SetLabels(GetResString(IDS_POWERSHARE), GetResString(IDS_PS_AMOUNT_LIMIT_LABEL), currPsAmountLimit);
+					inputbox.SetNumber(true);
+					int result = inputbox.DoModal();
+					if (result == IDCANCEL || (newPsAmountLimit = inputbox.GetInputInt()) < 0)
+						break;
+					if (newPsAmountLimit > MAX_PS_AMOUNT_LIMIT)
+					{
+						AfxMessageBox(GetResString(IDS_PS_AMOUNT_LIMIT_WRONG),MB_OK | MB_ICONINFORMATION,0);
+						break;
+					}
+				}
+				SetRedraw(FALSE);
+				while (pos != NULL)
+				{
+					CShareableFile* file = selectedList.GetNext(pos);
+					if  (newPsAmountLimit == ((CKnownFile*)file)->GetPsAmountLimit())
+						break;
+					((CKnownFile*)file)->SetPsAmountLimit(newPsAmountLimit);
+					if (((CKnownFile*)file)->IsPartFile())
+						((CPartFile*)file)->UpdatePartsInfo();
+					else
+						((CKnownFile*)file)->UpdatePartsInfo();
+					UpdateFile(file);
+				}
+				SetRedraw(TRUE);
+				break;
+			}
+			// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+			// ==> Spread bars [Slugfiller/MorphXT] - Stulle
+			case MP_SPREADBAR_RESET:
+			{
+				SetRedraw(FALSE);
+				POSITION pos = selectedList.GetHeadPosition();
+				while (pos != NULL)
+				{
+					CShareableFile* file = selectedList.GetNext(pos);
+					((CKnownFile*)file)->statistic.ResetSpreadBar();
+				}
+				SetRedraw(TRUE);
+				break;
+			}
+			// <== Spread bars [Slugfiller/MorphXT] - Stulle
+			// ==> Copy feedback feature [MorphXT] - Stulle
+			/*
+			// Xman: idea: IcEcRacKer Copy UL-feedback
+			case MP_ULFEEDBACK: 
+				{ 
+					CString feed; 
+
+					bool morefiles = selectedList.GetCount() > 1;
+					uint64 sumTransferred=0;
+					uint64 sumAllTimeTransferred=0;
+
+					if(!selectedList.IsEmpty())
+					{
+						feed.AppendFormat(_T("%s: %s \r\n"), GetResString(IDS_SF_STATISTICS),thePrefs.GetUserNick()); 
+						feed.AppendFormat(_T("Mod: %s%s[%s] \r\n"),_T("eMule"), theApp.m_strCurVersionLong, MOD_VERSION);  
+					}
+
+					while (!selectedList.IsEmpty())
+					{
+						CShareableFile* file = selectedList.RemoveHead();
+						if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+							continue;
+						sumTransferred += ((CKnownFile*)file)->statistic.GetTransferred();
+						sumAllTimeTransferred += ((CKnownFile*)file)->statistic.GetAllTimeTransferred();
+
+						feed.AppendFormat(_T("%s: %s \r\n"),GetResString(IDS_DL_FILENAME),((CKnownFile*)file)->GetFileName()); 
+						feed.AppendFormat(_T("%s: %s \r\n"),GetResString(IDS_TYPE),((CKnownFile*)file)->GetFileType()); 
+						feed.AppendFormat(_T("%s: %s\r\n"),GetResString(IDS_DL_SIZE), CastItoXBytes(((CKnownFile*)file)->GetFileSize(), false, false)); 
+						CPartFile* pfile = (CPartFile*)file; 
+						if(pfile && pfile->IsPartFile()) 
+							feed.AppendFormat(_T("%s %.1f%%\r\n"), GetResString(IDS_FD_COMPSIZE), pfile->GetPercentCompleted()); 
+						else 
+							feed.AppendFormat(_T("%s 100%%\r\n"), GetResString(IDS_FD_COMPSIZE)); 
+						feed.AppendFormat(_T("%s: %s (%s) \r\n"),GetResString(IDS_SF_TRANSFERRED), CastItoXBytes(((CKnownFile*)file)->statistic.GetTransferred(), false, false), CastItoXBytes(((CKnownFile*)file)->statistic.GetAllTimeTransferred(), false, false));   
+						feed.AppendFormat(_T("%s: %u (%u)\r\n"),GetResString(IDS_COMPLSOURCES),((CKnownFile*)file)->m_nCompleteSourcesCountLo, ((CKnownFile*)file)->m_nVirtualCompleteSourcesCount); 
+						feed.AppendFormat(_T("%s: %u \r\n"),GetResString(IDS_ONQUEUE),(((CKnownFile*)file)->GetOnUploadqueue()));  //Xman see OnUploadqueue
+						feed.AppendFormat(_T("%s: %u (%u) \r\n\r\n"),GetResString(IDS_SF_ACCEPTS),((CKnownFile*)file)->statistic.GetAccepts(),(((CKnownFile*)file)->statistic.GetAllTimeAccepts())); 
+					}
+					if(morefiles)
+						feed.AppendFormat(_T("sum: %s: %s (%s) \r\n\r\n"),GetResString(IDS_SF_TRANSFERRED), CastItoXBytes(sumTransferred, false, false), CastItoXBytes(sumAllTimeTransferred, false, false));   
+
+					theApp.CopyTextToClipboard(feed); 
+					break; 
+				} 
+			//Xman end
+			*/
+ 			case MP_COPYFEEDBACK:
+			case MP_COPYFEEDBACK_US:
+			{
+				CString feed;
+				uint64 uTransferredSum = 0;
+				uint64 uTransferredAllSum = 0;
+				int iCount = 0;
+				POSITION pos = selectedList.GetHeadPosition();
+
+				if(wParam == MP_COPYFEEDBACK_US)
+				{
+					// ==> Feedback personalization [Stulle] - Stulle
+					/*
+					feed.AppendFormat(_T("Feedback from %s on [%s]\r\n"),thePrefs.GetUserNick(),theApp.m_strModLongVersion);
+					*/
+					CString tmp;
+					tmp.Format(_T("Feedback from %s on [%s]"),GetColoredText(thePrefs.GetUserNick(),style_f_names),GetColoredText(theApp.m_strModLongVersion,style_f_names));
+					feed.Append(GetColoredText(tmp,style_f_label));
+					feed.Append(_T("\r\n"));
+					// <== Feedback personalization [Stulle] - Stulle
+				}
+				else
+				{
+					// ==> Feedback personalization [Stulle] - Stulle
+					/*
+					feed.AppendFormat(GetResString(IDS_FEEDBACK_FROM),thePrefs.GetUserNick(), theApp.m_strModLongVersion);
+					feed.Append(_T("\r\n"));
+					*/
+					CString tmp;
+					tmp.Format(GetResString(IDS_FEEDBACK_FROM),GetColoredText(thePrefs.GetUserNick(),style_f_names),GetColoredText(theApp.m_strModLongVersion,style_f_names));
+					feed.Append(GetColoredText(tmp,style_f_label));
+					feed.Append(_T("\r\n"));
+					// <== Feedback personalization [Stulle] - Stulle
+				}
+
+				while (pos != NULL)
+				{
+					CShareableFile* file = selectedList.GetNext(pos);
+					if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+						continue;
+
+					feed.Append(((CKnownFile*)file)->GetFeedback(wParam == MP_COPYFEEDBACK_US));
+					if(pos != NULL) // Feedback personalization [Stulle] - Stulle
+						feed.Append(_T("\r\n"));
+
+					uTransferredSum += ((CKnownFile*)file)->statistic.GetTransferred();
+					uTransferredAllSum += ((CKnownFile*)file)->statistic.GetAllTimeTransferred();
+					iCount++;
+				}
+
+				if(iCount>1)
+				{
+					feed.Append(_T("\r\n"));
+					if(wParam == MP_COPYFEEDBACK_US)
+					{
+						// ==> Feedback personalization [Stulle] - Stulle
+						/*
+						feed.AppendFormat(_T("Transferred (all files): %s (%s)\r\n"),CastItoXBytes(uTransferredSum,false,false,3,true),CastItoXBytes(uTransferredAllSum,false,false,3,true));
+						*/
+						feed.AppendFormat(_T("Transferred (all files): %s (%s)"),GetColoredText(CastItoXBytes(uTransferredSum,false,false,3,true),style_f_transferred),GetColoredText(CastItoXBytes(uTransferredAllSum,false,false,3,true),style_f_transferred));
+						// <== Feedback personalization [Stulle] - Stulle
+					}
+					else
+					{
+						// ==> Feedback personalization [Stulle] - Stulle
+						/*
+						feed.AppendFormat(_T("%s: %s (%s)\r\n"),GetResString(IDS_FEEDBACK_ALL_TRANSFERRED),CastItoXBytes(uTransferredSum,false,false,3),CastItoXBytes(uTransferredAllSum,false,false,3));
+						*/
+						feed.AppendFormat(_T("%s: %s (%s)"),GetResString(IDS_FEEDBACK_ALL_TRANSFERRED),GetColoredText(CastItoXBytes(uTransferredSum,false,false,3,true),style_f_transferred),GetColoredText(CastItoXBytes(uTransferredAllSum,false,false,3,true),style_f_transferred));
+						// <== Feedback personalization [Stulle] - Stulle
+					}
+				}
+				feed.Append(GetColoredText(_T(""),-style_f_label)); // Feedback personalization [Stulle] - Stulle
+				feed.Append(_T("\r\n"));
+				//Todo: copy all the comments too
+				theApp.CopyTextToClipboard(feed);
+				break;
+			}
+			// <== Copy feedback feature [MorphXT] - Stulle
+
+			//Xman Mass Rename (Morph)
+			case MP_MASSRENAME: 
+			{
+				CMassRenameDialog MRDialog;
+				// Add the files to the dialog
+				POSITION pos = selectedList.GetHeadPosition();
+				while (pos != NULL) {
+					CShareableFile* file = selectedList.GetNext(pos);
+					if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+						continue;
+					MRDialog.m_FileList.AddTail((CKnownFile*)file);
+				}
+				int result = MRDialog.DoModal ();
+				if (result == IDOK) {
+					// The user has successfully entered new filenames. Now we have
+					// to rename all the files...
+					POSITION pos = selectedList.GetHeadPosition();
+					int i=0;
+					while (pos != NULL) {
+						CString newname = MRDialog.m_NewFilenames.at (i);
+						CString newpath = MRDialog.m_NewFilePaths.at (i);
+						CShareableFile* file = selectedList.GetNext(pos);
+						if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+							continue;
+						// .part files could be renamed by simply changing the filename
+						// in the CKnownFile object.
+							if ((!((CKnownFile*)file)->IsPartFile()) && (_trename(((CKnownFile*)file)->GetFilePath(), newpath) != 0)){
+							// Use the "Format"-Syntax of AddLogLine here instead of
+							// CString.Format+AddLogLine, because if "%"-characters are
+							// in the string they would be misinterpreted as control sequences!
+							AddLogLine(false,_T("Failed to rename '%s' to '%s', Error: %hs"), file->GetFilePath(), newpath, _tcserror(errno));
+						} else {
+								//CString strres; // obsolete
+								if (!((CKnownFile*)file)->IsPartFile()) {
+								// Use the "Format"-Syntax of AddLogLine here instead of
+								// CString.Format+AddLogLine, because if "%"-characters are
+								// in the string they would be misinterpreted as control sequences!
+									AddLogLine(false,_T("Successfully renamed '%s' to '%s'"), ((CKnownFile*)file)->GetFilePath(), newpath);
+									((CKnownFile*)file)->SetFileName(newname);
+								if (file->IsKindOf(RUNTIME_CLASS(CPartFile)))
+									((CPartFile*) file)->SetFullName(newpath);
+							} else {
+								// Use the "Format"-Syntax of AddLogLine here instead of
+								// CString.Format+AddLogLine, because if "%"-characters are
+								// in the string they would be misinterpreted as control sequences!
+								AddLogLine(false,_T("Successfully renamed .part file '%s' to '%s'"), ((CKnownFile*)file)->GetFileName(), newname);
+								((CPartFile*) file)->SetFollowTheMajority(false); // Follow The Majority [AndCycle/Stulle] - Stulle
+								((CKnownFile*)file)->SetFileName(newname, true); 
+								((CPartFile*) file)->UpdateDisplayedInfo();
+								((CPartFile*) file)->SavePartFile(); 
+							}
+							((CKnownFile*)file)->SetFilePath(newpath);
+							UpdateFile(file);
+						}
+
+							// Next item (pos is iterated when retriving the current file)
+						i++;
+					}
+				}
+				break;
+			}
+			//Xman end
 			default:
 				if (file && wParam>=MP_WEBURL && wParam<=MP_WEBURL+256){
 					theWebServices.RunURL(file, wParam);
 				}
+				// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+				else
+				{
+					POSITION pos = selectedList.GetHeadPosition();
+					while (pos != NULL)
+					{
+						CShareableFile* file = selectedList.GetNext(pos);
+						if (!file->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+							continue;
+						if (wParam>=MP_SELECTIVE_CHUNK && wParam<=MP_SELECTIVE_CHUNK_1){
+							((CKnownFile*)file)->SetSelectiveChunk(wParam==MP_SELECTIVE_CHUNK?-1:wParam-MP_SELECTIVE_CHUNK_0);
+							UpdateFile(file);
+						}else if (wParam>=MP_SHAREONLYTHENEED && wParam<=MP_SHAREONLYTHENEED_1){
+							((CKnownFile*)file)->SetShareOnlyTheNeed(wParam==MP_SHAREONLYTHENEED?-1:wParam-MP_SHAREONLYTHENEED_0);
+							UpdateFile(file);
+						}
+					}
+				}
+				// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
 				break;
 		}
 	}
@@ -1307,8 +2356,15 @@ void CSharedFilesCtrl::OnLvnColumnClick(NMHDR *pNMHDR, LRESULT *pResult)
 		SetSortArrow(pNMListView->iSubItem, sortAscending);
 	else
 		SetSortArrow(pNMListView->iSubItem, sortAscending ? arrowDoubleUp : arrowDoubleDown);
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	/*
 	UpdateSortHistory(pNMListView->iSubItem + (sortAscending ? 0 : 20) + adder, 20);
 	SortItems(SortProc, pNMListView->iSubItem + (sortAscending ? 0 : 20) + adder);
+	*/
+	UpdateSortHistory(pNMListView->iSubItem + (sortAscending ? 0 : 30) + adder, 30);
+	SortItems(SortProc, pNMListView->iSubItem + (sortAscending ? 0 : 30) + adder);
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
 
 	*pResult = 0;
 }
@@ -1320,6 +2376,8 @@ int CSharedFilesCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort
 
 	bool bSortAscending;
 	int iColumn;
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	/*
 	if (lParamSort >= 100) {
 		bSortAscending = lParamSort < 120;
 		iColumn = bSortAscending ? lParamSort : lParamSort - 20;
@@ -1328,6 +2386,19 @@ int CSharedFilesCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort
 		bSortAscending = lParamSort < 20;
 		iColumn = bSortAscending ? lParamSort : lParamSort - 20;
 	}
+	*/
+	if (lParamSort >= 100) {
+		bSortAscending = lParamSort < 130;
+		iColumn = bSortAscending ? lParamSort : lParamSort - 30;
+	}
+	else {
+		bSortAscending = lParamSort < 30;
+		iColumn = bSortAscending ? lParamSort : lParamSort - 30;
+	}
+
+	// all indexes shifted by 10!!!
+
+	// <== PowerShare [ZZ/MorphXT] - Stulle
 	
 	int iResult = 0;
 	bool bExtColumn = false;
@@ -1376,6 +2447,8 @@ int CSharedFilesCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort
 			switch (iColumn)
 			{
 				case 3:{//prio
+					// ==> PowerShare [ZZ/MorphXT] - Stulle
+					/*
 					uint8 p1 = kitem1->GetUpPriority() + 1;
 					if (p1 == 5)
 						p1 = 0;
@@ -1383,6 +2456,19 @@ int CSharedFilesCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort
 					if (p2 == 5)
 						p2 = 0;
 					iResult = p1 - p2;
+					*/
+					if (!kitem1->GetPowerShared() && kitem2->GetPowerShared())
+						iResult=-1;			
+					else if (kitem1->GetPowerShared() && !kitem2->GetPowerShared())
+						iResult=1;
+					else			
+						if(kitem1->GetUpPriority() == PR_VERYLOW && kitem2->GetUpPriority() != PR_VERYLOW)
+							iResult=-1;
+						else if (kitem1->GetUpPriority() != PR_VERYLOW && kitem2->GetUpPriority() == PR_VERYLOW)
+							iResult=1;
+						else
+							iResult=kitem1->GetUpPriority()-kitem2->GetUpPriority();
+					// <== PowerShare [ZZ/MorphXT] - Stulle
 					break;
 				}
 
@@ -1434,6 +2520,86 @@ int CSharedFilesCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort
 					iResult = CompareOptLocaleStringNoCaseUndefinedAtBottom(GetCodecDisplayName(kitem1->GetStrTagValue(FT_MEDIA_CODEC)), GetCodecDisplayName(kitem2->GetStrTagValue(FT_MEDIA_CODEC)), bSortAscending);
 					break;
 
+				//Xman see OnUploadqueue
+				case 18:
+					iResult= kitem1->GetOnUploadqueue() -kitem2->GetOnUploadqueue();
+					break;
+				//Xman end
+
+				//Xman advanced upload-priority
+				//sort by the second value-> faster
+				case 19:
+					{
+						float it1value= kitem1->statistic.GetAllTimeTransferred()/(float)kitem1->GetFileSize()*1000; //sort one number after ,
+						float it2value= kitem2->statistic.GetAllTimeTransferred()/(float)kitem2->GetFileSize()*1000;
+						iResult=(int)(it1value-it2value);
+						break;
+					}
+				//Xman end
+
+				// ==> Spread bars [Slugfiller/MorphXT] - Stulle
+				case 20: //spread asc
+				case 21:
+					iResult=CompareFloat(kitem1->statistic.GetSpreadSortValue(),kitem2->statistic.GetSpreadSortValue());
+					break;
+				case 22: // VQB:  Simple UL asc
+					{
+						float x1 = ((float)kitem1->statistic.GetAllTimeTransferred())/((float)kitem1->GetFileSize());
+						float x2 = ((float)kitem2->statistic.GetAllTimeTransferred())/((float)kitem2->GetFileSize());
+						iResult=CompareFloat(x1,x2);
+					break;
+					}
+				case 23: // SF:  Full Upload Count asc
+					iResult=CompareFloat(kitem1->statistic.GetFullSpreadCount(),kitem2->statistic.GetFullSpreadCount());
+					break;
+				// <== Spread bars [Slugfiller/MorphXT] - Stulle
+
+				// ==> push rare file - Stulle
+				case 24:
+					iResult=CompareFloat(kitem1->GetFileRatio(),kitem2->GetFileRatio());
+					break;
+				// <== push rare file - Stulle
+
+				// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+				case 25:
+					if (kitem1->GetHideOS() == kitem2->GetHideOS())
+						iResult=kitem1->GetSelectiveChunk() - kitem2->GetSelectiveChunk();
+					else
+						iResult=kitem1->GetHideOS() - kitem2->GetHideOS();
+					break;
+				case 26:
+					iResult=kitem1->GetShareOnlyTheNeed() - kitem2->GetShareOnlyTheNeed();
+					break;
+				// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+				// ==> PowerShare [ZZ/MorphXT] - Stulle
+				case 27:
+					if (!kitem1->GetPowerShared() && kitem2->GetPowerShared())
+						iResult=-1;
+					else if (kitem1->GetPowerShared() && !kitem2->GetPowerShared())
+						iResult=1;
+					else
+						if (kitem1->GetPowerSharedMode() != kitem2->GetPowerSharedMode())
+							iResult=kitem1->GetPowerSharedMode() - kitem2->GetPowerSharedMode();
+						else
+							if (!kitem1->GetPowerShareAuthorized() && kitem2->GetPowerShareAuthorized())
+								iResult=-1;
+							else if (kitem1->GetPowerShareAuthorized() && !kitem2->GetPowerShareAuthorized())
+								iResult=1;
+							else
+								if (!kitem1->GetPowerShareAuto() && kitem2->GetPowerShareAuto())
+									iResult=-1;
+								else if (kitem1->GetPowerShareAuto() && !kitem2->GetPowerShareAuto())
+									iResult=1;
+								else
+									if (!kitem1->GetPowerShareLimited() && kitem2->GetPowerShareLimited())
+										iResult=-1;
+									else if (kitem1->GetPowerShareLimited() && !kitem2->GetPowerShareLimited())
+										iResult=1;
+									else
+										iResult=0;
+					break;
+				// <== PowerShare [ZZ/MorphXT] - Stulle
 
 				case 105: //all requests
 					iResult = CompareUnsigned(kitem1->statistic.GetAllTimeRequests(), kitem2->statistic.GetAllTimeRequests());
@@ -1461,11 +2627,14 @@ int CSharedFilesCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort
 	if (!bSortAscending)
 		iResult = -iResult;
 
+	// SLUGFILLER: multiSort remove - handled in parent class
+	/*
 	//call secondary sortorder, if this one results in equal
 	int dwNextSort;
 	if (iResult == 0 && (dwNextSort = theApp.emuledlg->sharedfileswnd->sharedfilesctrl.GetNextSortOrder(lParamSort)) != -1)
 		iResult = SortProc(lParam1, lParam2, dwNextSort);
-
+	*/
+	// SLUGFILLER End
 	return iResult;
 }
 
@@ -1505,21 +2674,78 @@ void CSharedFilesCtrl::OnNmDblClk(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 
 void CSharedFilesCtrl::CreateMenues()
 {
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	if (m_PowershareMenu) VERIFY( m_PowershareMenu.DestroyMenu() );
+	if (m_PowerShareLimitMenu) VERIFY( m_PowerShareLimitMenu.DestroyMenu() );
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	if (m_PsAmountLimitMenu) VERIFY( m_PsAmountLimitMenu.DestroyMenu() );
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	if (m_HideOSMenu) VERIFY( m_HideOSMenu.DestroyMenu() );
+	if (m_SelectiveChunkMenu) VERIFY( m_SelectiveChunkMenu.DestroyMenu() );
+	if (m_ShareOnlyTheNeedMenu) VERIFY( m_ShareOnlyTheNeedMenu.DestroyMenu() );
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
 	if (m_PrioMenu) VERIFY( m_PrioMenu.DestroyMenu() );
 	if (m_CollectionsMenu) VERIFY( m_CollectionsMenu.DestroyMenu() );
 	if (m_SharedFilesMenu) VERIFY( m_SharedFilesMenu.DestroyMenu() );
 
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	m_PowershareMenu.CreateMenu();
+	m_PowershareMenu.AddMenuTitle(GetResString(IDS_POWERSHARE), true, false); // XP Style Menu [Xanatos] - Stulle
+	m_PowershareMenu.AppendMenu(MF_STRING,MP_POWERSHARE_DEFAULT,GetResString(IDS_DEFAULT));
+	m_PowershareMenu.AppendMenu(MF_STRING,MP_POWERSHARE_OFF,GetResString(IDS_POWERSHARE_DISABLED));
+	m_PowershareMenu.AppendMenu(MF_STRING,MP_POWERSHARE_ON,GetResString(IDS_POWERSHARE_ACTIVATED));
+	m_PowershareMenu.AppendMenu(MF_STRING,MP_POWERSHARE_AUTO,GetResString(IDS_POWERSHARE_AUTO));
+	m_PowershareMenu.AppendMenu(MF_STRING,MP_POWERSHARE_LIMITED,GetResString(IDS_POWERSHARE_LIMITED)); 
+	m_PowerShareLimitMenu.CreateMenu();
+	m_PowerShareLimitMenu.AddMenuTitle(GetResString(IDS_POWERSHARE_LIMITED), true, false); // XP Style Menu [Xanatos] - Stulle
+	m_PowerShareLimitMenu.AppendMenu(MF_STRING,MP_POWERSHARE_LIMIT,	GetResString(IDS_DEFAULT));
+	m_PowerShareLimitMenu.AppendMenu(MF_STRING,MP_POWERSHARE_LIMIT_SET,	GetResString(IDS_DISABLED));
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	m_PsAmountLimitMenu.CreateMenu();
+	m_PsAmountLimitMenu.AddMenuTitle(GetResString(IDS_PS_LIMITED_AMNT), true, false); // XP Style Menu [Xanatos] - Stulle
+	m_PsAmountLimitMenu.AppendMenu(MF_STRING,MP_PS_AMOUNT_LIMIT,	GetResString(IDS_DEFAULT));
+	m_PsAmountLimitMenu.AppendMenu(MF_STRING,MP_PS_AMOUNT_LIMIT_SET,	GetResString(IDS_DISABLED));
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	m_HideOSMenu.CreateMenu();
+	m_HideOSMenu.AddMenuTitle(GetResString(IDS_HIDEOS), true, false); // XP Style Menu [Xanatos] - Stulle
+	m_HideOSMenu.AppendMenu(MF_STRING,MP_HIDEOS_DEFAULT, GetResString(IDS_DEFAULT));
+	m_HideOSMenu.AppendMenu(MF_STRING,MP_HIDEOS_SET, GetResString(IDS_DISABLED));
+	m_SelectiveChunkMenu.CreateMenu();
+	m_SelectiveChunkMenu.AddMenuTitle(GetResString(IDS_SELECTIVESHARE), true, false); // XP Style Menu [Xanatos] - Stulle
+	m_SelectiveChunkMenu.AppendMenu(MF_STRING,MP_SELECTIVE_CHUNK,	GetResString(IDS_DEFAULT));
+	m_SelectiveChunkMenu.AppendMenu(MF_STRING,MP_SELECTIVE_CHUNK_0,	GetResString(IDS_DISABLED));
+	m_SelectiveChunkMenu.AppendMenu(MF_STRING,MP_SELECTIVE_CHUNK_1,	GetResString(IDS_ENABLED));
+
+	m_ShareOnlyTheNeedMenu.CreateMenu();
+	m_ShareOnlyTheNeedMenu.AddMenuTitle(GetResString(IDS_SHAREONLYTHENEED), true, false); // XP Style Menu [Xanatos] - Stulle
+	m_ShareOnlyTheNeedMenu.AppendMenu(MF_STRING,MP_SHAREONLYTHENEED,	GetResString(IDS_DEFAULT));
+	m_ShareOnlyTheNeedMenu.AppendMenu(MF_STRING,MP_SHAREONLYTHENEED_0,	GetResString(IDS_DISABLED));
+	m_ShareOnlyTheNeedMenu.AppendMenu(MF_STRING,MP_SHAREONLYTHENEED_1,	GetResString(IDS_ENABLED));
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
 
 	m_PrioMenu.CreateMenu();
+	m_PrioMenu.AddMenuTitle(GetResString(IDS_PRIORITY), true, false); // XP Style Menu [Xanatos] - Stulle
 	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIOVERYLOW,GetResString(IDS_PRIOVERYLOW));
 	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIOLOW,GetResString(IDS_PRIOLOW));
 	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIONORMAL,GetResString(IDS_PRIONORMAL));
 	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIOHIGH, GetResString(IDS_PRIOHIGH));
 	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIOVERYHIGH, GetResString(IDS_PRIORELEASE));
+	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIOPOWER, GetResString(IDS_POWERRELEASE)); //Xman PowerRelease
 	m_PrioMenu.AppendMenu(MF_STRING,MP_PRIOAUTO, GetResString(IDS_PRIOAUTO));//UAP
 
 	m_CollectionsMenu.CreateMenu();
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	m_CollectionsMenu.AddMenuTitle(NULL, true);
+	*/
+	m_CollectionsMenu.AddMenuTitle(GetResString(IDS_SEARCH_EMULECOLLECTION), true, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	m_CollectionsMenu.AppendMenu(MF_STRING,MP_CREATECOLLECTION, GetResString(IDS_CREATECOLLECTION), _T("COLLECTION_ADD"));
 	m_CollectionsMenu.AppendMenu(MF_STRING,MP_MODIFYCOLLECTION, GetResString(IDS_MODIFYCOLLECTION), _T("COLLECTION_EDIT"));
 	m_CollectionsMenu.AppendMenu(MF_STRING,MP_VIEWCOLLECTION, GetResString(IDS_VIEWCOLLECTION), _T("COLLECTION_VIEW"));
@@ -1551,6 +2777,44 @@ void CSharedFilesCtrl::CreateMenues()
 		m_SharedFilesMenu.AppendMenu(MF_STRING,MP_SHOWED2KLINK, GetResString(IDS_DL_SHOWED2KLINK), _T("ED2KLINK") );
 	m_SharedFilesMenu.AppendMenu(MF_STRING,MP_FIND, GetResString(IDS_FIND), _T("Search"));
 	m_SharedFilesMenu.AppendMenu(MF_STRING|MF_SEPARATOR);
+
+	m_SharedFilesMenu.AppendHeading(GetResString(IDS_RELEASER));
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	m_SharedFilesMenu.AppendMenu(MF_STRING|MF_POPUP,(UINT_PTR)m_PowershareMenu.m_hMenu, GetResString(IDS_POWERSHARE), _T("FILEPOWERSHARE"));
+	m_PowershareMenu.AppendMenu(MF_STRING|MF_SEPARATOR);
+	m_PowershareMenu.AppendMenu(MF_STRING|MF_POPUP,(UINT_PTR)m_PowerShareLimitMenu.m_hMenu, GetResString(IDS_POWERSHARE_LIMIT));
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+    m_PowershareMenu.AppendMenu(MF_STRING|MF_POPUP,(UINT_PTR)m_PsAmountLimitMenu.m_hMenu, GetResString(IDS_PS_AMOUNT_LIMIT));
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	m_SharedFilesMenu.AppendMenu(MF_STRING|MF_POPUP,(UINT_PTR)m_HideOSMenu.m_hMenu, GetResString(IDS_HIDEOS), _T("FILEHIDEOS"));
+	m_HideOSMenu.AppendMenu(MF_STRING|MF_SEPARATOR);
+	m_HideOSMenu.AppendMenu(MF_STRING|MF_POPUP,(UINT_PTR)m_SelectiveChunkMenu.m_hMenu, GetResString(IDS_SELECTIVESHARE));
+
+	m_SharedFilesMenu.AppendMenu(MF_STRING|MF_POPUP,(UINT_PTR)m_ShareOnlyTheNeedMenu.m_hMenu, GetResString(IDS_SHAREONLYTHENEED), _T("FILESHAREONLYTHENEED"));
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	m_SharedFilesMenu.AppendMenu(MF_STRING,MP_SPREADBAR_RESET, GetResString(IDS_SPREAD_RESET), _T("RESETSPREADBAR")); // Spread bars [Slugfiller/MorphXT] - Stulle
+
+	// ==> Copy feedback feature [MorphXT] - Stulle
+	/*
+	// Xman: IcEcRacKer Copy UL-feedback
+	m_SharedFilesMenu.AppendMenu(MF_STRING,MP_ULFEEDBACK, _T("Copy UL-Feedback"), _T("FILECOMMENTS")); 
+	m_SharedFilesMenu.AppendMenu(MF_STRING|MF_SEPARATOR); 
+	//Xman end
+	*/
+	m_SharedFilesMenu.AppendMenu(MF_STRING,MP_COPYFEEDBACK, GetResString(IDS_COPYFEEDBACK), _T("COPY"));
+	m_SharedFilesMenu.AppendMenu(MF_STRING,MP_COPYFEEDBACK_US, GetResString(IDS_COPYFEEDBACK_US), _T("COPY"));
+	m_SharedFilesMenu.AppendMenu(MF_SEPARATOR);
+	// <== Copy feedback feature [MorphXT] - Stulle
+
+	//Xman Mass Rename (Morph)
+	if (thePrefs.IsExtControlsEnabled())
+	{
+		m_SharedFilesMenu.AppendMenu(MF_STRING,MP_MASSRENAME,GetResString(IDS_MR), _T("FILEMASSRENAME"));
+		m_SharedFilesMenu.AppendMenu(MF_STRING|MF_SEPARATOR); 
+	}
+	//Xman end
 
 #if defined(_DEBUG)
 	if (thePrefs.IsExtControlsEnabled()){
@@ -1799,7 +3063,12 @@ void CSharedFilesCtrl::AddShareableFiles(CString strFromDir)
 			}
 		}
 
+		// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+		/*
 		uint32 fdate = (UINT)tFoundFileTime.GetTime();
+		*/
+		time_t fdate = (time_t)tFoundFileTime.GetTime();
+		// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 		if (fdate == 0)
 			fdate = (UINT)-1;
 		if (fdate == -1){
@@ -1894,8 +3163,12 @@ void CSharedFilesCtrl::CheckBoxClicked(int iItem)
 	}
 	else
 	{
+		// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+		/*
 		if (!thePrefs.IsShareableDirectory(pFile->GetPath()))
 			return; // not allowed to share
+		*/
+		// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 		VERIFY( theApp.sharedfiles->AddSingleSharedFile(pFile->GetFilePath()) );
 		ShowFilesCount();
 		theApp.emuledlg->sharedfileswnd->ShowSelectedFilesDetails();
@@ -2024,7 +3297,11 @@ BOOL CSharedFilesCtrl::CShareDropTarget::OnDrop(CWnd* /*pWnd*/, COleDataObject* 
 						// just a quick pre check, complete check is done later in the share function itself
 						if (ff.IsDots() || ff.IsSystem() || ff.IsTemporary()
 							|| (!ff.IsDirectory() && (ff.GetLength()==0 || ff.GetLength()>MAX_EMULE_FILE_SIZE))
+							// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+							/*
 							|| (ff.IsDirectory() && !thePrefs.IsShareableDirectory(ff.GetFilePath() + _T('\\')))
+							*/
+							// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 							|| (ff.IsDirectory() && theApp.sharedfiles->ShouldBeShared(ff.GetFilePath()+ _T('\\'), _T(""), false))
 							|| (!ff.IsDirectory() && theApp.sharedfiles->ShouldBeShared(ff.GetFilePath(), ff.GetFilePath().Left(ff.GetFilePath().ReverseFind('\\') + 1), false)) )
 						{
@@ -2071,8 +3348,15 @@ BOOL CSharedFilesCtrl::CShareDropTarget::OnDrop(CWnd* /*pWnd*/, COleDataObject* 
 					VERIFY( theApp.sharedfiles->AddSingleSharedDirectory(liToAddDirs.GetNext(pos)) ); // should always succeed
 
 				bool bHaveFiles = false;
+				// ==> Automatic shared files updater [MoNKi] - Stulle
+				/*
 				while (!liToAddFiles.IsEmpty())
 					bHaveFiles |= theApp.sharedfiles->AddSingleSharedFile(liToAddFiles.RemoveHead()); // could fail, due to the dirs added above
+				*/
+				int iDoAsfuReset = 0;
+				while (!liToAddFiles.IsEmpty())
+					bHaveFiles |= theApp.sharedfiles->AddSingleSharedFile(liToAddFiles.RemoveHead(),false,iDoAsfuReset); // could fail, due to the dirs added above
+				// <== Automatic shared files updater [MoNKi] - Stulle
 
 				// GUI updates
 				if (!liToAddDirs.IsEmpty())
@@ -2100,6 +3384,13 @@ BOOL CSharedFilesCtrl::CShareDropTarget::OnDrop(CWnd* /*pWnd*/, COleDataObject* 
 					// otherwise select the All Shared Files category
 					theApp.emuledlg->sharedfileswnd->m_ctlSharedDirTree.ShowAllSharedFiles();
 				}
+				// ==> Automatic shared files updater [MoNKi] - Stulle
+				if(iDoAsfuReset == 1 || !liToAddDirs.IsEmpty()) // a dropped file caused reset or we added a dir
+				{
+					if(thePrefs.GetDirectoryWatcher() && (iDoAsfuReset == 0 || thePrefs.GetSingleSharedDirWatcher()))
+						theApp.ResetDirectoryWatcher();
+				}
+				// <== Automatic shared files updater [MoNKi] - Stulle
 			}
 			GlobalUnlock(hGlobal);
 		}

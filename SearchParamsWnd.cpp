@@ -56,6 +56,7 @@ BEGIN_MESSAGE_MAP(CSearchParamsWnd, CDialogBar)
 	ON_WM_SYSCOMMAND()
 	ON_WM_SETCURSOR()
 	ON_WM_HELPINFO()
+	ON_WM_CTLCOLOR() // Design Settings [eWombat/Stulle] - Max
 END_MESSAGE_MAP()
 
 
@@ -123,6 +124,7 @@ LRESULT CSearchParamsWnd::OnInitDialog(WPARAM /*wParam*/, LPARAM /*lParam*/)
 	m_szMRU = m_szFloat;
 
 	UpdateData(FALSE);
+	OnBackcolor(); // Design Settings [eWombat/Stulle] - Max
 	SetAllIcons();
 
 	GetDlgItem(IDC_MSTATIC3)->GetWindowRect(&m_rcNameLbl);
@@ -498,15 +500,15 @@ void CSearchParamsWnd::UpdateControls()
 		}
 	}
 
-	m_ctlOpts.SetItemData(orAvailability, (iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orExtension, (iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orCompleteSources, (iMethod==SearchTypeKademlia || iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orCodec, (iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orBitrate, (iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orLength, (iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orTitle, (iMethod==SearchTypeEd2kServer || iMethod==SearchTypeEd2kGlobal || iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orAlbum, (iMethod==SearchTypeEd2kServer || iMethod==SearchTypeEd2kGlobal || iMethod==SearchTypeContentDB) ? 1 : 0);
-	m_ctlOpts.SetItemData(orArtist, (iMethod==SearchTypeEd2kServer || iMethod==SearchTypeEd2kGlobal || iMethod==SearchTypeContentDB) ? 1 : 0);
+	m_ctlOpts.SetItemData(orAvailability, (iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orExtension, (iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orCompleteSources, (iMethod==SearchTypeKademlia || iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orCodec, (iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orBitrate, (iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orLength, (iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orTitle, (iMethod==SearchTypeEd2kServer || iMethod==SearchTypeEd2kGlobal || iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orAlbum, (iMethod==SearchTypeEd2kServer || iMethod==SearchTypeEd2kGlobal || iMethod==SearchTypeFileDonkey) ? 1 : 0);
+	m_ctlOpts.SetItemData(orArtist, (iMethod==SearchTypeEd2kServer || iMethod==SearchTypeEd2kGlobal || iMethod==SearchTypeFileDonkey) ? 1 : 0);
 }
 
 void CSearchParamsWnd::SetAllIcons()
@@ -558,7 +560,7 @@ void CSearchParamsWnd::InitMethodsCtrl()
 	VERIFY( m_ctlMethod.AddItem(GetResString(IDS_SERVER), 1) == SearchTypeEd2kServer );
 	VERIFY( m_ctlMethod.AddItem(GetResString(IDS_GLOBALSEARCH), 2) == SearchTypeEd2kGlobal );
 	VERIFY( m_ctlMethod.AddItem(GetResString(IDS_KADEMLIA) + _T(" ") + GetResString(IDS_NETWORK), 3) == SearchTypeKademlia );
-	VERIFY( m_ctlMethod.AddItem(_T("ContentDB (Web)"), 4) == SearchTypeContentDB );
+	VERIFY( m_ctlMethod.AddItem(_T("FileDonkey (Web)"), 4) == SearchTypeFileDonkey );
 	UpdateHorzExtent(m_ctlMethod, 16); // adjust dropped width to ensure all strings are fully visible
 	m_ctlMethod.SetCurSel(iMethod != CB_ERR ? iMethod : SearchTypeAutomatic);
 }
@@ -1161,3 +1163,41 @@ void CSearchParamsWnd::ProcessEd2kSearchLinkRequest(CString strSearchTerm)
 		OnBnClickedStart();
 	}
 }
+
+// ==> Design Settings [eWombat/Stulle] - Max
+void CSearchParamsWnd::OnBackcolor() 
+{
+	COLORREF crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_search);
+
+	if(crTempColor == CLR_DEFAULT)
+		crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+	m_brMyBrush.DeleteObject();
+
+	if(crTempColor != CLR_DEFAULT)
+		m_brMyBrush.CreateSolidBrush(crTempColor);
+	else
+		m_brMyBrush.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+}
+
+HBRUSH CSearchParamsWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
+	if (hbr)
+		return hbr;
+	hbr = __super::OnCtlColor(pDC, pWnd, nCtlColor);
+
+	switch(nCtlColor)
+	{
+	case CTLCOLOR_EDIT:
+		break;
+	default:
+		pDC->SetBkMode(TRANSPARENT);
+	case CTLCOLOR_DLG:
+		hbr = (HBRUSH) m_brMyBrush.GetSafeHandle();
+		break;
+	}
+
+	return hbr;
+}
+// <== Design Settings [eWombat/Stulle] - Max

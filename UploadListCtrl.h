@@ -41,6 +41,7 @@ public:
 protected:
 	CImageList m_ImageList;
 	CToolTipCtrlX *m_tooltip;
+	CImageList  m_overlayimages; // Mod Icons - Stulle
 
 	void SetAllIcons();
 	void GetItemDisplayText(const CUpDownClient *client, int iSubItem, LPTSTR pszText, int cchTextMax);

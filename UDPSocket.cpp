@@ -34,6 +34,10 @@
 #include "SearchDlg.h"
 #include "Log.h"
 #include "Sockets.h"
+#include "FirewallOpener.h" // Improved ICS-Firewall support [MoNKi] - Max
+
+//Xman
+#include "BandWidthControl.h" // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -112,6 +116,8 @@ CUDPSocket::~CUDPSocket()
 {
     theApp.uploadBandwidthThrottler->RemoveFromAllQueues(this); // ZZ:UploadBandWithThrottler (UDP)
 
+	//Xman Code Improvement
+	/*
 	POSITION pos = controlpacket_queue.GetHeadPosition();
 	while (pos) {
 		SServerUDPPacket* p = controlpacket_queue.GetNext(pos);
@@ -121,6 +127,17 @@ CUDPSocket::~CUDPSocket()
 	m_udpwnd.DestroyWindow();
 
 	pos = m_aDNSReqs.GetHeadPosition();
+	*/
+	while (!controlpacket_queue.IsEmpty())
+	{
+		SServerUDPPacket* p = controlpacket_queue.RemoveHead();
+		delete[] p->packet;
+		delete p;
+	}
+	m_udpwnd.DestroyWindow();
+
+	POSITION pos = m_aDNSReqs.GetHeadPosition();
+	//Xman end
 	while (pos)
 		delete m_aDNSReqs.GetNext(pos);
 }
@@ -136,6 +153,47 @@ bool CUDPSocket::Create()
 			LogError(LOG_STATUSBAR, _T("Error: Server UDP socket: Failed to create server UDP socket - %s"), GetErrorMessage(GetLastError()));
 			return false;
 		}
+		// ==> UPnP support [MoNKi] - leuk_he
+		/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+		//ACAT UPnP
+		if(thePrefs.m_bUseACATUPnPCurrent && thePrefs.GetUPnPNat()){
+			CString client;
+			UINT port;
+			MyUPnP::UPNPNAT_MAPPING mapping;
+
+			GetSockName(client, port);
+			mapping.internalPort = mapping.externalPort = (WORD)port;
+			mapping.protocol = MyUPnP::UNAT_UDP;
+			mapping.description = "Server UDP Port";
+			theApp.AddUPnPNatPort(&mapping, thePrefs.GetUPnPNatTryRandom());
+		}
+#endif //zz_fly :: dual upnp
+		*/
+		// Don't add UPnP port mapping if is a random port and we don't want
+		// to clear mappings on close
+		if(theApp.m_UPnP_IGDControlPoint->IsUpnpAcceptsPorts() &&
+			(!(thePrefs.GetServerUDPPort()==0xFFFF && !thePrefs.GetUPnPClearOnClose())))
+		{
+			CString client;
+			UINT port;
+			GetSockName(client, port);
+
+			// ==> Improved ICS-Firewall support [MoNKi] - Max
+			if(thePrefs.GetICFSupport() && thePrefs.GetICFSupportServerUDP()){
+				if (theApp.m_pFirewallOpener->OpenPort((uint16)port, NAT_PROTOCOL_UDP, EMULE_DEFAULTRULENAME_SERVERUDP, thePrefs.IsOpenPortsOnStartupEnabled() || thePrefs.GetServerUDPPort()==0xFFFF))
+					Log(GetResString(IDS_FO_TEMPUDP_S), port);
+				else
+					Log(GetResString(IDS_FO_TEMPUDP_F), port);
+			}
+			// <== Improved ICS-Firewall support [MoNKi] - Max
+
+			theApp.m_UPnP_IGDControlPoint->AddPortMapping((uint16)port,
+				CUPnP_IGDControlPoint::UNAT_UDP,
+				_T("Server UDP Port"));
+		}
+		// <== UPnP support [MoNKi] - leuk_he
+
 		return true;
 	}
 	return false;
@@ -158,6 +216,13 @@ void CUDPSocket::OnReceive(int nErrorCode)
 	int length = ReceiveFrom(buffer, sizeof buffer, (SOCKADDR*)&sockAddr, &iSockAddrLen);
 	if (length != SOCKET_ERROR)
 	{
+		//Xman
+		// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		if(length > 0){ 		
+			theApp.pBandWidthControl->AddeMuleInUDPOverall(length);
+		}
+		// Maella end
+
 		int nPayLoadLen = length;
 		CServer* pServer = theApp.serverlist->GetServerByIPUDP(sockAddr.sin_addr.S_un.S_addr, ntohs(sockAddr.sin_port), true);
 		if (pServer != NULL && thePrefs.IsServerCryptLayerUDPEnabled() &&
@@ -667,6 +732,10 @@ void CUDPSocket::DnsLookupDone(WPARAM wp, LPARAM lp)
 			delete pDNSReq;
 			return;
 		}
+		//zz_fly :: support dynamic ip servers :: DolphinX :: Start
+		if (pServer)
+			pServer->ResetIP2Country(); //EastShare - added by AndCycle, IP to Country
+		//zz_fly :: End
 
 		// Send all of the queued packets for this server.
 		POSITION posPacket = pDNSReq->m_aPackets.GetHeadPosition();
@@ -722,6 +791,11 @@ SocketSentBytes CUDPSocket::SendControlData(uint32 maxNumberOfBytesToSend, uint3
             if (sendSuccess > 0) {
                 sentBytes += packet->size; // ZZ:UploadBandWithThrottler (UDP)
             }
+			//Xman
+			// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+			sentBytes += (20+8); //Header
+			//Xman end
+
 			controlpacket_queue.RemoveHead();
 			delete[] packet->packet;
 			delete packet;

@@ -23,7 +23,11 @@
 #include "Exceptions.h"
 #include "OtherFunctions.h"
 #include "IPFilter.h"
+//Xman
+/*
 #include "LastCommonRouteFinder.h"
+*/
+//Xman end
 #include "Statistics.h"
 #include "DownloadQueue.h"
 #include "Preferences.h"
@@ -35,6 +39,8 @@
 #include "HttpDownloadDlg.h"
 #include "ServerWnd.h"
 #include "Log.h"
+#include "ip2country.h" //MORPH - Added by SiRoB IP to Country
+#include "dlp.h" //X-Ray :: Fincan Hash Detection
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -110,8 +116,11 @@ bool CServerList::Init()
 {
 	// auto update the list by using an url
 	if (thePrefs.GetAutoUpdateServerList())
+	{
+		if(theApp.IsSplash()) theApp.DestroySplash(); //Xman new slpash-screen arrangement
 		AutoUpdate();
-	
+	} //Xman
+
 	// Load Metfile
 	CString strPath;
 	strPath.Format(_T("%s") SERVER_MET_FILENAME, thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
@@ -127,6 +136,49 @@ bool CServerList::Init()
 	// insert static servers from textfile
 	strPath.Format(_T("%sstaticservers.dat"), thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
 	AddServersFromTextFile(strPath);
+
+	//Xman auto update IPFilter
+	if(thePrefs.AutoUpdateIPFilter())
+	{
+		// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+		/*
+		bool update=false;
+		if (thePrefs.m_last_ipfilter_check!=0) {
+			CTime last(thePrefs.m_last_ipfilter_check);
+			struct tm tmTemp;
+			time_t tLast=safe_mktime(last.GetLocalTm(&tmTemp));
+			time_t tNow=safe_mktime(CTime::GetCurrentTime().GetLocalTm(&tmTemp));
+			if ( (difftime(tNow,tLast) / 86400)>=thePrefs.GetUpdateDays() )
+			{
+				update=true;
+			}
+		}
+		else
+			update=true;
+		if(update)
+		{
+			if(theApp.IsSplash()) theApp.DestroySplash(); //Xman new slpash-screen arrangement
+			theApp.ipfilter->UpdateIPFilterURL();
+		}
+		*/
+		if(theApp.IsSplash())
+			theApp.DestroySplash(); //Xman new slpash-screen arrangement
+		theApp.emuledlg->CheckIPFilter();
+		// <== Advanced Updates [MorphXT/Stulle] - Stulle
+	}
+	//Xman end
+
+	//X-Ray :: Fincan Hash Detection :: Start
+	if(thePrefs.GetAntiLeecherFincan())
+		theApp.dlp->LoadFincanHashes(thePrefs.m_antileecherFincanURL, true);
+	//X-Ray :: Fincan Hash Detection :: End	
+
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	if(thePrefs.IsAutoUpdateAntiLeech())
+		theApp.emuledlg->DoDLPVersioncheck();
+	if(thePrefs.IsAutoUPdateIP2CountryEnabled())
+		theApp.ip2country->UpdateIP2CountryURL();
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
 
     theApp.serverlist->GiveServersForTraceRoute();
     
@@ -269,7 +321,12 @@ bool CServerList::AddServer(const CServer* pServer, bool bAddTail)
 
 bool CServerList::GiveServersForTraceRoute()
 {
+	//Xman
+	/*
     return theApp.lastCommonRouteFinder->AddHostsToCheck(list);
+	*/
+	return false;
+	//Xman end
 }
 
 void CServerList::ServerStats()
@@ -294,8 +351,14 @@ void CServerList::ServerStats()
 		// IP-filter: We do not need to IP-filter any servers here, even dynIP-servers are not
 		// needed to get filtered here. See also comments in 'CServerSocket::ConnectTo'.
 		if (ping_server->GetFailedCount() >= thePrefs.GetDeadServerRetries()) {
-			theApp.emuledlg->serverwnd->serverlistctrl.RemoveServer(ping_server);
-			return;
+			//Xman
+			// Mighty Knife: Static server handling
+			// Static servers can be prevented from being removed from the list.
+			if ((!ping_server->IsStaticMember()) || (!thePrefs.GetDontRemoveStaticServers())) {
+				theApp.emuledlg->serverwnd->serverlistctrl.RemoveServer(ping_server);
+				return;
+			}
+			//Xman end
 		}
 		srand(tNow);
 		ping_server->SetRealLastPingedTime(tNow); // this is not used to calcualte the next ping, but only to ensure a minimum delay for premature pings
@@ -1038,3 +1101,15 @@ void CServerList::CheckForExpiredUDPKeys() {
 	DebugLog(_T("Possible IP Change - Checking for expired Server UDP-Keys: %u UDP Keys total, %u UDP Keys expired, %u immediate UDP Pings forced, %u delayed UDP Pings forced"),
 		cKeysTotal, cKeysExpired, cKeysExpired - cPingDelayed, cPingDelayed); 
 }
+
+//EastShare Start - added by AndCycle, IP to Country
+void CServerList::ResetIP2Country(){
+
+	CServer *cur_server;
+
+	for(POSITION pos = list.GetHeadPosition(); pos != NULL; list.GetNext(pos)){
+		cur_server = list.GetAt(pos);
+		cur_server->ResetIP2Country();
+	}
+}
+//EastShare End - added by AndCycle, IP to Country

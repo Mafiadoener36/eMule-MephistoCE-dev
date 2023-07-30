@@ -339,7 +339,6 @@ public:
 	void	DrawLine(int StartX, int EndX, int StartY, int EndY, RGBQUAD color, bool bSetAlpha=false);
 	void	DrawLine(int StartX, int EndX, int StartY, int EndY, COLORREF cr);
 	void	BlendPixelColor(long x,long y,RGBQUAD c, float blend, bool bSetAlpha = false);
-	bool	Jitter(long radius=2); // eMule: Moved from DSP functions
 //@}
 
 protected:
@@ -552,6 +551,7 @@ public:
 	bool HistogramRoot();
 	bool HistogramLog();
 	long Histogram(long* red, long* green = 0, long* blue = 0, long* gray = 0, long colorspace = 0);
+	bool Jitter(long radius=2);
 	bool Repair(float radius = 0.25f, long niterations = 1, long colorspace = 0);
 	bool Combine(CxImage* r,CxImage* g,CxImage* b,CxImage* a, long colorspace = 0);
 	bool FFT2(CxImage* srcReal, CxImage* srcImag, CxImage* dstReal, CxImage* dstImag, long direction = 1, bool bForceFFT = true, bool bMagnitude = true);

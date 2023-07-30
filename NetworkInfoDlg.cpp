@@ -13,6 +13,12 @@
 #include "kademlia/kademlia/indexed.h"
 #include "WebServer.h"
 #include "clientlist.h"
+// ==> UPnP support [MoNKi] - leuk_he
+/*
+#include "UPnPImpl.h" //zz_fly :: show UPnP status
+#include "UPnPImplWrapper.h" //zz_fly :: show UPnP status
+*/
+// <== UPnP support [MoNKi] - leuk_he
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -109,6 +115,7 @@ void CreateNetworkInfo(CRichEditCtrlX& rCtrl, CHARFORMAT& rcfDef, CHARFORMAT& rc
 		rCtrl << _T("UDP-") << GetResString(IDS_PORT) << _T(":\t") << thePrefs.GetUDPPort() << _T("\r\n");
 		rCtrl << _T("\r\n");
 	}
+
 
 	///////////////////////////////////////////////////////////////////////////
 	// ED2K
@@ -304,7 +311,12 @@ void CreateNetworkInfo(CRichEditCtrlX& rCtrl, CHARFORMAT& rcfDef, CHARFORMAT& rc
 		buffer.Format(_T("%s:%i"), IP, thePrefs.GetUDPPort());
 		rCtrl << GetResString(IDS_IP) << _T(":") << GetResString(IDS_PORT) << _T(":\t") << buffer << _T("\r\n");
 
+		//Xman Bugfix
+		/*
 		buffer.Format(_T("%u"),Kademlia::CKademlia::GetPrefs()->GetIPAddress());
+		*/
+		buffer.Format(_T("%u"),ntohl(Kademlia::CKademlia::GetPrefs()->GetIPAddress()));
+		//Xman end
 		rCtrl << GetResString(IDS_ID) << _T(":\t") << buffer << _T("\r\n");
 		if (Kademlia::CKademlia::GetPrefs()->GetUseExternKadPort() && Kademlia::CKademlia::GetPrefs()->GetExternalKadPort() != 0
 			&& Kademlia::CKademlia::GetPrefs()->GetInternKadPort() != Kademlia::CKademlia::GetPrefs()->GetExternalKadPort())
@@ -375,5 +387,70 @@ void CreateNetworkInfo(CRichEditCtrlX& rCtrl, CHARFORMAT& rcfDef, CHARFORMAT& rc
 		else
 			strHostname = ipstr(theApp.serverconnect->GetLocalIP());
 		rCtrl << _T("URL:\t") << _T("http://") << strHostname << _T(":") << thePrefs.GetWSPort() << _T("/\r\n");
+	}
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+	//zz_fly :: show UPnP status, dual upnp :: start
+#ifdef DUAL_UPNP
+	//UPnP chooser
+	if((thePrefs.m_bUseACATUPnPCurrent && thePrefs.GetUPnPNat()) ||
+	   (!thePrefs.m_bUseACATUPnPCurrent && thePrefs.IsUPnPEnabled() && theApp.m_pUPnPFinder))
+	{
+		rCtrl << _T("\r\n");
+		rCtrl.SetSelectionCharFormat(rcfBold);
+		rCtrl << GetResString(IDS_UPNPSTATUS) << _T("\r\n");
+		rCtrl.SetSelectionCharFormat(rcfDef);
+		//UPnP chooser
+		CString upnpinfo = thePrefs.m_bUseACATUPnPCurrent ? 
+							(theApp.m_pUPnPNat->GetLastError()) //ACAT UPnP
+										:
+							(theApp.m_pUPnPFinder->GetImplementation() ? theApp.m_pUPnPFinder->GetImplementation()->GetStatusString() : _T("")); //Official UPNP
+		rCtrl << (upnpinfo.IsEmpty() ? _T("Unknown") : upnpinfo) << _T("\r\n");
+	}
+#else
+	if(thePrefs.IsUPnPEnabled() && theApp.m_pUPnPFinder) //Official UPNP
+	{
+		rCtrl << _T("\r\n");
+		rCtrl.SetSelectionCharFormat(rcfBold);
+		rCtrl << GetResString(IDS_UPNPSTATUS) << _T("\r\n");
+		rCtrl.SetSelectionCharFormat(rcfDef);
+		CString upnpinfo = theApp.m_pUPnPFinder->GetImplementation() ? theApp.m_pUPnPFinder->GetImplementation()->GetStatusString() : _T("");
+		rCtrl << (upnpinfo.IsEmpty() ? _T("Unknown") : upnpinfo) << _T("\r\n");
+	}
+#endif
+	//zz_fly :: show UPnP status, dual upnp :: end
+	*/
+	rCtrl << _T("\r\n");
+	//////////////////////////////////////////////////////////////////////////////////////////////////////
+	// upnp																								//
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
+	rCtrl.SetSelectionCharFormat(rcfBold);
+	rCtrl << GetResString(IDS_UPNP_NETSTATUS) << _T("\r\n");
+	rCtrl.SetSelectionCharFormat(rcfDef);
+	rCtrl << GetResString(IDS_STATUS) << _T(":\t");
+	if (thePrefs.IsUPnPEnabled())
+	{
+		CString upnpStatusString;
+		theApp.m_UPnP_IGDControlPoint-> GetStatusString(upnpStatusString,bFullInfo);
+		rCtrl  << upnpStatusString << _T("\r\n");
+	}
+	else
+		rCtrl << GetResString(IDS_DISABLED) << _T("\r\n");
+	// <== UPnP support [MoNKi] - leuk_he
+
+	//Xman show Hash always at end
+	if (!bFullInfo)
+	{
+		///////////////////////////////////////////////////////////////////////////
+		// Hash Info
+		///////////////////////////////////////////////////////////////////////////
+		rCtrl << _T("\r\n");
+		rCtrl.SetSelectionCharFormat(rcfBold);
+		rCtrl << GetResString(IDS_CD_UHASH) << _T("\r\n");
+		rCtrl.SetSelectionCharFormat(rcfDef);
+
+		buffer.Format(_T("%s"),(LPCTSTR)(md4str((uchar*)thePrefs.GetUserHash())));
+		rCtrl << buffer << _T("\r\n");
 	}
 }

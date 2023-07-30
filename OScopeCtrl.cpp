@@ -435,6 +435,8 @@ void COScopeCtrl::InvalidateCtrl(bool deleteGraph)
 		}
 	}
 
+	// ==> Drop Win95 support [MorphXT] - Stulle
+	/*
 	if (afxIsWin95()) {
 		// Win98: To get a rotated font it has to be specified as "Arial" ("MS Shell Dlg" 
 		// and "MS Sans Serif" are not created with rotation)
@@ -442,6 +444,9 @@ void COScopeCtrl::InvalidateCtrl(bool deleteGraph)
 							 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, _T("Arial"));
 	}
 	else {
+	*/
+	{
+	// <== Drop Win95 support [MorphXT] - Stulle
 		yUnitFont.CreateFont(FontPointSizeToLogUnits(8*10), 0, 900, 900, FW_NORMAL, FALSE, FALSE, 0, DEFAULT_CHARSET,
 							 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, theApp.GetDefaultFontFaceName());
 	}
@@ -975,7 +980,13 @@ void COScopeCtrl::OnMouseMove(UINT nFlags, CPoint point)
 		float apixel = (float)shownsecs / (float)plotRect.Width();
 
 		CString strInfo;
+		//Xman Maella Statistik-Zoom
+		//zz_fly :: moved from CStatisticsDlg::OnOscopePositionMsg()
+		/*
 		DWORD dwTime = (DWORD)(mypos * apixel);
+		*/
+		DWORD dwTime = (DWORD)(mypos * apixel) / thePrefs.GetZoomFactor(); 
+		//Xman end
 		time_t tNow = time(NULL) - dwTime;
 		TCHAR szDate[128];
 		_tcsftime(szDate, _countof(szDate), thePrefs.GetDateTimeFormat4Log(), localtime(&tNow));

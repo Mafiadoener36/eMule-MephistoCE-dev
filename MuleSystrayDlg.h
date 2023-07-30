@@ -1,5 +1,7 @@
 #pragma once
 
+#include "NumEdit.h" //Xman
+
 class CInputBox : public CEdit
 {
 protected:
@@ -20,7 +22,12 @@ class CMuleSystrayDlg : public CDialog
 {
 // Construction
 public:
+	//Xman
+	/*
 	CMuleSystrayDlg(CWnd* pParent, CPoint pt, int iMaxUp, int iMaxDown, int iCurUp, int iCurDown);
+	*/
+	CMuleSystrayDlg(CWnd* pParent, CPoint pt, float iMaxUp, float iMaxDown, float iCurUp, float iCurDown);
+	//Xman end
 	~CMuleSystrayDlg();
     
 // Dialog Data
@@ -31,10 +38,18 @@ public:
 	CGradientStatic	m_ctrlSidebar;
 	CSliderCtrl	m_ctrlUpSpeedSld;
 	CSliderCtrl	m_ctrlDownSpeedSld;
+	//Xman
+	/*
 	CInputBox	m_DownSpeedInput;
 	CInputBox	m_UpSpeedInput;
 	int		m_nDownSpeedTxt;
 	int		m_nUpSpeedTxt;
+	*/
+	CNumEdit m_DownSpeedInput;
+	CNumEdit m_UpSpeedInput;
+	float	m_nDownSpeedTxt;
+	float	m_nUpSpeedTxt;
+	//Xman end
 	//}}AFX_DATA
 
 
@@ -59,8 +74,14 @@ protected:
 
 	bool m_bClosingDown;
 	
+	//Xman
+	/*
 	int m_iMaxUp;
 	int m_iMaxDown;
+	*/
+	float m_iMaxUp;
+	float m_iMaxDown;
+	//Xman end
 	CPoint m_ptInitialPosition;
 
 	HICON m_hUpArrow;

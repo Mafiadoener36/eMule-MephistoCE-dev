@@ -23,6 +23,14 @@ protected:
 	} m_eSelectFont;
 	void LoadSettings(void);
 
+	// ==> show overhead on title - Stulle
+	bool m_bModified;
+	void SetModified(bool bChanged = TRUE){
+		m_bModified = bChanged;
+		CPropertyPage::SetModified(bChanged);
+	}
+	// <== show overhead on title - Stulle
+
 	void DrawPreview();		//Cax2 - aqua bar
 	C3DPreviewControl	m_3DPreview;
 
@@ -40,4 +48,5 @@ protected:
 	afx_msg void OnBtnClickedResetHist();
 	afx_msg void OnHelp();
 	afx_msg BOOL OnHelpInfo(HELPINFO* pHelpInfo);
+	afx_msg void OnEnChangeSREnabled(); // show overhead on title - Stulle
 };

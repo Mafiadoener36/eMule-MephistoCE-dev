@@ -33,6 +33,9 @@
 #include "MD5Sum.h"
 #include "SharedFilesWnd.h"
 #include "SharedFilesCtrl.h"
+//Xman x4.1.1 
+//Xman [MoNKi: -Downloaded History-]
+#include "PartFile.h" //to be able to remove it from transferwindow if necessary
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -50,7 +53,11 @@ static char THIS_FILE[] = __FILE__;
 
 CKnownFileList::CKnownFileList()
 {
+	//Xman Init-Hashtable optimization
+	/*
 	m_Files_map.InitHashTable(2063);
+	*/
+	//Xman end
 	m_mapCancelledFiles.InitHashTable(1031);
 	accepted = 0;
 	requested = 0;
@@ -61,6 +68,14 @@ CKnownFileList::CKnownFileList()
 	m_dwCancelledFilesSeed = 0;
 	m_nLastSaved = ::GetTickCount();
 	Init();
+	//Xman [MoNKi: -Downloaded History-]
+	bReloadHistory = false; //Fafner: possible exception in history - 070626
+	//Xman end
+
+	// ==> Threaded Known Files Saving [Stulle] - Stulle
+	m_bSaveAgain = false;
+	m_SaveKnownThread = NULL;
+	// <== Threaded Known Files Saving [Stulle] - Stulle
 }
 
 CKnownFileList::~CKnownFileList()
@@ -89,6 +104,9 @@ bool CKnownFileList::LoadKnownFiles()
 			}
 			LogError(LOG_STATUSBAR, _T("%s"), strError);
 		}
+		//Xman Init-Hashtable optimization
+		m_Files_map.InitHashTable(1031);
+		//Xman end
 		return false;
 	}
 	setvbuf(file.m_pStream, NULL, _IOFBF, 16384);
@@ -98,12 +116,20 @@ bool CKnownFileList::LoadKnownFiles()
 		uint8 header = file.ReadUInt8();
 		if (header != MET_HEADER && header != MET_HEADER_I64TAGS){
 			file.Close();
+			//Xman Init-Hashtable optimization
+			m_Files_map.InitHashTable(1031);
+			//Xman end
 			LogError(LOG_STATUSBAR, GetResString(IDS_ERR_SERVERMET_BAD));
 			return false;
 		}
 		AddDebugLogLine(false, _T("Known.met file version is %u (%s support 64bit tags)"), header, (header == MET_HEADER) ? _T("doesn't") : _T("does")); 
 
 		UINT RecordsNumber = file.ReadUInt32();
+
+		//Xman Init-Hashtable optimization
+		m_Files_map.InitHashTable(UINT(RecordsNumber*1.2f + 1031));
+		//Xman end
+
 		for (UINT i = 0; i < RecordsNumber; i++) {
 			pRecord = new CKnownFile();
 			if (!pRecord->LoadFromFile(&file)){
@@ -129,6 +155,11 @@ bool CKnownFileList::LoadKnownFiles()
 		}
 		error->Delete();
 		delete pRecord;
+		//Xman Init-Hashtable optimization
+		if(m_Files_map.GetHashTableSize()==0)
+			m_Files_map.InitHashTable(1031);
+		//Xman end
+
 		return false;
 	}
 
@@ -138,7 +169,12 @@ bool CKnownFileList::LoadKnownFiles()
 bool CKnownFileList::LoadCancelledFiles(){
 // cancelled.met Format: <Header 1 = CANCELLED_HEADER><Version 1 = CANCELLED_VERSION><Seed 4><Count 4>[<HashHash 16><TagCount 1>[Tags TagCount] Count]
 	if (!thePrefs.IsRememberingCancelledFiles())
+	{ //Xman
+		//Xman Init-Hashtable optimization
+		m_mapCancelledFiles.InitHashTable(209);
+		//Xman end
 		return true;
+	} //Xman
 	CString fullpath = thePrefs.GetMuleDirectory(EMULE_CONFIGDIR);
 	fullpath.Append(CANCELLED_MET_FILENAME);
 	CSafeBufferedFile file;
@@ -153,6 +189,9 @@ bool CKnownFileList::LoadCancelledFiles(){
 			}
 			LogError(LOG_STATUSBAR, _T("%s"), strError);
 		}
+		//Xman Init-Hashtable optimization
+		m_mapCancelledFiles.InitHashTable(209);
+		//Xman end
 		return false;
 	}
 	setvbuf(file.m_pStream, NULL, _IOFBF, 16384);
@@ -167,6 +206,9 @@ bool CKnownFileList::LoadCancelledFiles(){
 			}
 			else{
 				file.Close();
+				//Xman Init-Hashtable optimization
+				m_mapCancelledFiles.InitHashTable(209);
+				//Xman end
 				return false;
 			}
 		}
@@ -175,6 +217,9 @@ bool CKnownFileList::LoadCancelledFiles(){
 			byVersion = file.ReadUInt8();
 			if (byVersion > CANCELLED_VERSION){
 				file.Close();
+				//Xman Init-Hashtable optimization
+				m_mapCancelledFiles.InitHashTable(209);
+				//Xman end
 				return false;
 			}
 
@@ -186,6 +231,9 @@ bool CKnownFileList::LoadCancelledFiles(){
 		}
 
 		UINT RecordsNumber = file.ReadUInt32();
+		//Xman Init-Hashtable optimization
+		m_mapCancelledFiles.InitHashTable(UINT(RecordsNumber * 1.2f + 209));
+		//Xman end
 		for (UINT i = 0; i < RecordsNumber; i++) {
 			file.ReadHash16(ucHash);
 			uint8 nCount = file.ReadUInt8();
@@ -213,6 +261,10 @@ bool CKnownFileList::LoadCancelledFiles(){
 			error->GetErrorMessage(buffer, ARRSIZE(buffer));
 			LogError(LOG_STATUSBAR, GetResString(IDS_ERR_FAILEDTOLOAD), CANCELLED_MET_FILENAME, buffer);
 		}
+		//Xman Init-Hashtable optimization
+		if(m_mapCancelledFiles.GetHashTableSize()==0)
+			m_mapCancelledFiles.InitHashTable(209);
+		//Xman end
 		error->Delete();
 		return false;
 	}
@@ -359,7 +411,19 @@ void CKnownFileList::Clear()
 void CKnownFileList::Process()
 {
 	if (::GetTickCount() - m_nLastSaved > MIN2MS(11))
+		// ==> Threaded Known Files Saving [Stulle] - Stulle
+		/*
 		Save();
+		*/
+		SaveKnown();
+		// <== Threaded Known Files Saving [Stulle] - Stulle
+
+	//Xman [MoNKi: -Downloaded History-]
+	if (bReloadHistory) { //Fafner: possible exception in history - 070626
+		bReloadHistory = false;
+		theApp.emuledlg->sharedfileswnd->historylistctrl.Reload();
+	}
+	//Xman end
 }
 
 bool CKnownFileList::SafeAddKFile(CKnownFile* toadd)
@@ -402,7 +466,10 @@ bool CKnownFileList::SafeAddKFile(CKnownFile* toadd)
 		ASSERT( toadd->GetFileSize() == pFileInMap->GetFileSize() );
 		ASSERT( toadd != pFileInMap );
 		if (toadd->GetFileSize() == pFileInMap->GetFileSize())
+		{ //Xman
+			pFileInMap->CheckAUPFilestats(false); //Xman advanced upload-priority
 			toadd->statistic.MergeFileStats(&pFileInMap->statistic);
+		} //Xman
 
 		ASSERT( theApp.sharedfiles==NULL || !theApp.sharedfiles->IsFilePtrInList(pFileInMap) );
 		ASSERT( theApp.downloadqueue==NULL || !theApp.downloadqueue->IsPartFile(pFileInMap) );
@@ -414,6 +481,11 @@ bool CKnownFileList::SafeAddKFile(CKnownFile* toadd)
 		// Make sure the file is not used in out sharedfilesctrl anymore
 		if (theApp.emuledlg && theApp.emuledlg->sharedfileswnd && theApp.emuledlg->sharedfileswnd->sharedfilesctrl.m_hWnd)
 			theApp.emuledlg->sharedfileswnd->sharedfilesctrl.RemoveFile(pFileInMap, true);
+
+		//Xman [MoNKi: -Downloaded History-]
+		theApp.emuledlg->sharedfileswnd->historylistctrl.RemoveFileFromView(pFileInMap);
+		//Xman end
+
 		delete pFileInMap;
 	}
 	m_Files_map.SetAt(key, toadd);
@@ -540,6 +612,14 @@ bool CKnownFileList::ShouldPurgeAICHHashset(const CAICHHash& rAICHHash) const
 	const CKnownFile* pFile = NULL;
 	if (m_mapKnownFilesByAICH.Lookup(rAICHHash, pFile))
 	{
+		//Xman remove unused AICH-hashes
+		if (!thePrefs.GetRememberAICH())
+		{
+			if(!pFile->IsPartFile() && // this is neither a download
+				(theApp.sharedfiles && theApp.sharedfiles->GetFileByID(pFile->GetFileHash()) == NULL)) // and nor shared
+				return true; // so purge it immediatly
+		}
+		//Xman end
 		if (!pFile->ShouldPartiallyPurgeFile())
 			return false;
 	}
@@ -554,3 +634,256 @@ void CKnownFileList::AICHHashChanged(const CAICHHash* pOldAICHHash, const CAICHH
 		m_mapKnownFilesByAICH.RemoveKey(*pOldAICHHash);
 	m_mapKnownFilesByAICH.SetAt(rNewAICHHash, pFile);
 }
+
+//Xman [MoNKi: -Check already downloaded files-]
+// returns:
+//		1 if a file was found
+//		2 if more than 1 file found or only the name is equal.
+//		0 if no file found
+//		3 if cancelled file
+int CKnownFileList::CheckAlreadyDownloadedFile(const uchar* hash, CString filename, CArray<CKnownFile*,CKnownFile*> *files)
+{
+	files->RemoveAll();
+	if ( hash != NULL )
+	{
+		CKnownFile* curFile = FindKnownFileByID(hash);
+		if ( curFile && !curFile->IsPartFile() )	
+		{
+			files->Add(curFile);
+			return 1;
+		}
+		else if(curFile==NULL && IsCancelledFileByID(hash) )
+		{
+				return 3; 
+		}
+		else
+			return 0;
+	}
+	else if ( !filename.IsEmpty() )
+	{
+		POSITION pos = m_Files_map.GetStartPosition();
+		while ( pos )
+		{
+			CCKey key;
+			CKnownFile* curFile;
+			m_Files_map.GetNextAssoc(pos, key, curFile);
+			if ( filename == curFile->GetFileName() && !curFile->IsPartFile() )
+				files->Add(curFile);
+		}
+		if ( files->IsEmpty() )
+			return 0;
+		else
+			return 2;
+	}
+	return 0;
+}
+
+//Returns:
+//	true if you can download it
+bool CKnownFileList::CheckAlreadyDownloadedFileQuestion(const uchar* hash, CString filename){
+	CArray<CKnownFile *,CKnownFile*> filesFound;
+	int ret;
+
+	if(theApp.downloadqueue->IsFileExisting(hash)){
+		return false;
+	}
+
+	ret=CheckAlreadyDownloadedFile(hash, _T(""), &filesFound);
+	if(ret==0)
+		ret=CheckAlreadyDownloadedFile(NULL,filename, &filesFound);
+
+	if(ret!=0)
+	{
+		//CKnownFile* curFile=NULL;
+		CString msg;
+		if(ret==1){
+			msg = GetResString(IDS_DOWNHISTORY_CHECK1);
+		}
+		else if(ret==3)
+		{
+			msg= GetResString(IDS_DOWNHISTORY_CHECK4);
+		}
+		else {
+			msg.Format(GetResString(IDS_DOWNHISTORY_CHECK2), filesFound.GetCount(), filename);
+		}
+
+		for(int i=0;i<filesFound.GetCount();i++){
+			CKnownFile *cur_file = filesFound.GetAt(i);
+			CString sData;
+
+			msg+=cur_file->GetFileName() + _T("\n");
+			sData.Format(GetResString(IDS_DL_SIZE) + _T(": %I64u, ") + GetResString(IDS_FILEID) + _T(": %s"), (uint64)cur_file->GetFileSize(), md4str(cur_file->GetFileHash()));
+			msg+=sData;
+			if(!cur_file->GetFileComment().IsEmpty()) //Add comment
+				msg+=_T("\n") + GetResString(IDS_COMMENT) + _T(": \"") + cur_file->GetFileComment() + _T("\"");
+			msg+="\n\n";
+		}
+		msg += GetResString(IDS_DOWNHISTORY_CHECK3);
+		if(MessageBox(NULL, msg, GetResString(IDS_DOWNHISTORY),MB_YESNO|MB_ICONQUESTION)==IDYES)
+			return true;
+		else
+			return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+//Xman end
+
+//Xman [MoNKi: -Downloaded History-]
+CKnownFilesMap* CKnownFileList::GetDownloadedFiles(){
+	CKnownFilesMap *filesFound;
+	filesFound = new CKnownFilesMap;
+
+	POSITION pos = m_Files_map.GetStartPosition();					
+	while(pos){
+		CKnownFile* cur_file;
+		CCKey key;
+		m_Files_map.GetNextAssoc( pos, key, cur_file );
+		if (!theApp.sharedfiles->IsFilePtrInList(cur_file)){
+			CCKey key2(cur_file->GetFileHash());
+			CKnownFile* pFileInMap;
+			if (!filesFound->Lookup(key2, pFileInMap))
+				filesFound->SetAt(key2, cur_file);
+		}
+	}
+	return filesFound;
+}
+
+bool CKnownFileList::RemoveKnownFile(CKnownFile *toRemove){
+	// ==> Threaded Known Files Saving [Stulle] - Stulle
+	if (m_SaveKnownThread) // we just saved the file, better wait
+	{
+		m_SaveKnownThread->EndThread();
+		delete m_SaveKnownThread;
+		m_SaveKnownThread = NULL;
+	}
+	// <== Threaded Known Files Saving [Stulle] - Stulle
+	if (toRemove){
+		POSITION pos = m_Files_map.GetStartPosition();
+		while (pos){
+			CCKey key;
+			CKnownFile* cur_file;
+			m_Files_map.GetNextAssoc(pos, key, cur_file);
+			if (toRemove == cur_file){
+				m_Files_map.RemoveKey(key);
+				delete cur_file;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void CKnownFileList::ClearHistory(){
+	// ==> Threaded Known Files Saving [Stulle] - Stulle
+	if (m_SaveKnownThread) // we just saved the file, better wait
+	{
+		m_SaveKnownThread->EndThread();
+		delete m_SaveKnownThread;
+		m_SaveKnownThread = NULL;
+	}
+	// <== Threaded Known Files Saving [Stulle] - Stulle
+	POSITION pos = m_Files_map.GetStartPosition();					
+	while(pos){
+		CKnownFile* cur_file;
+		CCKey key;
+		m_Files_map.GetNextAssoc( pos, key, cur_file );
+		if (!theApp.sharedfiles->IsFilePtrInList(cur_file)){
+			m_Files_map.RemoveKey(key);
+			//also remove it from transferwindow:
+			if (cur_file->IsKindOf(RUNTIME_CLASS(CPartFile)))
+				theApp.emuledlg->transferwnd->GetDownloadList()->ClearCompleted(static_cast<CPartFile*>(cur_file));
+			delete cur_file;
+		}
+	}	
+}
+//Xman end
+
+// ==> Threaded Known Files Saving [Stulle] - Stulle
+void CKnownFileList::SaveKnown(bool bStart)
+{
+	if(bStart)
+	{
+		if (m_SaveKnownThread == NULL)
+			m_SaveKnownThread = new CSaveKnownThread();
+		else
+			m_bSaveAgain = true;
+	}
+	else
+	{
+		if(m_bSaveAgain)
+		{
+			m_bSaveAgain = false;
+			m_SaveKnownThread->Pause(false);
+		}
+		else if (m_SaveKnownThread) // just in case, should always be true at this point
+		{
+			m_SaveKnownThread->EndThread();
+			delete m_SaveKnownThread;
+			m_SaveKnownThread = NULL;
+		}
+	}
+}
+
+// Save known thread to avoid locking GUI
+CSaveKnownThread::CSaveKnownThread(void) {
+	threadEndedEvent = new CEvent(0, 1);
+	pauseEvent = new CEvent(TRUE, TRUE);
+
+	bDoRun = true;
+	AfxBeginThread(RunProc,(LPVOID)this,THREAD_PRIORITY_LOWEST);
+}
+
+CSaveKnownThread::~CSaveKnownThread(void) {
+	EndThread();
+	delete threadEndedEvent;
+	delete pauseEvent;
+}
+
+void CSaveKnownThread::EndThread() {
+	if(!bDoRun) // we are trying to stop already
+		return;
+
+	// signal the thread to stop looping and exit.
+	bDoRun = false;
+
+	Pause(false);
+
+	// wait for the thread to signal that it has stopped looping.
+	threadEndedEvent->Lock();
+}
+
+void CSaveKnownThread::Pause(bool paused) {
+	if(paused) {
+		pauseEvent->ResetEvent();
+	} else {
+		pauseEvent->SetEvent();
+    }
+}
+
+UINT AFX_CDECL CSaveKnownThread::RunProc(LPVOID pParam)
+{
+	DbgSetThreadName("CSaveKnownThread");
+
+	CSaveKnownThread* saveknownthread = (CSaveKnownThread*)pParam;
+
+	return saveknownthread->RunInternal();
+}
+
+UINT CSaveKnownThread::RunInternal()
+{
+	while(bDoRun) 
+	{
+		theApp.knownfiles->Save();
+		Pause(true);
+		PostMessage(theApp.emuledlg->m_hWnd,TM_SAVEKNOWNDONE,0,0);
+		pauseEvent->Lock();
+	}
+
+	threadEndedEvent->SetEvent();
+
+	return 0;
+}
+// <== Threaded Known Files Saving [Stulle] - Stulle

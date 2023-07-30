@@ -115,8 +115,6 @@ void CContact::Copy(const CContact& fromContact){
 	m_bIPVerified = fromContact.m_bIPVerified;
 	m_cUDPKey = fromContact.m_cUDPKey;
 	m_bReceivedHelloPacket = fromContact.m_bReceivedHelloPacket;
-	m_bBootstrapContact = fromContact.m_bBootstrapContact;
-	m_bBootstrapFailed = fromContact.m_bBootstrapFailed;
 }
 
 void CContact::InitContact()
@@ -128,8 +126,6 @@ void CContact::InitContact()
 	m_uInUse = 0;
 	m_tCreated = time(NULL);
 	m_bReceivedHelloPacket = false;
-	m_bBootstrapContact = false;
-	m_bBootstrapFailed = false;
 }
 
 void CContact::GetClientID(CUInt128 *puId) const
@@ -240,7 +236,12 @@ void CContact::UpdateType()
 			break;
 		case 1:
 			m_byType = 1;
+			// ==> Prevent float overflow [leuk_he] - Stulle
+			/*
 			m_tExpires = time(NULL) + (unsigned)HR2S(1.5);
+			*/
+			m_tExpires = (time_t)(time(NULL) + MIN2S(90) );
+			// <== Prevent float overflow [leuk_he] - Stulle
 			break;
 		default:
 			m_byType = 0;

@@ -107,7 +107,7 @@ void CFileIdentifierBase::WriteIdentifier(CFileDataIO* pFile, bool bKadExcludeMD
 				(uIncludesAICH			<<  2) |
 				(uIncludesSize			<<  1) |
 				(uIncludesMD4			<<  0));
-	//DebugLog(_T("Write IdentifierDesc: %u"), byIdentifierDesc);
+	DebugLog(_T("Write IdentifierDesc: %u"), byIdentifierDesc);
 	pFile->WriteUInt8(byIdentifierDesc);
 	if (!bKadExcludeMD4)
 		pFile->WriteHash16(m_abyMD4Hash);
@@ -148,7 +148,7 @@ CFileIdentifier::~CFileIdentifier(void)
 	DeleteMD4Hashset();
 }
 
-bool CFileIdentifier::CalculateMD4HashByHashSet(bool bVerifyOnly, bool bDeleteOnVerifyFail)
+bool CFileIdentifier::CalculateMD4HashByHashSet(bool bVerifyOnly, bool bDeleteOnVerifyFail, bool slowdown)
 {
 	if (m_aMD4HashSet.GetCount() <= 1)
 	{
@@ -159,7 +159,12 @@ bool CFileIdentifier::CalculateMD4HashByHashSet(bool bVerifyOnly, bool bDeleteOn
 	for (int i = 0; i < m_aMD4HashSet.GetCount(); i++)
 		md4cpy(buffer + (i*16), m_aMD4HashSet[i]);
 	uchar aucResult[16];
+	//Xman Nice Hash
+	/*
 	CKnownFile::CreateHash(buffer, m_aMD4HashSet.GetCount()*16, aucResult);
+	*/
+	CKnownFile::CreateHash(buffer, m_aMD4HashSet.GetCount()*16, aucResult, NULL, slowdown);
+	//Xman end
 	delete[] buffer;
 	if (bVerifyOnly)
 	{
@@ -498,7 +503,7 @@ CFileIdentifierSA::CFileIdentifierSA(const uchar* pucFileHash, EMFileSize nFileS
 bool CFileIdentifierSA::ReadIdentifier(CFileDataIO* pFile, bool bKadValidWithoutMd4)
 {
 	uint8 byIdentifierDesc = pFile->ReadUInt8();
-	//DebugLog(_T("Read IdentifierDesc: %u"), byIdentifierDesc);
+	DebugLog(_T("Read IdentifierDesc: %u"), byIdentifierDesc);
 	bool bMD4	= ((byIdentifierDesc >>  0) & 0x01) > 0;
 	bool bSize	= ((byIdentifierDesc >>  1) & 0x01) > 0;
 	bool bAICH	= ((byIdentifierDesc >>  2) & 0x01) > 0;

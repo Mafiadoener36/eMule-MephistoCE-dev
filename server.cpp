@@ -20,6 +20,7 @@
 #include "Opcodes.h"
 #include "OtherFunctions.h"
 #include "Packets.h"
+#include "IP2Country.h"//EastShare - added by AndCycle, IP to Country
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -56,6 +57,7 @@ CServer::CServer(const ServerMet_Struct* in_data)
 	m_nObfuscationPortTCP = 0;
 	m_nObfuscationPortUDP = 0;
 	m_dwRealLastPingedTime = 0;
+	m_structServerCountry = theApp.ip2country->GetCountryFromIP(ip); //EastShare - added by AndCycle, IP to Country
 }
 
 CServer::CServer(uint16 in_port, LPCTSTR i_addr)
@@ -89,6 +91,7 @@ CServer::CServer(uint16 in_port, LPCTSTR i_addr)
 	m_nObfuscationPortTCP = 0;
 	m_nObfuscationPortUDP = 0;
 	m_dwRealLastPingedTime = 0;
+	m_structServerCountry = theApp.ip2country->GetCountryFromIP(ip); //EastShare - added by AndCycle, IP to Country
 }
 
 CServer::CServer(const CServer* pOld)
@@ -123,6 +126,7 @@ CServer::CServer(const CServer* pOld)
 	m_nObfuscationPortTCP = pOld->m_nObfuscationPortTCP;
 	m_nObfuscationPortUDP = pOld->m_nObfuscationPortUDP;
 	m_dwRealLastPingedTime = pOld->m_dwRealLastPingedTime;
+	m_structServerCountry = theApp.ip2country->GetCountryFromIP(ip); //EastShare - added by AndCycle, IP to Country
 }
 
 CServer::~CServer()
@@ -259,7 +263,16 @@ bool CServer::AddTagFromFile(CFileDataIO* servermet)
 
 void CServer::SetListName(LPCTSTR newname)
 {
+	// Maella -Security fix- (Xman)
+	/*
 	m_strName = newname;
+	*/
+	if (newname){
+		CString filteredName = newname;
+		filteredName.Replace('%', ' ');
+		m_strName = filteredName;
+	}
+	//Xman end
 }
 
 void CServer::SetDescription(LPCTSTR newname)
@@ -317,3 +330,17 @@ void CServer::SetServerKeyUDP(uint32 dwServerKeyUDP){
 	m_dwServerKeyUDP = dwServerKeyUDP;
 	m_dwIPServerKeyUDP = theApp.GetPublicIP();
 }
+
+//EastShare Start - added by AndCycle, IP to Country
+CString CServer::GetCountryName() const{
+	return theApp.ip2country->GetCountryNameFromRef(m_structServerCountry);
+}
+
+int CServer::GetCountryFlagIndex() const{
+	return m_structServerCountry->FlagIndex;
+}
+
+void CServer::ResetIP2Country(){
+	m_structServerCountry = theApp.ip2country->GetCountryFromIP(ip);
+}
+//EastShare End - added by AndCycle, IP to Country

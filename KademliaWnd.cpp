@@ -77,6 +77,7 @@ BEGIN_MESSAGE_MAP(CKademliaWnd, CResizableDialog)
 	ON_WM_HELPINFO()
 	ON_NOTIFY(NM_DBLCLK, IDC_SEARCHLIST, OnNMDblclkSearchlist)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_SEARCHLIST, OnListModifiedSearchlist)
+	ON_BN_CLICKED(IDC_NODESFILEBUTTON, OnBnClickedNodesFileButton) // Links for Server list and nodes file [Stulle] - Stulle
 END_MESSAGE_MAP()
 
 CKademliaWnd::CKademliaWnd(CWnd* pParent /*=NULL*/)
@@ -88,7 +89,7 @@ CKademliaWnd::CKademliaWnd(CWnd* pParent /*=NULL*/)
 	searchList = new CKadSearchListCtrl;
 	m_pacONBSIPs = NULL;
 	m_pbtnWnd = new CDropDownButton;
-	m_bBootstrapListMode = false;
+
 	icon_kadsea=NULL;
 }
 
@@ -123,6 +124,8 @@ BOOL CKademliaWnd::OnInitDialog()
 	m_contactListCtrl->Init();
 	m_kadLookupGraph->Init();
 	searchList->Init();
+	 
+	OnBackcolor(); // Design Settings [eWombat/Stulle] - Max
 
     // Initalize Toolbar
 	CRect rcBtn1;
@@ -197,6 +200,7 @@ BOOL CKademliaWnd::OnInitDialog()
 	AddAnchor(IDC_KADSEARCHLAB, MIDDLE_LEFT);
 	AddAnchor(IDC_BSSTATIC, TOP_RIGHT);
 	AddAnchor(IDC_BOOTSTRAPBUTTON, TOP_RIGHT);
+	AddAnchor(IDC_NODESFILEBUTTON, TOP_RIGHT); // Links for Server list and nodes file [Stulle] - Stulle
 	AddAnchor(IDC_BOOTSTRAPPORT, TOP_RIGHT);
 	AddAnchor(IDC_BOOTSTRAPIP, TOP_RIGHT);
 	AddAnchor(IDC_BOOTSTRAPURL, TOP_RIGHT);
@@ -361,6 +365,7 @@ void CKademliaWnd::SetAllIcons()
 void CKademliaWnd::Localize()
 {
 	m_ctrlBootstrap.SetWindowText(GetResString(IDS_BOOTSTRAP));
+	GetDlgItem(IDC_NODESFILEBUTTON)->SetWindowText(GetResString(IDS_NODESFILEBUTTON)); // Links for Server list and nodes file [Stulle] - Stulle
 	GetDlgItem(IDC_BOOTSTRAPBUTTON)->SetWindowText(GetResString(IDS_BOOTSTRAP));
 	GetDlgItem(IDC_SSTATIC4)->SetWindowText(GetResString(IDS_SV_ADDRESS) + _T(":"));
 	GetDlgItem(IDC_SSTATIC7)->SetWindowText(GetResString(IDS_SV_PORT) + _T(":"));
@@ -433,39 +438,19 @@ void CKademliaWnd::StopUpdateContacts()
 
 bool CKademliaWnd::ContactAdd(const Kademlia::CContact* contact)
 {
-	if (contact->IsBootstrapContact() != m_bBootstrapListMode)
-	{
-		if (!contact->IsBootstrapContact())
-		{
-			// we have real contacts to add, remove all the bootstrap contacts and cancel the mode
-			m_bBootstrapListMode = false;
-			m_contactListCtrl->DeleteAllItems();
-		}
-		else
-		{
-			ASSERT(0);
-			return false;
-		}
-	}
-	if (!m_bBootstrapListMode)
-		m_contactHistogramCtrl->ContactAdd(contact);
+	m_contactHistogramCtrl->ContactAdd(contact);
 	return m_contactListCtrl->ContactAdd(contact);
 }
 
 void CKademliaWnd::ContactRem(const Kademlia::CContact* contact)
 {
-	if (contact->IsBootstrapContact() == m_bBootstrapListMode)
-	{
-		if (!m_bBootstrapListMode)
-			m_contactHistogramCtrl->ContactRem(contact);
-		m_contactListCtrl->ContactRem(contact);
-	}
+	m_contactHistogramCtrl->ContactRem(contact);
+	m_contactListCtrl->ContactRem(contact);
 }
 
 void CKademliaWnd::ContactRef(const Kademlia::CContact* contact)
 {
-	if (contact->IsBootstrapContact() == m_bBootstrapListMode)
-		m_contactListCtrl->ContactRef(contact);
+	m_contactListCtrl->ContactRef(contact);
 }
 
 void CKademliaWnd::UpdateNodesDatFromURL(CString strURL){
@@ -499,11 +484,48 @@ BOOL CKademliaWnd::OnHelpInfo(HELPINFO* /*pHelpInfo*/)
 
 HBRUSH CKademliaWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
+// ==> Design Settings [eWombat/Stulle] - Max
+/*
 	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
 	if (hbr)
 		return hbr;
 	return __super::OnCtlColor(pDC, pWnd, nCtlColor);
 }
+*/
+	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
+	if (hbr)
+		return hbr;
+	hbr = __super::OnCtlColor(pDC, pWnd, nCtlColor);
+
+	switch(nCtlColor)
+	{
+	case CTLCOLOR_EDIT:
+		break;
+	default:
+		pDC->SetBkMode(TRANSPARENT);
+	case CTLCOLOR_DLG:
+		hbr = (HBRUSH) m_brMyBrush.GetSafeHandle();
+		break;
+	}
+
+	return hbr;
+}
+
+void CKademliaWnd::OnBackcolor() 
+{
+	crKadColor = thePrefs.GetStyleBackColor(window_styles, style_w_kademlia);
+
+	if(crKadColor == CLR_DEFAULT)
+		crKadColor = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+	m_brMyBrush.DeleteObject();
+
+	if(crKadColor != CLR_DEFAULT)
+		m_brMyBrush.CreateSolidBrush(crKadColor);
+	else
+		m_brMyBrush.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+}
+// <== Design Settings [eWombat/Stulle] - Max
 
 void CKademliaWnd::UpdateSearchGraph(Kademlia::CLookupHistory* pLookupHistory)
 {
@@ -629,12 +651,9 @@ BOOL CKademliaWnd::OnCommand(WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
-void CKademliaWnd::SetBootstrapListMode()
+// ==> Links for Server list and nodes file [Stulle] - Stulle
+void CKademliaWnd::OnBnClickedNodesFileButton()
 {
-	// rather than normal contacts we show contacts only used to bootstrap in this mode
-	// once the first "normal" contact will be added, the mode is cancelled and all bootstrap contacts removed
-	if (m_contactListCtrl->GetItemCount() == 0)
-		m_bBootstrapListMode = true;
-	else
-		ASSERT(0);
+	ShellExecute(NULL, NULL, _T("http://www.nodes-dat.com/"), NULL, thePrefs.GetMuleDirectory(EMULE_EXECUTEABLEDIR), SW_SHOWDEFAULT);
 }
+// <== Links for Server list and nodes file [Stulle] - Stulle

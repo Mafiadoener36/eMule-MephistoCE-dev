@@ -36,7 +36,11 @@
 #include "PerfLog.h"
 #include <..\src\mfc\sockimpl.h>
 #include <..\src\mfc\afximpl.h>
+//Xman
+/*
 #include "LastCommonRouteFinder.h"
+*/
+//Xman end
 #include "UploadBandwidthThrottler.h"
 #include "ClientList.h"
 #include "FriendList.h"
@@ -70,9 +74,27 @@
 #include "Collection.h"
 #include "LangIDs.h"
 #include "HelpIDs.h"
+// ==> UPnP support [MoNKi] - leuk_he
+/*
 #include "UPnPImplWrapper.h"
+*/
+// <== UPnP support [MoNKi] - leuk_he
 #include "VisualStylesXP.h"
-#include "UploadDiskIOThread.h"
+
+//Xman
+#include "BandWidthControl.h" // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+#include "DLP.h" //Xman DLP
+#include "P2PThreat.h" // netfinity: Detect worms that are harmful to P2P apps
+//Xman new slpash-screen arrangement
+#include "SplashScreenEx.h"
+
+// ==> Automatic shared files updater [MoNKi] - Stulle
+#include "SharedFilesWnd.h"
+CEvent* CemuleApp::m_directoryWatcherCloseEvent;
+CEvent* CemuleApp::m_directoryWatcherReloadEvent;
+CCriticalSection CemuleApp::m_directoryWatcherCS;
+// <== Automatic shared files updater [MoNKi] - Stulle
+#include "NTService.h" // Run eMule as NT Service [leuk_he/Stulle] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -368,6 +390,15 @@ CemuleApp::CemuleApp(LPCTSTR lpszAppName)
 
 	srand(time(NULL));
 	m_dwPublicIP = 0;
+	//Xman -Reask sources after IP change- v4
+	m_bneedpublicIP = false; 
+	last_ip_change = 0;
+	last_valid_serverid = 0;
+	last_valid_ip = 0;
+	recheck_ip = 0;
+	last_traffic_reception = 0;
+	internetmaybedown=1;
+	//Xman end
 	m_bAutoStart = false;
 
 	// NOTE: Do *NOT* forget to specify /DELAYLOAD:gdiplus.dll as link parameter.
@@ -385,6 +416,15 @@ CemuleApp::CemuleApp(LPCTSTR lpszAppName)
 	m_sizBigSystemIcon.cy = 32;
 	m_iDfltImageListColorFlags = ILC_COLOR;
 
+	m_pSplashWnd = NULL; //Xman new slpash-screen arrangement
+
+	//Xman dynamic IP-Filters
+	ipdlgisopen=false;
+
+	//Xman queued disc-access for read/flushing-threads
+	//m_uRunningNonBlockedDiscAccessThreads=0;
+	//Xman end
+
 // MOD Note: Do not change this part - Merkur
 
 	// this is the "base" version number <major>.<minor>.<update>.<build>
@@ -394,7 +434,7 @@ CemuleApp::CemuleApp(LPCTSTR lpszAppName)
 	// create a string version (e.g. "0.30a")
 	ASSERT( CemuleApp::m_nVersionUpd + 'a' <= 'f' );
 	m_strCurVersionLongDbg.Format(_T("%u.%u%c.%u"), CemuleApp::m_nVersionMjr, CemuleApp::m_nVersionMin, _T('a') + CemuleApp::m_nVersionUpd, CemuleApp::m_nVersionBld);
-#if defined( _DEBUG) || defined(_DEVBUILD)
+#ifdef _DEBUG
 	m_strCurVersionLong = m_strCurVersionLongDbg;
 #else
 	m_strCurVersionLong.Format(_T("%u.%u%c"), CemuleApp::m_nVersionMjr, CemuleApp::m_nVersionMin, _T('a') + CemuleApp::m_nVersionUpd);
@@ -404,13 +444,15 @@ CemuleApp::CemuleApp(LPCTSTR lpszAppName)
 	m_strCurVersionLong += _T(" DEBUG");
 #endif
 #ifdef _BETA
-	m_strCurVersionLong += _T(" BETA1");
-#endif
-#ifdef _DEVBUILD
-	m_strCurVersionLong += _T(" DEVBUILD");
-#endif
-#ifdef _BOOTSTRAPNODESDAT
-	m_strCurVersionLong = _T("BOOTSTRAP BUILD");
+	//Xman
+	/*
+	m_strCurVersionLong += _T(" BETA2");
+	*/
+	m_strCurVersionLong.AppendFormat(_T(" a%u "),CemuleApp::m_nMVersionBld);
+	m_strCurVersionLong += _T(__TIME__);
+	m_strCurVersionLong += _T(" ");
+	m_strCurVersionLong += _T(__DATE__);
+	//Xman end
 #endif
 
 	// create the protocol version number
@@ -428,6 +470,20 @@ CemuleApp::CemuleApp(LPCTSTR lpszAppName)
 	m_bGuardClipboardPrompt = false;
 
 	EnableHtmlHelp();
+
+	// ==> ModID [itsonlyme/SiRoB] - Stulle
+	m_strModVersion = CemuleApp::m_szMVersion;
+	m_strModVersion.AppendFormat(_T(" %u.%u"), CemuleApp::m_nMVersionMjr, CemuleApp::m_nMVersionMin);
+	m_strModLongVersion = CemuleApp::m_szMVersionLong;
+	m_strModLongVersion.AppendFormat(_T("%u.%u"), CemuleApp::m_nMVersionMjr, CemuleApp::m_nMVersionMin);
+	m_strModVersionPure = CemuleApp::m_szMVersion;
+	m_strModVersionPure.AppendFormat(_T(" "));
+	m_uModLength = (uint8)(m_strModVersionPure.GetLength()); // one space included!
+	// <== ModID [itsonlyme/SiRoB] - Stulle
+	//==> UPnP support [MoNKi] - leuk_he
+	m_UPnP_IGDControlPoint = CUPnP_IGDControlPoint::GetInstance();
+	//<== UPnP support [MoNKi] - leuk_he
+
 }
 
 
@@ -435,7 +491,12 @@ CemuleApp theApp(_T("eMule"));
 
 
 // Workaround for bugged 'AfxSocketTerm' (needed at least for MFC 7.0, 7.1, 8.0, 9.0)
+// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+/*
 #if _MFC_VER==0x0700 || _MFC_VER==0x0710 || _MFC_VER==0x0800 || _MFC_VER==0x0900
+*/
+#if _MFC_VER==0x0700 || _MFC_VER==0x0710 || _MFC_VER==0x0800 || _MFC_VER==0x0900 || _MFC_VER==0x0A00
+// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 void __cdecl __AfxSocketTerm()
 {
 #if defined(_AFXDLL) && (_MFC_VER==0x0700 || _MFC_VER==0x0710)
@@ -452,41 +513,43 @@ void __cdecl __AfxSocketTerm()
 #error "You are using an MFC version which may require a special version of the above function!"
 #endif
 
+//<<< eWombat [WINSOCK2] 
 BOOL InitWinsock2(WSADATA *lpwsaData) 
 {  
-_AFX_SOCK_STATE* pState = _afxSockState.GetData();
-if (pState->m_pfnSockTerm == NULL)
+	_AFX_SOCK_STATE* pState = _afxSockState.GetData();
+	if (pState->m_pfnSockTerm == NULL)
 	{
-	// initialize Winsock library
-	WSADATA wsaData;
-	if (lpwsaData == NULL)
-		lpwsaData = &wsaData;
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	int nResult = WSAStartup(wVersionRequested, lpwsaData);
-	if (nResult != 0)
-		return FALSE;
-	if (LOBYTE(lpwsaData->wVersion) != 2 || HIBYTE(lpwsaData->wVersion) != 2)
+		// initialize Winsock library
+		WSADATA wsaData;
+		if (lpwsaData == NULL)
+			lpwsaData = &wsaData;
+		WORD wVersionRequested = MAKEWORD(2, 2);
+		int nResult = WSAStartup(wVersionRequested, lpwsaData);
+		if (nResult != 0)
+			return FALSE;
+		if (LOBYTE(lpwsaData->wVersion) != 2 || HIBYTE(lpwsaData->wVersion) != 2)
 		{
-		WSACleanup();
-		return FALSE;
+			WSACleanup();
+			return FALSE;
 		}
-	// setup for termination of sockets
-	pState->m_pfnSockTerm = &AfxSocketTerm;
+		// setup for termination of sockets
+		pState->m_pfnSockTerm = &AfxSocketTerm;
 	}
 #ifndef _AFXDLL
 	//BLOCK: setup maps and lists specific to socket state
 	{
-	_AFX_SOCK_THREAD_STATE* pState = _afxSockThreadState;
-	if (pState->m_pmapSocketHandle == NULL)
-		pState->m_pmapSocketHandle = new CMapPtrToPtr;
-	if (pState->m_pmapDeadSockets == NULL)
-		pState->m_pmapDeadSockets = new CMapPtrToPtr;
-	if (pState->m_plistSocketNotifications == NULL)
-		pState->m_plistSocketNotifications = new CPtrList;
+		_AFX_SOCK_THREAD_STATE* pState = _afxSockThreadState;
+		if (pState->m_pmapSocketHandle == NULL)
+			pState->m_pmapSocketHandle = new CMapPtrToPtr;
+		if (pState->m_pmapDeadSockets == NULL)
+			pState->m_pmapDeadSockets = new CMapPtrToPtr;
+		if (pState->m_plistSocketNotifications == NULL)
+			pState->m_plistSocketNotifications = new CPtrList;
 	}
 #endif
-return TRUE;
+	return TRUE;
 }
+// >>> eWombat [WINSOCK2]
 
 // CemuleApp Initialisierung
 
@@ -516,10 +579,25 @@ BOOL CemuleApp::InitInstance()
 	///////////////////////////////////////////////////////////////////////////
 	// Install crash dump creation
 	//
-#if !(defined(_BETA) && defined(_DEVBUILD))
+#ifndef _BETA
+	// Xman better always enabled, except we don't want
+	/*
 	if (GetProfileInt(_T("eMule"), _T("CreateCrashDump"), 0))
+	*/
+	if (GetProfileInt(_T("eMule"), _T("NoCrashDump"), 0)==0)
+	//Xman end
 #endif
+		//Xman ModId
+		/*
 		theCrashDumper.Enable(_T("eMule ") + m_strCurVersionLongDbg, true, thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
+		*/
+		// ==> ModID [itsonlyme/SiRoB] - Stulle
+		/*
+		theCrashDumper.Enable(_T("eMule ") + m_strCurVersionLongDbg + _T(" ") + MOD_VERSION, true, thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
+		*/
+		theCrashDumper.Enable(_T("eMule ") + m_strCurVersionLongDbg + _T(" ") + m_strModLongVersion, true, thePrefs.GetMuleDirectory(EMULE_CONFIGDIR));
+		// <== ModID [itsonlyme/SiRoB] - Stulle
+		//Xman end
 
 	///////////////////////////////////////////////////////////////////////////
 	// Locale initialization -- BE VERY CAREFUL HERE!!!
@@ -530,7 +608,26 @@ BOOL CemuleApp::InitInstance()
 
 	AfxOleInit();
 
+	//Xman
+	// leuk_he: prevent switch to ... busy popup during windows startup. see kb 248019
+	if (AfxOleGetMessageFilter()) {
+		AfxOleGetMessageFilter()->EnableBusyDialog(false);
+		AfxOleGetMessageFilter()->EnableNotRespondingDialog(false);
+		AfxOleGetMessageFilter()->SetMessagePendingDelay(60 * 1000); // 60 secs instead of 5
+	}
+	else {
+		ASSERT(0);  // dll not loaded?
+	}
+	// leuk_he: end prevent switch
+
 	pstrPendingLink = NULL;
+
+	//Xman
+	// MOD BEGIN netfinity: P2PThreat - Detect worms that could be harmful to the network or eMule
+	if (theP2PThreat.IsMachineInfected())
+		return false;
+	// MOD END netfinity
+
 	if (ProcessCommandline())
 		return false;
 
@@ -590,17 +687,31 @@ BOOL CemuleApp::InitInstance()
 
 	CWinApp::InitInstance();
 
+	//<<< eWombat [WINSOCK2] 
+	/*
+	if (!AfxSocketInit())
+	{
+		AfxMessageBox(GetResString(IDS_SOCKETS_INIT_FAILED));
+		return FALSE;
+	}
+	*/
 	memset(&m_wsaData,0,sizeof(WSADATA));
-	if (!InitWinsock2(&m_wsaData))
+	if (!InitWinsock2(&m_wsaData)) // <<< eWombat first try it with winsock2
 	{
 		memset(&m_wsaData,0,sizeof(WSADATA));
-		if (!AfxSocketInit(&m_wsaData))
+		if (!AfxSocketInit(&m_wsaData)) // <<< eWombat then try it with old winsock
 		{
 			AfxMessageBox(GetResString(IDS_SOCKETS_INIT_FAILED));
 			return FALSE;
 		}
 	}
+	//>>> eWombat [WINSOCK2]
+// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+/*
 #if _MFC_VER==0x0700 || _MFC_VER==0x0710 || _MFC_VER==0x0800 || _MFC_VER==0x0900
+*/
+#if _MFC_VER==0x0700 || _MFC_VER==0x0710 || _MFC_VER==0x0800 || _MFC_VER==0x0900 || _MFC_VER==0x0A00
+// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 	atexit(__AfxSocketTerm);
 #else
 #error "You are using an MFC version which may require a special version of the above function!"
@@ -624,6 +735,37 @@ BOOL CemuleApp::InitInstance()
 	thePrefs.Init();
 	theStats.Init();
 
+	//Xman new slpash-screen arrangement
+	m_dwSplashTime = (DWORD)-1;
+	{
+		//use temporary variables to determine if we should show the splash
+		bool bStartMinimized = thePrefs.GetStartMinimized();
+		if (!bStartMinimized)
+			bStartMinimized = theApp.DidWeAutoStart();
+
+		// temporary disable the 'startup minimized' option, otherwise no window will be shown at all
+		if (thePrefs.IsFirstStart())
+			bStartMinimized = false;
+
+		// show splashscreen as early as possible to "entertain" user while starting emule up
+		if (thePrefs.UseSplashScreen() && !bStartMinimized)
+		{
+			//Xman final version: don't show splash on old windows->crash
+			switch (thePrefs.GetWindowsVersion())
+			{
+				case _WINVER_98_:
+				case _WINVER_95_:	
+				case _WINVER_ME_:
+					break;
+				default:
+					ShowSplash(true);
+			}
+		}
+	}
+
+	UpdateSplash(_T("Loading ...")); 
+	//Xman end
+
 	// check if we have to restart eMule as Secure user
 	if (thePrefs.IsRunAsUserEnabled()){
 		CSecRunAsUser rau;
@@ -638,6 +780,10 @@ BOOL CemuleApp::InitInstance()
 
 	if (thePrefs.GetRTLWindowsLayout())
 		EnableRTLWindowsLayout();
+
+	//Xman process prio
+	SetPriorityClass(GetCurrentProcess(), thePrefs.GetMainProcessPriority()); // [TPT] - Select process priority 
+	//Xman end
 
 #ifdef _DEBUG
 	_sntprintf(s_szCrtDebugReportFilePath, _countof(s_szCrtDebugReportFilePath) - 1, _T("%s%s"), thePrefs.GetMuleDirectory(EMULE_LOGDIR, false), APP_CRT_DEBUG_LOG_FILE);
@@ -658,11 +804,17 @@ BOOL CemuleApp::InitInstance()
 	}
 	Log(_T("Starting eMule v%s"), m_strCurVersionLong);
 
-	SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// use service control handler instead
+	if (!RunningAsService())
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+		SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 
 	CemuleDlg dlg;
 	emuledlg = &dlg;
 	m_pMainWnd = &dlg;
+
+	sysinfo = new CSystemInfo();// CPU/MEM usage [$ick$/Stulle] - Max 
 
 	// Barry - Auto-take ed2k links
 	if (thePrefs.AutoTakeED2KLinks())
@@ -675,13 +827,38 @@ BOOL CemuleApp::InitInstance()
 
 	m_pFirewallOpener = new CFirewallOpener();
 	m_pFirewallOpener->Init(true); // we need to init it now (even if we may not use it yet) because of CoInitializeSecurity - which kinda ruins the sense of the class interface but ooohh well :P
+	
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	if(!thePrefs.GetICFSupport()&& !IsRunningXPSP2() && thePrefs.GetICFSupportFirstTime() && m_pFirewallOpener->DoesFWConnectionExist()){ 	 
+		if(MessageBox(NULL, GetResString(IDS_ICFSUPPORTFIRST), _T("eMule"), MB_YESNO | MB_ICONQUESTION) == IDYES){ 	 
+			thePrefs.SetICFSupport(true); 	 
+		} 	 
+		thePrefs.SetICFSupportFirstTime(false); 	 
+	}
+	// <== Improved ICS-Firewall support [MoNKi] - Max
+		
 	// Open WinXP firewallports if set in preferences and possible
+	// ==> Random Ports [MoNKi] - Stulle
+	/*
 	if (thePrefs.IsOpenPortsOnStartupEnabled()){
+	*/
+	if (thePrefs.IsOpenPortsOnStartupEnabled() || thePrefs.GetUseRandomPorts()){
+	// <== Random Ports [MoNKi] - Stulle
 		if (m_pFirewallOpener->DoesFWConnectionExist()){
+
+			// ==> Improved ICS-Firewall support [MoNKi] - Max
+			/*
 			// delete old rules added by eMule
 			m_pFirewallOpener->RemoveRule(EMULE_DEFAULTRULENAME_UDP);
 			m_pFirewallOpener->RemoveRule(EMULE_DEFAULTRULENAME_TCP);
+			*/
+			// delete old rules added by eMule
+			m_pFirewallOpener->ClearOld();
+			// <== Improved ICS-Firewall support [MoNKi] - Max
+
 			// open port for this session
+			// ==> Random Ports [MoNKi] - Stulle
+			/*
 			if (m_pFirewallOpener->OpenPort(thePrefs.GetPort(), NAT_PROTOCOL_TCP, EMULE_DEFAULTRULENAME_TCP, true))
 				QueueLogLine(false, GetResString(IDS_FO_TEMPTCP_S), thePrefs.GetPort());
 			else
@@ -694,11 +871,32 @@ BOOL CemuleApp::InitInstance()
 				else
 					QueueLogLine(false, GetResString(IDS_FO_TEMPUDP_F), thePrefs.GetUDPPort());
 			}
+			*/
+			// <== Random Ports [MoNKi] - Stulle
 		}
 	}
 
 	// UPnP Port forwarding
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	m_pUPnPFinder = NULL;
+	m_pUPnPNat = NULL;
+	if (thePrefs.m_bUseACATUPnPCurrent)
+		m_pUPnPNat = new MyUPnP();
+	else
+		m_pUPnPFinder = new CUPnPImplWrapper(); //Official UPNP
+#else
 	m_pUPnPFinder = new CUPnPImplWrapper();
+#endif //zz_fly :: dual upnp
+	*/
+	if((m_UPnP_IGDControlPoint != NULL && thePrefs.IsUPnPEnabled()) || thePrefs.GetUpnpDetect()>0){  //leuk_he add startupwizard auto detect
+      m_UPnP_IGDControlPoint->Init(thePrefs.GetUPnPLimitToFirstConnection());
+		if(thePrefs.GetUPnPClearOnClose() /*|| thePrefs.GetUseRandomPorts()*/)
+			m_UPnP_IGDControlPoint->DeleteAllPortMappingsOnClose();
+	}
+	// <== UPnP support [MoNKi] - leuk_he
 
     // Highres scheduling gives better resolution for Sleep(...) calls, and timeGetTime() calls
     m_wTimerRes = 0;
@@ -723,11 +921,25 @@ BOOL CemuleApp::InitInstance()
         }
     }
 
+	UpdateSplash(_T("Loading bandwidthcontrol ...")); //Xman new slpash-screen arrangement
+
 	// ZZ:UploadSpeedSense -->
+	//Xman
+	// - Maella [patch] -Bandwidth: overall bandwidth measure-	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	/*
     lastCommonRouteFinder = new LastCommonRouteFinder();
+	*/
+	pBandWidthControl = new CBandWidthControl();
+	// Maella end
+	//Xman end
     uploadBandwidthThrottler = new UploadBandwidthThrottler();
 	// ZZ:UploadSpeedSense <--
 
+	UpdateSplash(_T("Loading DLP ...")); //Xman new slpash-screen arrangement
+	dlp = new CDLP(thePrefs.GetMuleDirectory(EMULE_EXECUTEABLEDIR),thePrefs.GetMuleDirectory(EMULE_CONFIGDIR)); //Xman DLP
+	UpdateSplash(_T("Loading IP to Country ...")); //Xman new slpash-screen arrangement
+	ip2country = new CIP2Country(); //EastShare - added by AndCycle, IP to Country
+	UpdateSplash(_T("Loading lists ...")); //Xman new slpash-screen arrangement
 	clientlist = new CClientList();
 	friendlist = new CFriendList();
 	searchlist = new CSearchList();
@@ -737,17 +949,37 @@ BOOL CemuleApp::InitInstance()
 	sharedfiles = new CSharedFileList(serverconnect);
 	listensocket = new CListenSocket();
 	clientudp	= new CClientUDPSocket();
+	UpdateSplash(_T("Loading credits ...")); //Xman new slpash-screen arrangement
 	clientcredits = new CClientCreditsList();
+	UpdateSplash(_T("Loading queues ...")); //Xman new slpash-screen arrangement
 	downloadqueue = new CDownloadQueue();	// bugfix - do this before creating the uploadqueue
 	uploadqueue = new CUploadQueue();
+	UpdateSplash(_T("Loading IPfilter ...")); //Xman new slpash-screen arrangement
 	ipfilter 	= new CIPFilter();
 	webserver = new CWebServer(); // Webserver [kuchin]
 	mmserver = new CMMServer();
 	scheduler = new CScheduler();
 	m_pPeerCache = new CPeerCacheFinder();
-	m_pUploadDiskIOThread = new CUploadDiskIOThread();
+	
+	// ==> TBH: minimule - Max
+	minimule = new CTBHMM(); 
+	// <== TBH: minimule - Max
 	
 	thePerfLog.Startup();
+
+	//Xman don't overwrite bak files if last sessions crashed
+	thePrefs.m_this_session_aborted_in_an_unnormal_way=true;
+	thePrefs.Save();
+	//Xman end
+
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	m_directoryWatcherCloseEvent = NULL;
+	m_directoryWatcherReloadEvent = NULL;
+	if(thePrefs.GetDirectoryWatcher() && !thePrefs.GetSingleSharedDirWatcher())
+		theApp.ResetDirectoryWatcher();
+	// <== Automatic shared files updater [MoNKi] - Stulle
+
+	UpdateSplash(_T("initializing  main-window ...")); //Xman new slpash-screen arrangement
 	dlg.DoModal();
 
 	DisableRTLWindowsLayout();
@@ -772,8 +1004,15 @@ BOOL CemuleApp::InitInstance()
 
 	emuledlg = NULL;
 
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	if (NtserviceStartwhenclose)
+		NtServiceStart(); // how to handle errors...? 
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
 	ClearDebugLogQueue(true);
 	ClearLogQueue(true);
+
+	DestroySplash(); //Xman new slpash-screen arrangement
 
 	AddDebugLogLine(DLP_VERYLOW, _T("%hs: returning: FALSE"), __FUNCTION__);
 	return FALSE;
@@ -827,10 +1066,17 @@ int eMuleAllocHook(int mode, void* pUserData, size_t nSize, int nBlockUse, long 
 bool CemuleApp::ProcessCommandline()
 {
 	bool bIgnoreRunningInstances = (GetProfileInt(_T("eMule"), _T("IgnoreInstances"), 0) != 0);
+	bool bExitParam=false; // Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
 	for (int i = 1; i < __argc; i++){
 		LPCTSTR pszParam = __targv[i];
 		if (pszParam[0] == _T('-') || pszParam[0] == _T('/')){
 			pszParam++;
+			// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+			if (_tcscmp(pszParam, _T("install"))==0)  {CmdInstallService();bExitParam = true; }
+			if (_tcscmp(pszParam, _T("uninstall"))==0){CmdRemoveService();bExitParam = true; }
+			if (_tcscmp(pszParam, _T("AsAService"))==0){OnStartAsService();} // NTservice entry point registation.
+			// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
 #ifdef _DEBUG
 			if (_tcsicmp(pszParam, _T("assertfile")) == 0)
 				_CrtSetReportHook(CrtDebugReportCB);
@@ -851,7 +1097,13 @@ bool CemuleApp::ProcessCommandline()
 	// NOTE: This will not prevent from some other application using that port!
 	UINT uTcpPort = GetProfileInt(_T("eMule"), _T("Port"), DEFAULT_TCP_PORT_OLD);
 	CString strMutextName;
-	strMutextName.Format(_T("%s:%u"), EMULE_GUID, uTcpPort);
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// for vista
+	if (Is_Terminal_Services()) // Terminal services active? use global\ prefix for ts awareness. 
+		strMutextName.Format(_T("Global\\%s:%u"), EMULE_GUID, uTcpPort);
+	else
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+		strMutextName.Format(_T("%s:%u"), EMULE_GUID, uTcpPort);
 	m_hMutexOneInstance = ::CreateMutex(NULL, FALSE, strMutextName);
 	
 	HWND maininst = NULL;
@@ -882,6 +1134,10 @@ bool CemuleApp::ProcessCommandline()
 				delete command;
       			return true;
 			}
+			// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+			else if (IsServiceRunningMutexActive()) 
+				PassLinkToWebService(sendstruct.dwData,*command);
+			// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
     		else
       			pstrPendingLink = command;
 		}
@@ -894,6 +1150,10 @@ bool CemuleApp::ProcessCommandline()
       			delete command;
 				return true;
 			}
+			// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+			else if (IsServiceRunningMutexActive()) 
+				PassLinkToWebService(sendstruct.dwData,*command);
+			// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
     		else
       			pstrPendingLink = command;
 		}
@@ -906,14 +1166,35 @@ bool CemuleApp::ProcessCommandline()
       			delete command;
 				return true;
 			}
+			// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+			/*
 			// Don't start if we were invoked with 'exit' command.
 			if (command->CompareNoCase(_T("exit")) == 0) {
+			*/
+			else if (IsServiceRunningMutexActive()) 
+				PassLinkToWebService(sendstruct.dwData,*command);
+
+			// Don't start if we were invoked with 'exit' command.
+			if (  (command->CompareNoCase(_T("exit")) == 0)||
+				(command->CompareNoCase(_T("uninstall")) == 0))
+			{
+			// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
 				delete command;
 				return true;
 			}
 			delete command;
 		}
     }
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	else if (maininst == NULL && bAlreadyRunning== true && IsServiceRunningMutexActive() ){ // should be service....
+		if (InterfaceToService()== false)	{ // stop service or start browser to 127.0.0.1....
+			m_hMutexOneInstance = ::CreateMutex(NULL, FALSE, strMutextName);  // gui..so create mutex to prevent 2nd startup. 
+			return bAlreadyRunning = ( ::GetLastError() == ERROR_ALREADY_EXISTS ||::GetLastError() == ERROR_ACCESS_DENIED);
+		}
+		else
+			return true; // let browser do GUI 
+	}
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
     return (maininst || bAlreadyRunning);
 }
 
@@ -930,15 +1211,27 @@ BOOL CALLBACK CemuleApp::SearchEmuleWindow(HWND hWnd, LPARAM lParam){
 	return TRUE; 
 } 
 
-
+//Xman
+// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+/*
 void CemuleApp::UpdateReceivedBytes(uint32 bytesToAdd) {
 	SetTimeOnTransfer();
 	theStats.sessionReceivedBytes+=bytesToAdd;
 }
+*/
+void CemuleApp::UpdateReceivedBytes(uint32 /*bytesToAdd*/) {
+	SetTimeOnTransfer();
+	//theStats.sessionReceivedBytes+=bytesToAdd; 
+}
+//Xman end
 
 void CemuleApp::UpdateSentBytes(uint32 bytesToAdd, bool sentToFriend) {
 	SetTimeOnTransfer();
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	/*
 	theStats.sessionSentBytes+=bytesToAdd;
+	*/
+	//Xman end
 
     if(sentToFriend == true) {
 	    theStats.sessionSentBytesToFriend += bytesToAdd;
@@ -1168,6 +1461,9 @@ void CemuleApp::OnlineSig() // Added By Bouc7
 			file.Write("0",1); 
 		file.Write("\n",1); 
 
+		//Xman
+		// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+		/*
 		_snprintf(buffer, _countof(buffer), "%.1f", (float)downloadqueue->GetDatarate() / 1024);
 		buffer[_countof(buffer) - 1] = '\0';
 		file.Write(buffer, strlen(buffer)); 
@@ -1175,6 +1471,21 @@ void CemuleApp::OnlineSig() // Added By Bouc7
 
 		_snprintf(buffer, _countof(buffer), "%.1f", (float)uploadqueue->GetDatarate() / 1024); 
 		buffer[_countof(buffer) - 1] = '\0';
+		*/
+		uint32 eMuleIn;
+		uint32 eMuleOut;
+		uint32 notUsed;
+		theApp.pBandWidthControl->GetDatarates(thePrefs.GetDatarateSamples(),
+			eMuleIn, notUsed,
+			eMuleOut, notUsed,
+			notUsed, notUsed);
+		_snprintf(buffer, _countof(buffer), "%.1f", (float)eMuleIn/1024.0f); 
+		buffer[_countof(buffer) - 1] = '\0';
+		file.Write(buffer, strlen(buffer)); 
+		file.Write("|", 1);
+		_snprintf(buffer, _countof(buffer), "%.1f", (float)eMuleOut/1024.0f);
+		buffer[_countof(buffer) - 1] = '\0';
+		//Xman end
 		file.Write(buffer, strlen(buffer));
 		file.Write("|", 1);
 
@@ -1371,11 +1682,37 @@ void CemuleApp::SetPublicIP(const uint32 dwIP){
 		ASSERT ( !IsLowID(dwIP));
 		ASSERT ( m_pPeerCache );
 
+		//Xman new adapter selection 
+		if(m_dwPublicIP!=dwIP)
+		{
+			uint32 test=dwIP;
+			CString tmp;
+			tmp.Format(_T("received an IP: %u.%u.%u.%u, NAFC-Adapter will be checked"), (uint8)test, (uint8)(test>>8), (uint8)(test>>16), (uint8)(test>>24));
+			AddLogLine(false,tmp);
+			theApp.pBandWidthControl->checkAdapterIndex(dwIP);
+		}
+		//Xman end
+
 		if ( GetPublicIP() == 0)
 			AddDebugLogLine(DLP_VERYLOW, false, _T("My public IP Address is: %s"),ipstr(dwIP));
 		else if (Kademlia::CKademlia::IsConnected() && Kademlia::CKademlia::GetPrefs()->GetIPAddress())
 			if(ntohl(Kademlia::CKademlia::GetIPAddress()) != dwIP)
+			{
+				// Xman reconnect Kad on IP-change
+				/*
 				AddDebugLogLine(DLP_DEFAULT, false,  _T("Public IP Address reported from Kademlia (%s) differs from new found (%s)"),ipstr(ntohl(Kademlia::CKademlia::GetIPAddress())),ipstr(dwIP));
+				*/
+				AddDebugLogLine(DLP_DEFAULT, false,  _T("Public IP Address reported from Kademlia (%s) differs from new found (%s), restart Kad"),ipstr(ntohl(Kademlia::CKademlia::GetIPAddress())),ipstr(dwIP));
+				Kademlia::CKademlia::Stop();
+				Kademlia::CKademlia::Start();
+				//Kad loaded the old IP, we must reset
+				if(Kademlia::CKademlia::IsRunning())
+				{
+					Kademlia::CKademlia::GetPrefs()->SetIPAddress(0);
+					Kademlia::CKademlia::GetPrefs()->SetIPAddress(htonl(dwIP));
+				}
+				//Xman end
+			}
 		m_pPeerCache->FoundMyPublicIPAddress(dwIP);	
 	}
 	else
@@ -1765,7 +2102,12 @@ CTempIconLoader::~CTempIconLoader()
 		VERIFY( DestroyIcon(m_hIcon) );
 }
 
+//Xman [MoNKi: -Check already downloaded files-]
+/*
 void CemuleApp::AddEd2kLinksToDownload(CString strLinks, int cat)
+*/
+void CemuleApp::AddEd2kLinksToDownload(CString strLinks, int cat, bool askIfAlreadyDownloaded)
+//Xman end
 {
 	int curPos = 0;
 	CString strTok = strLinks.Tokenize(_T(" \t\r\n"), curPos); // tokenize by whitespaces
@@ -1780,7 +2122,30 @@ void CemuleApp::AddEd2kLinksToDownload(CString strLinks, int cat)
 			{
 				if (pLink->GetKind() == CED2KLink::kFile)
 				{
-					downloadqueue->AddFileLinkToDownload(pLink->GetFileLink(), cat);
+					// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+					/*
+					//Xman [MoNKi: -Check already downloaded files-]
+					if ( askIfAlreadyDownloaded )
+					{
+						if ( knownfiles->CheckAlreadyDownloadedFileQuestion(pLink->GetFileLink()->GetHashKey(), pLink->GetFileLink()->GetName()) )
+							downloadqueue->AddFileLinkToDownload(pLink->GetFileLink(), cat);
+					}
+					else
+						theApp.downloadqueue->AddFileLinkToDownload(pLink->GetFileLink(), cat);
+					//Xman end
+					*/
+					// pFileLink IS NOT A LEAK, DO NOT DELETE.
+					CED2KFileLink* pFileLink = (CED2KFileLink*)CED2KLink::CreateLinkFromUrl(strTok.Trim());
+
+					//Xman [MoNKi: -Check already downloaded files-]
+					if ( askIfAlreadyDownloaded )
+					{
+						if ( knownfiles->CheckAlreadyDownloadedFileQuestion(pLink->GetFileLink()->GetHashKey(), pLink->GetFileLink()->GetName()) )
+							downloadqueue->AddFileLinkToDownload(pFileLink->GetFileLink(),cat, true);
+					}
+					else
+						theApp.downloadqueue->AddFileLinkToDownload(pFileLink->GetFileLink(),cat, true);
+					// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 				}
 				else
 				{
@@ -1829,7 +2194,17 @@ void CemuleApp::SearchClipboard()
 		else
 			strLinksDisplay = strLinks;
 		if (AfxMessageBox(GetResString(IDS_ADDDOWNLOADSFROMCB) + _T("\r\n") + strLinksDisplay, MB_YESNO | MB_TOPMOST) == IDYES)
+			//Xman [MoNKi: -Check already downloaded files-]
+			/*
 			AddEd2kLinksToDownload(pszTrimmedLinks, 0);
+			*/
+			// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+			/*
+			AddEd2kLinksToDownload(pszTrimmedLinks, 0, true);
+			*/
+			AddEd2kLinksToDownload(strLinks, -1, true);
+			// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+			//Xman end
 	}
 	m_strLastClipboardContents = strLinks; // Save the unmodified(!) clipboard contents
 	m_bGuardClipboardPrompt = false;
@@ -1842,7 +2217,12 @@ void CemuleApp::PasteClipboard(int cat)
 	if (strLinks.IsEmpty())
 		return;
 
+	//Xman [MoNKi: -Check already downloaded files-]
+	/*
 	AddEd2kLinksToDownload(strLinks, cat);
+	*/
+	AddEd2kLinksToDownload(strLinks, cat, true);
+	//Xman end
 }
 
 bool CemuleApp::IsEd2kLinkInClipboard(LPCSTR pszLinkType, int iLinkTypeLen)
@@ -2294,8 +2674,21 @@ void CemuleApp::UpdateLargeIconSize()
 void CemuleApp::ResetStandByIdleTimer()
 {
 	// check if anything is going on (ongoing upload, download or connected) and reset the idle timer if so
+	//Xman
+	/*
 	if (IsConnected() || (uploadqueue != NULL && uploadqueue->GetUploadQueueLength() > 0)
 		|| (downloadqueue != NULL && downloadqueue->GetDatarate() > 0))
+	*/
+	// Retrieve the current datarates
+	uint32 eMuleIn;
+	uint32 notUsed;
+	theApp.pBandWidthControl->GetDatarates(thePrefs.GetDatarateSamples(),
+		eMuleIn, notUsed,
+		notUsed, notUsed,
+		notUsed, notUsed);
+	if (IsConnected() || (uploadqueue != NULL && uploadqueue->GetUploadQueueLength() > 0)
+		|| eMuleIn>0)
+	//Xman end
 	{
 		EXECUTION_STATE (WINAPI *pfnSetThreadExecutionState)(EXECUTION_STATE);
 		(FARPROC&)pfnSetThreadExecutionState = GetProcAddress(GetModuleHandle(_T("kernel32")), "SetThreadExecutionState");
@@ -2318,7 +2711,755 @@ bool CemuleApp::IsVistaThemeActive() const
 	return theApp.m_ullComCtrlVer >= MAKEDLLVERULL(6,16,0,0) && g_xpStyle.IsThemeActive() && g_xpStyle.IsAppThemed();
 }
 
-bool CemuleApp::IsWinSock2Available() const
+//Xman new slpash-screen arrangement
+void CemuleApp::ShowSplash(bool start)
 {
-	return LOBYTE(m_wsaData.wVersion) == 2 && HIBYTE(m_wsaData.wVersion ) == 2;
+	ASSERT( m_pSplashWnd == NULL );
+	if (m_pSplashWnd == NULL)
+	{
+		m_pSplashWnd = new CSplashScreenEx();
+		if (m_pSplashWnd != NULL)
+		{
+
+			// ==> ModID [itsonlyme/SiRoB] - Stulle
+			/*
+			if (m_pSplashWnd->Create(NULL,MOD_MAJOR_VERSION ,0,CSS_FADE | CSS_CENTERSCREEN | CSS_SHADOW | CSS_HIDEONCLICK))
+			*/
+			CString temp = _T("eMule v") + theApp.m_strCurVersionLong;
+			if (m_pSplashWnd->Create(NULL,temp ,0,CSS_FADE | CSS_CENTERSCREEN | CSS_SHADOW | CSS_HIDEONCLICK))
+			// <== ModID [itsonlyme/SiRoB] - Stulle
+			{
+				m_pSplashWnd->SetBitmap(IDB_SPLASH,0,255,0);
+				m_pSplashWnd->SetTextFont(_T("Tahoma"),155,CSS_TEXT_BOLD);
+				//CRect x=CRect(10,230,210,265);
+				// ==> changed - Stulle
+				/*
+				CRect x=CRect(10,230,210,248);
+				*/
+				CRect x=CRect(75,225,325,258);
+				// <== changed - Stulle
+				m_pSplashWnd->SetTextRect(x);
+				m_pSplashWnd->SetTextColor(RGB(0,0,0));
+				m_pSplashWnd->SetTextFormat(DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+				m_pSplashWnd->Show();
+				spashscreenfinished=false;
+				if(start) Sleep(1000);
+				m_dwSplashTime = ::GetCurrentTime();
+				// ==> ModID [itsonlyme/SiRoB] - Stulle
+				/*
+				m_pSplashWnd->SetText(MOD_VERSION);
+				*/
+				m_pSplashWnd->SetText(theApp.m_strModLongVersion);
+				// <== ModID [itsonlyme/SiRoB] - Stulle
+			}
+			else
+			{
+				delete m_pSplashWnd;
+				m_pSplashWnd = NULL;
+				spashscreenfinished=true;
+			}
+		}
+	}
+#ifdef _BETA
+	if (!RunningAsService()) // Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	if (!thePrefs.IsFirstStart())
+		AfxMessageBox(GetResString(IDS_BETANAG), MB_ICONINFORMATION | MB_OK, 0);
+#endif
 }
+
+void CemuleApp::DestroySplash()
+{
+	if (m_pSplashWnd != NULL)
+	{
+		m_pSplashWnd->DestroyWindow();
+		m_pSplashWnd->Hide();
+		delete m_pSplashWnd;
+		m_pSplashWnd = NULL;
+	}
+	spashscreenfinished=true;
+}
+
+void CemuleApp::UpdateSplash(LPCTSTR Text){
+	if(m_pSplashWnd)
+		m_pSplashWnd->SetText2(Text);
+}
+//Xman end
+
+//Xman queued disc-access for read/flushing-threads
+/*
+#define allowed_Threads 1
+//threading-info: synchronized with main-thread which is the only caller
+void CemuleApp::AddNewDiscAccessThread(CWinThread* threadtoadd)
+{
+	if(emuledlg->IsRunning()==false)
+	{
+		//when shuting down, let all flush thread run... in partfile we wait for it
+		if(threadtoadd->IsKindOf(RUNTIME_CLASS(CReadBlockFromFileThread)))
+			threadtoadd->Delete();
+		else
+			threadtoadd->ResumeThread();
+		return;
+	}
+
+
+	threadqueuelock.Lock();
+
+
+	if(m_uRunningNonBlockedDiscAccessThreads<=allowed_Threads-1 /*|| thePrefs.dontusediscaccessqueue==true*//*) 
+	{
+		m_uRunningNonBlockedDiscAccessThreads++;
+		threadtoadd->ResumeThread();
+	}
+	else
+	{
+		threadqueue.AddTail(threadtoadd);
+	}
+	threadqueuelock.Unlock();
+}
+
+//threading-info: called by different threads
+void CemuleApp::ResumeNextDiscAccessThread()
+{
+	threadqueuelock.Lock();
+	if(threadqueue.IsEmpty()==false && (m_uRunningNonBlockedDiscAccessThreads<=allowed_Threads /*|| thePrefs.dontusediscaccessqueue==true*//*))
+	{
+		CWinThread* threadtorun=threadqueue.RemoveHead();
+		threadtorun->ResumeThread();
+	}
+	else if(m_uRunningNonBlockedDiscAccessThreads > 0)
+		m_uRunningNonBlockedDiscAccessThreads--;
+
+	threadqueuelock.Unlock();
+}
+
+//doing this when shutting down
+//threading-info: synchronized with mainthread which is the only caller
+void CemuleApp::ForeAllDiscAccessThreadsToFinish()
+{
+	threadqueuelock.Lock();
+	while(threadqueue.IsEmpty()==false)
+	{
+		CWinThread* threadtorun=threadqueue.RemoveHead();
+		if(threadtorun->IsKindOf(RUNTIME_CLASS(CReadBlockFromFileThread)))
+			threadtorun->Delete();
+		else
+			threadtorun->ResumeThread();
+	}
+
+	threadqueuelock.Unlock();
+}
+*/
+//Xman end
+
+// ==> UPnP support [MoNKi] - leuk_he
+/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+//ACAT UPnP
+BOOL CemuleApp::AddUPnPNatPort(MyUPnP::UPNPNAT_MAPPING *mapping, bool tryRandom){
+	if(!thePrefs.m_bUseACATUPnPCurrent)
+		return false;
+
+	CString args;
+	if(m_pUPnPNat->AddNATPortMapping(mapping, tryRandom) == MyUPnP::UNAT_OK ){
+		if(theApp.emuledlg->IsRunning()){
+			AddLogLine(false, _T("Added UPnP NAT Support: (%s) NAT ROUTER/FIREWALL:%i -> %s:%i"),
+				mapping->description, mapping->externalPort, m_pUPnPNat->GetLocalIPStr(), mapping->internalPort);
+		}
+		return true;
+	}
+	else{
+		if(theApp.emuledlg->IsRunning()){
+			AddLogLine(false, _T("Error adding UPnP NAT Support: (%s) NAT ROUTER/FIREWALL:%i -> %s:%i (%s)"),
+				mapping->description, mapping->externalPort, m_pUPnPNat->GetLocalIPStr(), mapping->internalPort, m_pUPnPNat->GetLastError());
+		}
+		return false;
+	}
+}
+
+BOOL CemuleApp::RemoveUPnPNatPort(MyUPnP::UPNPNAT_MAPPING *mapping){
+	if(!thePrefs.m_bUseACATUPnPCurrent)
+		return false;
+
+	if(m_pUPnPNat->RemoveNATPortMapping(*mapping) == MyUPnP::UNAT_OK )
+		return true;
+	else
+		return false;
+}
+#endif //zz_fly :: dual upnp
+*/
+// <== UPnP support [MoNKi] - leuk_he
+
+// Commander - Added: FriendLinks [emulEspaa] - Start - added by zz_fly
+bool CemuleApp::IsEd2kFriendLinkInClipboard()
+{
+	static const CHAR _szEd2kFriendLink[] = "ed2k://|friend|";
+	return IsEd2kLinkInClipboard(_szEd2kFriendLink, ARRSIZE(_szEd2kFriendLink)-1);
+}
+// Commander - Added: FriendLinks [emulEspaa] - End
+
+// ==> Design Settings [eWombat/Stulle] - Stulle
+void CemuleApp::CreateExtraFonts(CFont *font)
+{
+	DestroyExtraFonts();
+	LOGFONT lf;
+	font->GetLogFont(&lf);
+	lf.lfWeight=FW_BOLD;
+	m_ExtraFonts[0].CreateFontIndirect(&lf); // bold
+	lf.lfUnderline=TRUE;
+	m_ExtraFonts[1].CreateFontIndirect(&lf); // bold underlined
+	lf.lfItalic = TRUE;
+	m_ExtraFonts[2].CreateFontIndirect(&lf); // bold underlined italic
+	lf.lfWeight=FW_NORMAL;
+	m_ExtraFonts[3].CreateFontIndirect(&lf); // underlined italic
+	lf.lfUnderline=FALSE;
+	m_ExtraFonts[4].CreateFontIndirect(&lf); // italic
+	lf.lfWeight=FW_BOLD;
+	m_ExtraFonts[5].CreateFontIndirect(&lf); // italic bold
+	lf.lfWeight=FW_NORMAL;
+	lf.lfItalic = FALSE;
+	lf.lfUnderline=TRUE;
+	m_ExtraFonts[6].CreateFontIndirect(&lf); // underlined
+	lf.lfUnderline=FALSE;
+
+	// narrow
+	_tcscpy(lf.lfFaceName, _T("Arial Narrow"));
+	m_ExtraFonts[7].CreateFontIndirect(&lf); // normal
+	lf.lfWeight=FW_BOLD;
+	m_ExtraFonts[8].CreateFontIndirect(&lf); // bold
+	lf.lfUnderline=TRUE;
+	m_ExtraFonts[9].CreateFontIndirect(&lf); // bold underlined
+	lf.lfItalic = TRUE;
+	m_ExtraFonts[10].CreateFontIndirect(&lf); // bold underlined italic
+	lf.lfWeight=FW_NORMAL;
+	m_ExtraFonts[11].CreateFontIndirect(&lf); // underlined italic
+	lf.lfUnderline=FALSE;
+	m_ExtraFonts[12].CreateFontIndirect(&lf); // italic
+	lf.lfWeight=FW_BOLD;
+	m_ExtraFonts[13].CreateFontIndirect(&lf); // italic bold
+	lf.lfWeight=FW_NORMAL;
+	lf.lfItalic = FALSE;
+	lf.lfUnderline=TRUE;
+	m_ExtraFonts[14].CreateFontIndirect(&lf); // underlined
+}
+
+void CemuleApp::DestroyExtraFonts()
+{
+	for (UINT i=0;i<ARRSIZE(m_ExtraFonts);i++)
+	{
+	if (m_ExtraFonts[i].GetSafeHandle())
+		m_ExtraFonts[i].DeleteObject();
+	}
+}
+
+CFont* CemuleApp::GetFontByStyle(DWORD nStyle,bool bNarrow)
+{
+	nStyle &= STYLE_FONTMASK;
+	int i = 0;
+	if(bNarrow)
+	{
+		i = 8;
+		if(nStyle == 0)
+			return &m_ExtraFonts[7];
+	}
+
+	if(nStyle & STYLE_BOLD)
+	{
+		if(nStyle & STYLE_UNDERLINE)
+		{
+			if(nStyle & STYLE_ITALIC)
+				return &m_ExtraFonts[2+i];
+			return &m_ExtraFonts[1+i];
+		}
+		return &m_ExtraFonts[0+i];
+	}
+	else if(nStyle & STYLE_ITALIC)
+	{
+		if(nStyle & STYLE_UNDERLINE)
+			return &m_ExtraFonts[3+i];
+		if(nStyle & STYLE_BOLD)
+			return &m_ExtraFonts[5+i];
+		return &m_ExtraFonts[4+i];
+	}
+	else if(nStyle & STYLE_UNDERLINE)
+		return &m_ExtraFonts[6+i];
+
+	return emuledlg->GetFont();
+}
+// <== Design Settings [eWombat/Stulle] - Stulle
+
+// ==> Automatic shared files updater [MoNKi] - Stulle
+#define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=NULL; } } 
+
+// This thread will check if the user made changes on shared
+// directories, reloading it if size/name/date/attributes has
+// changed on files/directories inside a shared dir or on the
+// shared dir itself.
+UINT CemuleApp::CheckDirectoryForChangesThread(LPVOID /*pParam*/)
+{
+	m_directoryWatcherCS.Lock();
+
+	DWORD lastReloadTime = ::GetTickCount()-SEC2MS(10); //Forces first reload
+	DWORD reloadSleepTime = 5;
+
+	// Sets the minimun time between reloads.
+	// To set an fixed time between reloads change
+	// minSecondsBetweenReloads to a value greater
+	// than 0, for example 600 for 10 minutes (600 seconds)
+	const DWORD minSecondsBetweenReloads = thePrefs.GetTimeBetweenReloads(); //Variable time
+
+	// We use this event when FindFirstChangeNotification fails
+	CEvent nullEvent(FALSE,TRUE); 
+
+	// We use a second list to store inactive shares. Note, dirs will only be added to this list
+	// when they got inactive during runtime so we will not add vast numbers of always inactive
+	// shares. This makes a reset required when such a always inactive dir comes available out
+	// of a sudden. Anyway, there should not be too many of those to boot with.
+	CStringList inactiveDirList;
+
+	// Get all shared directories
+	CStringList dirList;
+	CString curDir;
+	
+	// Incoming Dir
+	curDir=thePrefs.GetMuleDirectory(EMULE_INCOMINGDIR);
+	if (curDir.Right(1)==_T("\\"))
+		curDir = curDir.Left(curDir.GetLength() - 1);
+
+	dirList.AddTail( curDir );
+
+	// Categories dirs
+	for (int i=1; i < thePrefs.GetCatCount(); i++)
+	{
+		curDir=CString( thePrefs.GetCatPath(i) );
+		if (curDir.Right(1)==_T("\\"))
+			curDir = curDir.Left(curDir.GetLength() - 1);
+
+		if( dirList.Find( curDir ) == NULL ) {
+			dirList.AddTail( curDir );
+		}
+	}
+
+	// The other shared dirs
+	POSITION pos = thePrefs.shareddir_list.GetHeadPosition();
+	while(pos){
+		curDir = thePrefs.shareddir_list.GetNext(pos);
+
+		// If this folder does not exist we do not need to watch this folder
+		if (_taccess(curDir, 0) != 0)
+			continue;
+
+		if (curDir.Right(1)==_T("\\"))
+			curDir = curDir.Left(curDir.GetLength() - 1);
+
+		if( dirList.Find( curDir ) == NULL ) {
+			dirList.AddTail( curDir );
+		}
+	}
+
+	// Dirs of single shared files
+	if(thePrefs.GetSingleSharedDirWatcher()/* && theApp.sharedfiles->ProbablyHaveSingleSharedFiles()*/)
+	{
+		for (POSITION pos = theApp.sharedfiles->m_liSingleSharedFiles.GetHeadPosition(); pos != NULL; theApp.sharedfiles->m_liSingleSharedFiles.GetNext(pos))
+		{
+			curDir = theApp.sharedfiles->m_liSingleSharedFiles.GetAt(pos);
+			if (_taccess(curDir, 0) != 0)
+				continue; // only add for this single shared file if it exists
+
+			int length = curDir.ReverseFind(_T('\\'));
+			if(length != -1) // should always be true... anyway, just in case...
+				curDir = curDir.Left(length);
+
+			if( dirList.Find( curDir ) == NULL ) {
+				dirList.AddTail( curDir );
+			}
+		}
+	}
+
+	// dirList now contains all shared dirs.
+	// Now we get the parent dirs of shared dirs,
+	// Why? To check if the user renames or removes a shared dir,
+	// because FindFirstChangeNotification don't notifies this changes
+	// on the own directory.
+	
+	// Save the start position of parents
+	int parentsStartPosition = dirList.GetCount();
+	int curPos = 0;
+	
+	pos = dirList.GetHeadPosition();
+	while(pos && curPos != parentsStartPosition){
+		curDir = dirList.GetNext(pos); 
+		curPos++;
+
+		int findPos = curDir.ReverseFind(_T('\\'));
+		if(findPos != -1)
+			curDir = curDir.Left(findPos);
+
+		if( dirList.Find( curDir ) == NULL ) {
+			dirList.AddTail( curDir );
+		}
+	}
+
+	int nChangeHandles = dirList.GetCount() + 2; // We have 2 additional events
+
+	// v3.5: There is a limit to WaitForMultipleObjects which is MAXIMUM_WAIT_OBJECTS == 64.
+	// To prevent ASFU from crashing eMule entirely we disable ASFU. Working around the limit
+	// might be possible but it would involve multiple threads checking parts of the above
+	// created dirList. Coding that is too much of a pain at this point so we stick to the
+	// easier way.
+	if(nChangeHandles > MAXIMUM_WAIT_OBJECTS)
+	{
+		AddLogLine(true, _T("ASFU: You are sharing too many folders for ASFU! Disabling!"));
+		thePrefs.SetDirectoryWatcher(false);
+		m_directoryWatcherCS.Unlock();
+		return 1;
+	}
+
+	// Save the position of the first parent in the list
+	POSITION parentListPos = dirList.FindIndex(parentsStartPosition);
+
+	HANDLE *dwChangeHandles = NULL;
+	dwChangeHandles = new HANDLE[nChangeHandles];
+	
+	if(!m_directoryWatcherCloseEvent)
+	{
+		ASSERT(0);
+		DebugLogError(_T("ASFU: Crashed. Will be disabled now")); // it would crash ;)
+		thePrefs.SetDirectoryWatcher(false);
+	}
+	else if(dwChangeHandles){
+		// dwChangeHandles[0] will be an event handler to finish the thread 
+		dwChangeHandles[0] = m_directoryWatcherCloseEvent->m_hObject;
+
+		// dwChangeHandles[1] will be an event handler to reload the files
+		dwChangeHandles[1] = m_directoryWatcherReloadEvent->m_hObject;
+
+		// Generate shared/parents directories handlers
+		curPos = 2; // Start at pos 2, because the pos 0 and 1 for the events.
+		pos = dirList.GetHeadPosition();
+		while(pos){
+			curDir = dirList.GetNext(pos); 
+			dwChangeHandles[curPos] = FindFirstChangeNotification(
+				curDir, FALSE,
+				FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+				FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE |
+				FILE_NOTIFY_CHANGE_ATTRIBUTES);
+			
+			if(dwChangeHandles[curPos] == INVALID_HANDLE_VALUE){
+				dwChangeHandles[curPos] = nullEvent.m_hObject;
+			}
+			curPos++; 
+		}
+	
+		// Waits for an event
+		DWORD dwWaitStatus;
+		DWORD dwWaitStatusClose;
+
+		while(m_directoryWatcherCloseEvent /*true*/){ 
+			dwWaitStatus = WaitForMultipleObjects(nChangeHandles, dwChangeHandles, 
+				FALSE, INFINITE); 
+
+			// figure out what got signaled
+			if(dwWaitStatus - WAIT_OBJECT_0 >= 2)
+			{
+				// get the dir from the list
+				pos = dirList.GetHeadPosition();
+				for(DWORD dw = 2; dw <= dwWaitStatus - WAIT_OBJECT_0; dw++)
+					curDir = dirList.GetNext(pos);
+
+				if(_taccess(curDir, 0) != 0){ // this one disappeared just now... w000t
+					if( inactiveDirList.Find( curDir ) == NULL ) // well, it should not be in the list but to be sure
+						inactiveDirList.AddTail( curDir ); // add to list of inactive shares
+				}
+				//theApp.QueueDebugLogLine(false,_T("ASFU: Handle number %i --> %s"), dwWaitStatus - WAIT_OBJECT_0, curDir);
+			}
+			//else
+				//theApp.QueueDebugLogLine(false,_T("ASFU: Handle number %i"), dwWaitStatus-WAIT_OBJECT_0);
+
+			// Maybe more than one object has been released,
+			// check if the Close Event has been signaled
+			// because it has precedence.
+			dwWaitStatusClose = WaitForSingleObject(m_directoryWatcherCloseEvent->m_hObject, 0);
+			if(dwWaitStatusClose == WAIT_OBJECT_0){
+				// We want to finalize the thread
+				dwWaitStatus = WAIT_OBJECT_0;
+			}
+
+			if(dwWaitStatus > WAIT_OBJECT_0 &&
+				dwWaitStatus < WAIT_OBJECT_0  + nChangeHandles)
+			{
+				bool reloadShared = true;
+
+				if(dwWaitStatus > (WAIT_OBJECT_0 + 1) + parentsStartPosition){
+					// A parent of a shared dir has been modified.
+					// Search changes in shared dirs and reload
+					// it only if needed.
+					reloadShared = false;
+
+					// Note, this was changed in v3.4 and will run through all our monitored shares
+					// so we can maintain a complete list of inactive shares. This list will then allow
+					// us to reload share when a shared folder goes missing and when it pops up again.
+					pos = dirList.GetHeadPosition();
+					while(pos && pos != parentListPos){
+						curDir = dirList.GetNext(pos); 
+						if (curDir.Right(1) != _T(":")){ // not a root dir
+							if(_taccess(curDir, 0) != 0){ // does not exist
+								if( inactiveDirList.Find( curDir ) == NULL ) { // and not yet in list
+									inactiveDirList.AddTail( curDir ); // add to list of inactive shares
+
+									// Reload shared files
+									reloadShared = true;
+								}
+							}
+							else{ // does exist
+								POSITION inactivePos = inactiveDirList.Find( curDir );
+								if( inactivePos != NULL ) { // and in list of inactive shares
+									inactiveDirList.RemoveAt( inactivePos ); // remove from list
+
+									// Reload shared files
+									reloadShared = true;
+								}
+							}
+						}
+					}
+				}
+
+				if(reloadShared){
+					// Here we have a problem, if more than one file
+					// has changed (for example when the user deletes or moves
+					// a list of files), there will be a lot of notifications and
+					// the shared file list will be reloaded multiple times.
+					// The next code tries to minimize the number of reloads.
+
+					// Stop all pending notifications
+					// (we are going to reload ALL files, no more notifications needed)
+					for(int i=2; i<nChangeHandles; i++){
+						if(dwChangeHandles[i] != nullEvent.m_hObject)
+							FindCloseChangeNotification(dwChangeHandles[i]);
+					}
+
+					// Wait a few seconds. Should be sufficient to skip
+					// a lot of notifications generated by multiple files
+					const DWORD curTime = ::GetTickCount();
+					const DWORD ts = curTime - lastReloadTime;
+					const uint32 seconds = ts/1000;
+					
+					if(minSecondsBetweenReloads == 0)
+					{
+						if(seconds < reloadSleepTime)
+						{
+							if(reloadSleepTime < 1280) //Max 21 minutes between reloads (aprox)
+								reloadSleepTime *= 2;
+						}
+						else
+							reloadSleepTime = 5;
+					}
+					else
+					{
+						if(seconds < minSecondsBetweenReloads)
+							reloadSleepTime  = minSecondsBetweenReloads - seconds;
+						else
+							reloadSleepTime  = 5;
+					}
+						
+					AddDebugLogLine(false, GetResString(IDS_ASFU_RELOADTIME), reloadSleepTime);
+					
+					// Waits reloadSleepTime seconds or until the close event is set
+					dwWaitStatus = WaitForSingleObject(
+						m_directoryWatcherCloseEvent->m_hObject,
+						reloadSleepTime * 1000);
+
+					// Checks if a part file is completing
+					// and delay the reload in this case
+					reloadShared = false;
+					bool firstTime = true;
+					while(!reloadShared){
+						reloadShared = true;
+						for(int i=0; i < theApp.downloadqueue->GetFileCount() && reloadShared; i++){
+							CPartFile *pFile = theApp.downloadqueue->GetFileByIndex(i);
+							if(pFile && pFile->GetStatus() == PS_COMPLETING){
+								if(firstTime){
+									AddDebugLogLine(false, GetResString(IDS_ASFU_DELAY));
+									firstTime = false;
+								}
+								reloadShared = false;
+							}
+						}
+						if(!reloadShared){
+							// Waits 10 seconds or until the close event is set
+							dwWaitStatus = WaitForSingleObject(
+								m_directoryWatcherCloseEvent->m_hObject, 10000);
+
+							if(dwWaitStatus != WAIT_TIMEOUT){
+								// We want to close eMule
+								// this forces the 'while' end
+								reloadShared = true;
+							}
+						}
+					}
+
+					// Reload
+					if(dwWaitStatus == WAIT_TIMEOUT){
+						//Restart all notifications again
+						curPos = 2; // Start at pos 2, because the pos 0 and 1 is for the events.
+						pos = dirList.GetHeadPosition();
+						while(pos){
+							curDir = dirList.GetNext(pos);
+
+							dwChangeHandles[curPos] = FindFirstChangeNotification(
+								curDir, FALSE,
+								FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+								FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE |
+								FILE_NOTIFY_CHANGE_ATTRIBUTES);
+
+							if(dwChangeHandles[curPos] == INVALID_HANDLE_VALUE){
+								dwChangeHandles[curPos] = nullEvent.m_hObject;
+							}
+							curPos++;
+						}
+					
+						// Reload shared files
+						if(theApp.emuledlg->IsRunning()){
+							AddDebugLogLine(false, GetResString(IDS_ASFU_RELOADING));
+							AddLogLine(false, GetResString(IDS_ASFU_RELOAD));
+
+							m_directoryWatcherReloadEvent->ResetEvent();
+//							theApp.sharedfiles->Reload();
+//							theApp.emuledlg->sharedfileswnd->Reload(true);
+							theApp.emuledlg->sharedfileswnd->SendMessage(WM_COMMAND, IDC_RELOADSHAREDFILES); // fix by Wiz
+							lastReloadTime = ::GetTickCount();
+						}
+					}
+					else{
+						delete[] dwChangeHandles;
+						m_directoryWatcherCS.Unlock();
+						return 1;
+					}
+				}
+				else{
+					// Get new changes
+					FindNextChangeNotification(dwChangeHandles[dwWaitStatus - WAIT_OBJECT_0]);
+				}
+			}
+			else{
+				// End the thread
+				for(int i=2; i<nChangeHandles; i++){
+					if(dwChangeHandles[i] != nullEvent.m_hObject)
+						FindCloseChangeNotification(dwChangeHandles[i]);
+				}
+				delete[] dwChangeHandles;
+				m_directoryWatcherCloseEvent->ResetEvent();
+				m_directoryWatcherCS.Unlock();
+				return 1;
+			}
+		}
+	}
+
+	//This shouldn't execute never, but...
+	m_directoryWatcherCS.Unlock();
+	return 1;
+}
+
+void CemuleApp::ResetDirectoryWatcher(){
+	// End previous thread (if exists)
+	EndDirectoryWatcher();
+
+	if(thePrefs.GetDirectoryWatcher()){
+
+		if(m_directoryWatcherCloseEvent == NULL)
+			m_directoryWatcherCloseEvent = new CEvent(FALSE, TRUE);
+
+		if(m_directoryWatcherReloadEvent == NULL)
+			m_directoryWatcherReloadEvent = new CEvent(FALSE, TRUE);
+
+		if(m_directoryWatcherCloseEvent != NULL &&
+			m_directoryWatcherReloadEvent != NULL)
+		{
+			// This is based on v3.2. v3.3 was never called this but
+			// adding capabilities for shareSubdir is worth considering
+			// the previous version as v3.3. New v3.4 addresses single
+			// shared files and some gui handling around device changes.
+			// v3.5 fixes crashes when too many dirs are shared. See 
+			// above for a more detaied explanation.
+
+			// ScarAngel note: the capability to work with sub dirs has been
+			// removed for the time being.
+			AddDebugLogLine(false, _T("ASFU: Starting v3.5"));
+
+			// Starts new thread
+			AfxBeginThread(CheckDirectoryForChangesThread, this);
+		}
+	}
+}
+
+void CemuleApp::EndDirectoryWatcher() 
+ { 
+      if(m_directoryWatcherCloseEvent != NULL) 
+      { 
+           // Notifies the thread to finalize 
+           m_directoryWatcherCloseEvent->SetEvent(); 
+  
+           // Waits until the thread ends 
+           m_directoryWatcherCS.Lock(); 
+           m_directoryWatcherCS.Unlock(); 
+  
+           SAFE_DELETE(m_directoryWatcherCloseEvent); 
+           AddDebugLogLine(false, _T("ASFU: Closed"));
+      } 
+  
+      SAFE_DELETE(m_directoryWatcherReloadEvent);
+ }
+
+void CemuleApp::DirectoryWatcherExternalReload(){
+	if(m_directoryWatcherCloseEvent != NULL &&
+		m_directoryWatcherReloadEvent != NULL){
+		AddDebugLogLine(false, _T("ASFU: Forcing reload"));
+
+		// Notifies the thread to reload
+		m_directoryWatcherReloadEvent->SetEvent();
+	}
+}
+// <== Automatic shared files updater [MoNKi] - Stulle
+
+// ==> UPnP support [MoNKi] - leuk_he
+void CemuleApp::RebindUPnP()
+{
+	if(!thePrefs.IsUPnPEnabled())
+		return;
+	clientudp->Rebind();
+	listensocket->Rebind();
+
+	if(theApp.m_UPnP_IGDControlPoint->IsUpnpAcceptsPorts())
+	{
+		if(thePrefs.GetUPnPNatWeb())
+		{
+			// Remove Web Interface UPnP
+			m_UPnP_IGDControlPoint->DeletePortMapping(thePrefs.GetWSPort(), CUPnP_IGDControlPoint::UNAT_TCP, _T("Web Interface"));
+
+			// Readd Web Interface UPnP
+			m_UPnP_IGDControlPoint->AddPortMapping(thePrefs.GetWSPort(), CUPnP_IGDControlPoint::UNAT_TCP, _T("Web Interface"));
+		}
+
+		//TODO: Wap interface needs an own setting and should be rebound, too
+		/*
+		{
+			// Remove Wap Interface UPnP
+			theApp.m_UPnP_IGDControlPoint->DeletePortMapping(thePrefs.GetWapPort(), CUPnP_IGDControlPoint::UNAT_TCP, _T("Wap Interface"));
+
+			// Readd Wap Interface UPnP
+			theApp.m_UPnP_IGDControlPoint->AddPortMapping(thePrefs.GetWapPort(), CUPnP_IGDControlPoint::UNAT_TCP, _T("Wap Interface"));
+		}
+		*/
+	}
+}
+// <== UPnP support [MoNKi] - leuk_he
+
+// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+bool CemuleApp::IsRunningAsService(int OptimizeLevel )
+{
+	//if (OptimizeLevel < 5)	// 5: all optmization except server list : need an option for preferneces. 
+	if (OptimizeLevel < thePrefs.GetServiceOptLvl())
+		return RunningAsService();
+	else
+		return false;  // disable optimizations
+}
+// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle

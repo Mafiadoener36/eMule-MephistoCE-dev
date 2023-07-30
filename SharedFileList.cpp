@@ -44,6 +44,11 @@
 #include "Collection.h"
 #include "kademlia/kademlia/UDPFirewallTester.h"
 #include "md5sum.h"
+#include "SR13-ImportParts.h" //MORPH - Added by SiRoB, Import Parts [SR13] - added by zz_fly
+
+//Xman advanced upload-priority
+#include "UploadQueue.h"
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -343,13 +348,37 @@ int CAddFileThread::Run()
 	if ( !(m_pOwner || m_partfile) || m_strFilename.IsEmpty() || !theApp.emuledlg->IsRunning() )
 		return 0;
 	
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash
+	CReadWriteLock lock(&theApp.m_threadlock);
+	if (!lock.ReadLock(0))
+		return 0;
+	// END SLUGFILLER: SafeHash
+
 	CoInitialize(NULL);
 
 	// locking that hashing thread is needed because we may create a couple of those threads at startup when rehashing
 	// potentially corrupted downloading part files. if all those hash threads would run concurrently, the io-system would be
 	// under very heavy load and slowly progressing
+
+	//Xman
+	// SLUGFILLER: SafeHash remove - locking code removed, unnecessary
+	/*
 	CSingleLock sLock1(&theApp.hashing_mut); // only one filehash at a time
 	sLock1.Lock();
+	*/
+	//Xman End
+	//MORPH START - Added by SiRoB, Import Parts [SR13] - added by zz_fly
+	if (m_partfile && m_partfile->GetFileOp() == PFOP_SR13_IMPORTPARTS){
+		SR13_ImportParts();
+		//sLock1.Unlock(); //SafeHash
+		CoUninitialize();
+		return 0;
+	}
+	// TODO: Test case when suposeddly correct, but actually broken verified data is
+	// completed with import and see if file recovers its started/paused state correctly
+	// after failed completion.
+	//MORPH END   - Added by SiRoB, Import Parts [SR13]
 
 	CString strFilePath;
 	_tmakepathlimit(strFilePath.GetBuffer(MAX_PATH), NULL, m_strDirectory, m_strFilename, NULL);
@@ -360,21 +389,31 @@ int CAddFileThread::Run()
 		Log(GetResString(IDS_HASHINGFILE) + _T(" \"%s\""), strFilePath);
 	
 	CKnownFile* newrecord = new CKnownFile();
+	//zz_fly :: minor issue in case of shutdown while still hashing :: WiZaRd :: start
+	/*
 	if (newrecord->CreateFromFile(m_strDirectory, m_strFilename, m_partfile) && theApp.emuledlg && theApp.emuledlg->IsRunning()) // SLUGFILLER: SafeHash - in case of shutdown while still hashing
+	*/
+	if (newrecord->CreateFromFile(m_strDirectory, m_strFilename, m_partfile))
+	//zz_fly :: end
 	{
 		newrecord->SetSharedDirectory(m_strSharedDir);
 		if (m_partfile && m_partfile->GetFileOp() == PFOP_HASHING)
 			m_partfile->SetFileOp(PFOP_NONE);
-		if (!PostMessage(theApp.emuledlg->m_hWnd, TM_FINISHEDHASHING, (m_pOwner ? 0: (WPARAM)m_partfile), (LPARAM)newrecord))
+		if (theApp.emuledlg == NULL || !theApp.emuledlg->IsRunning() || // SLUGFILLER: SafeHash - in case of shutdown while still hashing 
+			!PostMessage(theApp.emuledlg->m_hWnd, TM_FINISHEDHASHING, (m_pOwner ? 0: (WPARAM)m_partfile), (LPARAM)newrecord))
 			delete newrecord;
 	}
 	else
 	{
+		//zz_fly :: minor issue in case of shutdown while still hashing :: WiZaRd :: start
+		/*
 		if (theApp.emuledlg && theApp.emuledlg->IsRunning())
 		{
+		*/
+		//zz_fly :: end
 			if (m_partfile && m_partfile->GetFileOp() == PFOP_HASHING)
 				m_partfile->SetFileOp(PFOP_NONE);
-		}
+		//}
 
 		// SLUGFILLER: SafeHash - inform main program of hash failure
 		if (m_pOwner && theApp.emuledlg && theApp.emuledlg->IsRunning())
@@ -389,7 +428,12 @@ int CAddFileThread::Run()
 		delete newrecord;
 	}
 
+	//Xman
+	// SLUGFILLER: SafeHash remove - locking code removed, unnecessary
+	/*
 	sLock1.Unlock();
+	*/
+	//Xman End
 	CoUninitialize();
 
 	return 0;
@@ -413,8 +457,17 @@ CSharedFileList::CSharedFileList(CServerConnect* in_server)
 	m_currFileKey = 0;
 	bHaveSingleSharedFiles = false;
 	
+	//Xman advanced upload-priority
+	m_lastavgPercent = 0; 
+	m_avg_virtual_sources = 0;
+	m_avg_client_on_uploadqueue = 0;
+	//Xman end
+	// SLUGFILLER: SafeHash remove - delay load shared files
+	/*
 	LoadSingleSharedFilesList();
 	FindSharedFiles();
+	*/
+	// SLUGFILLER End
 }
 
 CSharedFileList::~CSharedFileList(){
@@ -430,7 +483,9 @@ CSharedFileList::~CSharedFileList(){
 	// SLUGFILLER: SafeHash
 	delete m_keywords;
 
-#if defined(_BETA) || defined(_DEVBUILD)
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	/*
+#ifdef _BETA
 	// On Beta builds we created a testfile, delete it when closing eMule
 	CString tempDir = thePrefs.GetMuleDirectory(EMULE_INCOMINGDIR);
 	if (tempDir.Right(1)!=_T("\\"))
@@ -442,6 +497,8 @@ CSharedFileList::~CSharedFileList(){
 	strBetaFileName += md5.GetHash().Left(6) + _T(".txt");
 	DeleteFile(tempDir + strBetaFileName);
 #endif
+	*/
+	// <== Automatic shared files updater [MoNKi] - Stulle
 }
 
 void CSharedFileList::CopySharedFileMap(CMap<CCKey,const CCKey&,CKnownFile*,CKnownFile*> &Files_Map)
@@ -461,7 +518,18 @@ void CSharedFileList::CopySharedFileMap(CMap<CCKey,const CCKey&,CKnownFile*,CKno
 
 void CSharedFileList::FindSharedFiles()
 {
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash
+	while (!waitingforhash_list.IsEmpty()) {
+		UnknownFile_Struct* nextfile = waitingforhash_list.RemoveHead();
+		delete nextfile;
+	}
+	// END SLUGFILLER: SafeHash
+
+	// SLUGFILLER: SafeHash remove - only called after the download queue is created
+	/*
 	if (!m_Files_map.IsEmpty())
+	*/
 	{
 		CSingleLock listlock(&m_mutWriteList);
 		
@@ -497,7 +565,9 @@ void CSharedFileList::FindSharedFiles()
 	if (tempDir.Right(1)!=_T("\\"))
 		tempDir+=_T("\\");
 
-#if defined(_BETA) || defined(_DEVBUILD)
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	/*
+#ifdef _BETA
 	// In Betaversion we create a testfile which is published in order to make testing easier
 	// by allowing to easily find files which are published and shared by "new" nodes
 	CStdioFile f;
@@ -522,6 +592,8 @@ void CSharedFileList::FindSharedFiles()
 		}
 	}
 #endif
+	*/
+	// <== Automatic shared files updater [MoNKi] - Stulle
 
 
 	AddFilesFromDirectory(tempDir);
@@ -593,6 +665,14 @@ void CSharedFileList::AddFilesFromDirectory(const CString& rstrDirectory)
 }
 
 bool CSharedFileList::AddSingleSharedFile(const CString& rstrFilePath, bool bNoUpdate)
+// ==> Automatic shared files updater [MoNKi] - Stulle
+{
+	int iDoAsfuReset = -1;
+	return AddSingleSharedFile(rstrFilePath,bNoUpdate,iDoAsfuReset);
+}
+
+bool CSharedFileList::AddSingleSharedFile(const CString& rstrFilePath, bool bNoUpdate, int &iDoAsfuReset)
+// <== Automatic shared files updater [MoNKi] - Stulle
 {
 	bool bExclude = false;
 	bool bShared = false;
@@ -617,6 +697,18 @@ bool CSharedFileList::AddSingleSharedFile(const CString& rstrFilePath, bool bNoU
 	else if (!bShared){
 		// the directory is not shared, so we need a special entry
 		m_liSingleSharedFiles.AddTail(rstrFilePath);
+		// ==> Automatic shared files updater [MoNKi] - Stulle
+		if(!bNoUpdate)
+		{
+			if(iDoAsfuReset == -1) // checked checkbox to share single file
+			{
+				if(thePrefs.GetDirectoryWatcher() && thePrefs.GetSingleSharedDirWatcher())
+					theApp.ResetDirectoryWatcher();
+			}
+			else if(iDoAsfuReset == 0) // adding single files via drop
+				iDoAsfuReset = 1; // we would have resetted but don't do so just now
+		}
+		// <== Automatic shared files updater [MoNKi] - Stulle
 	}	
 	return bNoUpdate || CheckAndAddSingleFile(rstrFilePath);
 }
@@ -635,7 +727,10 @@ bool CSharedFileList::CheckAndAddSingleFile(const CString& rstrFilePath)
 	ff.FindNextFile();
 	CheckAndAddSingleFile(ff);
 	ff.Close();
-	HashNextFile();
+	// SLUGFILLER: SafeHash - only hash when there is something to hash
+	if (!waitingforhash_list.IsEmpty())
+	// SLUGFILLER: SafeHash - only hash when there is something to hash
+		HashNextFile();
 	bHaveSingleSharedFiles = true;
 	// GUI updating needs to be done by caller
 	return true;
@@ -646,11 +741,23 @@ bool CSharedFileList::SafeAddKFile(CKnownFile* toadd, bool bOnlyAdd)
 	bool bAdded = false;
 	RemoveFromHashing(toadd);	// SLUGFILLER: SafeHash - hashed ok, remove from list, in case it was on the list
 	bAdded = AddFile(toadd);
+
+	//Xman advanced upload-priority
+	if(bAdded)
+	{
+		toadd->CheckAUPFilestats(true);
+	}
+	//Xman end
+
 	if (bOnlyAdd)
 		return bAdded;
 	if (bAdded && output)
 	{
 		output->AddFile(toadd);
+		//Xman [MoNKi: -Downloaded History-]
+		if(!toadd->IsPartFile())
+			theApp.emuledlg->sharedfileswnd->historylistctrl.AddFile(toadd); 
+		//Xman end
 		output->ShowFilesCount();
 	}
 	m_lastPublishED2KFlag = true;
@@ -691,7 +798,12 @@ bool CSharedFileList::AddFile(CKnownFile* pFile)
 
 	bool bKeywordsNeedUpdated = true;
 
+	//Xman Code Improvement for HasCollectionExtention
+	/*
 	if(!pFile->IsPartFile() && !pFile->m_pCollection && CCollection::HasCollectionExtention(pFile->GetFileName()))
+	*/
+	if(!pFile->IsPartFile() && !pFile->m_pCollection && pFile->HasCollectionExtenesion_Xtreme())
+	//Xman end
 	{
 		pFile->m_pCollection = new CCollection();
 		if(!pFile->m_pCollection->InitCollectionFromFile(pFile->GetFilePath(), pFile->GetFileName()))
@@ -786,6 +898,11 @@ bool CSharedFileList::RemoveFile(CKnownFile* pFile, bool bDeleted)
 
 void CSharedFileList::Reload()
 {
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash - don't allow to be called until after the control is loaded
+	if (!output)
+		return;
+	// END SLUGFILLER: SafeHash
 	ClearVolumeInfoCache();
 	m_mapPseudoDirNames.RemoveAll();
 	m_keywords->RemoveAllKeywordReferences();
@@ -794,15 +911,31 @@ void CSharedFileList::Reload()
 	bHaveSingleSharedFiles = false;
 	FindSharedFiles();
 	m_keywords->PurgeUnreferencedKeywords();
+	// SLUGFILLER: SafeHash remove - check moved up
+	/*
 	if (output)
+	*/
+	// SLUGFILLER: SafeHash remove - check moved up
 		output->ReloadFileList();
+	m_lastPublishED2KFlag = true; //Xman CodeFix: we need to check if this files were published to server
 }
 
 void CSharedFileList::SetOutputCtrl(CSharedFilesCtrl* in_ctrl)
 {
 	output = in_ctrl;
 	output->ReloadFileList();
+	//Xman
+	// SLUGFILLER: SafeHash - load shared files after everything
+	/*
 	HashNextFile();		// SLUGFILLER: SafeHash - if hashing not yet started, start it now
+	*/
+	LoadSingleSharedFilesList();
+	Reload();
+	//Xman end
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	if(thePrefs.GetDirectoryWatcher() && thePrefs.GetSingleSharedDirWatcher())
+		theApp.ResetDirectoryWatcher();
+	// <== Automatic shared files updater [MoNKi] - Stulle
 }
 
 uint8 GetRealPrio(uint8 in)
@@ -836,7 +969,14 @@ void CSharedFileList::SendListToServer(){
 		m_Files_map.GetNextAssoc(pos, bufKey, cur_file);
 		added=false;
 		//insertsort into sortedList
+		// ==> Don't publish incomplete small files [WiZaRd] - Stulle
+		/*
 		if(!cur_file->GetPublishedED2K() && (!cur_file->IsLargeFile() || (pCurServer != NULL && pCurServer->SupportsLargeFilesTCP())))
+		*/
+		if(cur_file->GetFileSize() <= PARTSIZE && cur_file->IsPartFile())
+			added=true;
+		if(!added && !cur_file->GetPublishedED2K() && (!cur_file->IsLargeFile() || (pCurServer != NULL && pCurServer->SupportsLargeFilesTCP())))
+		// <== Don't publish incomplete small files [WiZaRd] - Stulle
 		{
 			for (pos2 = sortedList.GetHeadPosition();pos2 != 0 && !added;sortedList.GetNext(pos2))
 			{
@@ -901,6 +1041,20 @@ void CSharedFileList::SendListToServer(){
 	if (thePrefs.GetVerbose())
 		AddDebugLogLine(false, _T("Server, Sendlist: Packet size:%u"), packet->size);
 	server->SendPacket(packet,true);
+}
+
+CKnownFile* CSharedFileList::GetFileByIndex(int index){
+	int count=0;
+	CKnownFile* cur_file;
+	CCKey bufKey;
+
+	for (POSITION pos = m_Files_map.GetStartPosition();pos != 0;){
+		m_Files_map.GetNextAssoc(pos,bufKey,cur_file);
+		if (index==count)
+			return cur_file;
+		count++;
+	}
+	return 0;
 }
 
 void CSharedFileList::ClearED2KPublishInfo()
@@ -1207,33 +1361,6 @@ CKnownFile* CSharedFileList::GetFileByIdentifier(const CFileIdentifierBase& rFil
 		return NULL;
 }
 
-CKnownFile* CSharedFileList::GetFileByIndex(int index) const // slow
-{
-	int count=0;
-	CKnownFile* cur_file;
-	CCKey bufKey;
-
-	for (POSITION pos = m_Files_map.GetStartPosition();pos != 0;){
-		m_Files_map.GetNextAssoc(pos,bufKey,cur_file);
-		if (index==count)
-			return cur_file;
-		count++;
-	}
-	return 0;
-}
-
-CKnownFile* CSharedFileList::GetFileByAICH(const CAICHHash& rHash) const // slow
-{
-	CKnownFile* cur_file;
-	CCKey bufKey;
-
-	for (POSITION pos = m_Files_map.GetStartPosition();pos != 0;){
-		m_Files_map.GetNextAssoc(pos,bufKey,cur_file);
-		if (cur_file->GetFileIdentifierC().HasAICHHash() && cur_file->GetFileIdentifierC().GetAICHHash() == rHash)
-			return cur_file;
-	}
-	return 0;
-}
 
 bool CSharedFileList::IsFilePtrInList(const CKnownFile* file) const
 {
@@ -1254,7 +1381,12 @@ bool CSharedFileList::IsFilePtrInList(const CKnownFile* file) const
 
 void CSharedFileList::HashNextFile(){
 	// SLUGFILLER: SafeHash
+	//Xman
+	/*
 	if (!theApp.emuledlg || !::IsWindow(theApp.emuledlg->m_hWnd))	// wait for the dialog to open
+	*/
+	if (!theApp.emuledlg || !theApp.emuledlg->IsRunning() || !::IsWindow(theApp.emuledlg->m_hWnd))	// wait for the dialog to open
+	//Xman end
 		return;
 	if (theApp.emuledlg && theApp.emuledlg->IsRunning())
 		theApp.emuledlg->sharedfileswnd->sharedfilesctrl.ShowFilesCount();
@@ -1333,7 +1465,12 @@ void CSharedFileList::Process()
 void CSharedFileList::Publish()
 {
 	// Variables to save cpu.
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	UINT tNow = time(NULL);
+	*/
+	UINT tNow = (UINT)time(NULL);
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 	bool isFirewalled = theApp.IsFirewalled();
 	bool bDirectCallback = Kademlia::CKademlia::IsRunning() && !Kademlia::CUDPFirewallTester::IsFirewalledUDP(true) && Kademlia::CUDPFirewallTester::IsVerified();
 
@@ -1424,8 +1561,19 @@ void CSharedFileList::Publish()
 				{
 					if(pCurKnownFile->PublishSrc())
 					{
+						//Xman Code-Improvement: show filename immediately
+						/*
 						if(Kademlia::CSearchManager::PrepareLookup(Kademlia::CSearch::STOREFILE, true, Kademlia::CUInt128(pCurKnownFile->GetFileHash()))==NULL)
 							pCurKnownFile->SetLastPublishTimeKadSrc(0,0);
+						*/
+						Kademlia::CSearch* pSearch = Kademlia::CSearchManager::PrepareLookup(Kademlia::CSearch::STOREFILE, true, Kademlia::CUInt128(pCurKnownFile->GetFileHash()));
+						if(pSearch==NULL)
+						{
+							pCurKnownFile->SetLastPublishTimeKadSrc(0,0);
+						}
+						else
+							pSearch->SetGUIName(pCurKnownFile->GetFileName());
+						//Xman end
 					}	
 				}
 				m_currFileSrc++;
@@ -1582,6 +1730,10 @@ bool CSharedFileList::ExcludeFile(CString strFilePath)
 		}
 	}
 
+	//MORPH START - Added by Stulle, Only exclude file if it was not single shared
+	bool bSingleShared = bShared;
+	//MORPH END   - Added by Stulle, Only exlcude file if it was not single shared
+
 	// check if we implicity share this file
 	bShared |= ShouldBeShared(strFilePath.Left(strFilePath.ReverseFind('\\') + 1), strFilePath, false);
 
@@ -1598,7 +1750,17 @@ bool CSharedFileList::ExcludeFile(CString strFilePath)
 	}
 
 	// add to exclude list
-	m_liSingleExcludedFiles.AddTail(strFilePath);
+	//MORPH START - Added by Stulle, Only exclude file if it was not single shared
+	if(!bSingleShared)
+	//MORPH END   - Added by Stulle, Only exlcude file if it was not single shared
+		m_liSingleExcludedFiles.AddTail(strFilePath);
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	else
+	{
+		if(thePrefs.GetDirectoryWatcher() && thePrefs.GetSingleSharedDirWatcher())
+			theApp.ResetDirectoryWatcher();
+	}
+	// <== Automatic shared files updater [MoNKi] - Stulle
 	
 	// check if the file is in the shared list (doesn't has to for example if it is hashing or not loaded yet) and remove
 	CKnownFile* cur_file;
@@ -1715,7 +1877,12 @@ void CSharedFileList::CheckAndAddSingleFile(const CFileFind& ff){
 		}
 	}
 
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	uint32 fdate = (UINT)tFoundFileTime.GetTime();
+	*/
+	time_t fdate = (time_t)tFoundFileTime.GetTime();
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 	if (fdate == 0)
 		fdate = (UINT)-1;
 	if (fdate == -1){
@@ -1749,14 +1916,25 @@ void CSharedFileList::CheckAndAddSingleFile(const CFileFind& ff){
 			toadd->SetPath(strFoundDirectory);
 			toadd->SetFilePath(strFoundFilePath);
 			toadd->SetSharedDirectory(strShellLinkDir);
+			//Xman advanced upload-priority
+			/*
 			AddFile(toadd);
+			*/
+			if(AddFile(toadd))
+				toadd->CheckAUPFilestats(false);
+			//Xman end
 		}
 	}
 	else
 	{
 		//not in knownfilelist - start adding thread to hash file if the hashing of this file isnt already waiting
 		// SLUGFILLER: SafeHash - don't double hash, MY way
+		//Xman
+		/*
 		if (!IsHashing(strFoundDirectory, strFoundFileName) && !thePrefs.IsTempFile(strFoundDirectory, strFoundFileName)){
+		*/
+		if (!IsHashing(strFoundDirectory, strFoundFileName) && !theApp.downloadqueue->IsTempFile(strFoundDirectory, strFoundFileName) && !thePrefs.IsConfigFile(strFoundDirectory, strFoundFileName)){
+		//Xman end
 			UnknownFile_Struct* tohash = new UnknownFile_Struct;
 			tohash->strDirectory = strFoundDirectory;
 			tohash->strName = strFoundFileName;
@@ -1866,7 +2044,12 @@ bool CSharedFileList::AddSingleSharedDirectory(const CString& rstrFilePath, bool
 {
 	ASSERT( rstrFilePath.Right(1) == _T('\\') );
 	// check if we share this dir already or are not allowed to
+	// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+	/*
 	if (ShouldBeShared(rstrFilePath, _T(""), false) || !thePrefs.IsShareableDirectory(rstrFilePath))
+	*/
+	if (ShouldBeShared(rstrFilePath, _T(""), false))
+	// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 		return false;
 	thePrefs.shareddir_list.AddTail(rstrFilePath); // adds the new directory as shared, GUI updates need to be done by the caller
 	
@@ -1992,3 +2175,140 @@ bool CSharedFileList::GetPopularityRank(const CKnownFile* pFile, uint32& rnOutSe
 	rnOutTotal++;
 	return true;
 }
+
+//Xman advanced upload-priority
+void CSharedFileList::CalculateUploadPriority(bool force)
+{
+	static uint32 lastprocess; //if used Advanced Auto Prio
+	static uint32 lastprocess2; //if Advanced Auto Prio is not used
+
+	if(!thePrefs.UseAdvancedAutoPtio())
+	{
+		if(::GetTickCount() - lastprocess2 > HR2MS(1))
+		{
+			lastprocess2=::GetTickCount();
+			//the counted upload stats must be updated from time to time, user can switch to AUP
+			POSITION pos = m_Files_map.GetStartPosition();
+			while( pos != NULL )
+			{
+				CKnownFile* pFile;
+				CCKey key;
+				m_Files_map.GetNextAssoc( pos, key, pFile );
+				pFile->statistic.UpdateCountedTransferred();
+			}
+		}
+		return; 
+	}
+
+
+	if(force || ::GetTickCount() - lastprocess > MIN2MS(2))
+	{
+		lastprocess=::GetTickCount();
+		lastprocess2=lastprocess;
+		
+
+#ifdef _DEBUG
+		AddDebugLogLine(false,_T("calculating auto uploadprios. mapcount: %i"), m_Files_map.GetCount()); 
+#endif
+
+
+		// v2 other avg calculation
+		double sum_wanted_upload=0;
+		double sum_uploaded=0;
+		uint32 all_virtual_sources=0;
+		//first loop to calculate the avg
+		POSITION pos = m_Files_map.GetStartPosition();
+		while( pos != NULL )
+		{
+			CKnownFile* pFile;
+			CCKey key;
+			m_Files_map.GetNextAssoc( pos, key, pFile );
+
+			pFile->statistic.UpdateCountedTransferred();
+
+			//we only take files > 500k into account
+			if((uint64)pFile->GetFileSize() > 500*1024)
+			{
+				//update virtual uploadsources not in realtime
+				if(pFile->IsPartFile())
+					pFile->UpdateVirtualUploadSources();
+
+				sum_wanted_upload += pFile->GetWantedUpload();
+				/*
+				uint64 oldtransferred ;
+				if (pFile->statistic.GetAllTimeTransferred() > pFile->statistic.GetTransferred())
+					oldtransferred = pFile->statistic.GetAllTimeTransferred()-pFile->statistic.GetTransferred();
+				else
+					oldtransferred = 0;
+				
+
+				sum_uploaded += (pFile->statistic.GetTransferred() + oldtransferred/2.0);
+				*/
+				sum_uploaded += pFile->statistic.GetCountedTransferred();
+
+				all_virtual_sources += pFile->GetVirtualSourceIndicator();
+			}
+		}
+		float avgpercent;
+		if (sum_wanted_upload > 0)
+			avgpercent = (float)(sum_uploaded / sum_wanted_upload * 100.0);
+		else
+			avgpercent = 0;
+
+		m_lastavgPercent=avgpercent;
+
+		if(m_Files_map.GetCount()>0)
+		{
+			m_avg_virtual_sources = all_virtual_sources / m_Files_map.GetCount();
+			m_avg_client_on_uploadqueue = theApp.uploadqueue->GetWaitingUserCount() / m_Files_map.GetCount();
+		}
+		else
+		{
+			m_avg_virtual_sources = 0;
+			m_avg_client_on_uploadqueue = 0;
+		}
+		
+		//end v2
+
+
+		//second loop to set new prios
+		pos = m_Files_map.GetStartPosition();
+		while( pos != NULL )
+		{
+			CKnownFile* pFile;
+			CCKey key;
+			m_Files_map.GetNextAssoc( pos, key, pFile );
+			pFile->CalculateAndSetUploadPriority();
+		}
+	}
+}
+
+void CSharedFileList::CalculateUploadPriority_Standard()
+{
+	POSITION pos = m_Files_map.GetStartPosition();
+	while( pos != NULL )
+	{
+		CKnownFile* pFile;
+		CCKey key;
+		m_Files_map.GetNextAssoc( pos, key, pFile );
+		pFile->UpdateAutoUpPriority();
+	}
+}
+//Xman end
+
+// ==> PowerShare [ZZ/MorphXT] - Stulle
+void CSharedFileList::UpdatePartsInfo()
+{
+	if (m_Files_map.IsEmpty())
+		return;
+	CCKey bufKey;
+	CKnownFile* file;
+	POSITION pos;
+	for(pos=m_Files_map.GetStartPosition(); pos!=0;)
+	{
+		m_Files_map.GetNextAssoc(pos, bufKey, file);
+		if (((file->GetPowerSharedMode()>=0)?file->GetPowerSharedMode():thePrefs.GetPowerShareMode()) == 3)
+			file->UpdatePartsInfo();
+	}
+}
+// <== PowerShare [ZZ/MorphXT] - Stulle

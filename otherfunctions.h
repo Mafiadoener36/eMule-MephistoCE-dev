@@ -44,8 +44,6 @@ enum EFileType {
 
 
 #define ROUND(x) (floor((float)x+0.5f))
-#define LODWORD(l)           ((DWORD)(((DWORD64)(l)) & 0xffffffff))
-#define HIDWORD(l)           ((DWORD)((((DWORD64)(l)) >> 32) & 0xffffffff))
 
 ///////////////////////////////////////////////////////////////////////////////
 // Low level str
@@ -59,10 +57,16 @@ TCHAR *stristr(const TCHAR *str1, const TCHAR *str2);
 CString GetNextString(const CString& rstr, LPCTSTR pszTokens, int& riStart);
 CString GetNextString(const CString& rstr, TCHAR chToken, int& riStart);
 
+//Xman: netfinity: P2PThreat - Detect worms that could be harmful to the network or eMule
+bool IsHexDigit(TCHAR c);
+//Xman end
 
 ///////////////////////////////////////////////////////////////////////////////
 // String conversion
 //
+//Xman Xtreme Mod
+//default is 99, this means, we use the old method (from 0.30)
+/*
 CString CastItoXBytes(uint16 count, bool isK = false, bool isPerSec = false, uint32 decimal = 2);
 CString CastItoXBytes(uint32 count, bool isK = false, bool isPerSec = false, uint32 decimal = 2);
 CString CastItoXBytes(uint64 count, bool isK = false, bool isPerSec = false, uint32 decimal = 2);
@@ -71,6 +75,28 @@ CString CastItoXBytes(double count, bool isK = false, bool isPerSec = false, uin
 #if defined(_DEBUG) && defined(USE_DEBUG_EMFILESIZE)
 CString CastItoXBytes(EMFileSize count, bool isK = false, bool isPerSec = false, uint32 decimal = 2);
 #endif
+*/
+// ==> added flag to return US Text [SiRoB] - Stulle
+/*
+CString CastItoXBytes(uint16 count, bool isK = false, bool isPerSec = false, uint32 decimal = 99);
+CString CastItoXBytes(uint32 count, bool isK = false, bool isPerSec = false, uint32 decimal = 99);
+CString CastItoXBytes(uint64 count, bool isK = false, bool isPerSec = false, uint32 decimal = 99);
+CString CastItoXBytes(float count, bool isK = false, bool isPerSec = false, uint32 decimal = 99);
+CString CastItoXBytes(double count, bool isK = false, bool isPerSec = false, uint32 decimal = 99);
+#if defined(_DEBUG) && defined(USE_DEBUG_EMFILESIZE)
+CString CastItoXBytes(EMFileSize count, bool isK = false, bool isPerSec = false, uint32 decimal = 99);
+#endif
+//Xman end
+*/
+CString CastItoXBytes(uint16 count, bool isK = false, bool isPerSec = false, uint32 decimal = 99, bool isUS = false);
+CString CastItoXBytes(uint32 count, bool isK = false, bool isPerSec = false, uint32 decimal = 99, bool isUS = false);
+CString CastItoXBytes(uint64 count, bool isK = false, bool isPerSec = false, uint32 decimal = 99, bool isUS = false);
+CString CastItoXBytes(float count, bool isK = false, bool isPerSec = false, uint32 decimal = 99, bool isUS = false);
+CString CastItoXBytes(double count, bool isK = false, bool isPerSec = false, uint32 decimal = 99, bool isUS = false);
+#if defined(_DEBUG) && defined(USE_DEBUG_EMFILESIZE)
+CString CastItoXBytes(EMFileSize count, bool isK = false, bool isPerSec = false, uint32 decimal = 99, bool isUS = false);
+#endif
+// <== added flag to return US Text [SiRoB] - Stulle
 CString CastItoIShort(uint16 count, bool isK = false, uint32 decimal = 2);
 CString CastItoIShort(uint32 count, bool isK = false, uint32 decimal = 2);
 CString CastItoIShort(uint64 count, bool isK = false, uint32 decimal = 2);
@@ -256,6 +282,9 @@ __inline BYTE toHex(const BYTE &x){
 	return x > 9 ? x + 55: x + 48;
 }
 
+//Xman 
+// Maella -Code Improvement-
+/*
 // md4cmp -- replacement for memcmp(hash1,hash2,16)
 // Like 'memcmp' this function returns 0, if hash1==hash2, and !0, if hash1!=hash2.
 // NOTE: Do *NOT* use that function for determining if hash1<hash2 or hash1>hash2.
@@ -285,6 +314,32 @@ __inline void md4cpy(void* dst, const void* src) {
 	((uint32*)dst)[2] = ((uint32*)src)[2];
 	((uint32*)dst)[3] = ((uint32*)src)[3];
 }
+*/
+// md4cmp -- replacement for memcmp(hash1,hash2,16)
+// Like 'memcmp' this function returns 0, if hash1==hash2, and !0, if hash1!=hash2.
+// NOTE: Do *NOT* use that function for determining if hash1<hash2 or hash1>hash2.
+__inline int md4cmp(const void* hash1, const void* hash2) {
+	return !(((uint64*)hash1)[0] == ((uint64*)hash2)[0] &&
+		((uint64*)hash1)[1] == ((uint64*)hash2)[1]);
+}
+
+__inline bool isnulmd4(const void* hash) {
+	return  (((uint64*)hash)[0] == 0 &&
+		((uint64*)hash)[1] == 0);
+}
+
+// md4clr -- replacement for memset(hash,0,16)
+__inline void md4clr(const void* hash) {
+	((uint64*)hash)[0] = 0;
+	((uint64*)hash)[1] = 0;
+}
+
+// md4cpy -- replacement for MEMCOPY(dst,src,16)
+__inline void md4cpy(void* dst, const void* src) {
+	((uint64*)dst)[0] = ((uint64*)src)[0];
+	((uint64*)dst)[1] = ((uint64*)src)[1];
+}
+// Maella
 
 #define	MAX_HASHSTR_SIZE (16*2+1)
 CString md4str(const uchar* hash);
@@ -395,6 +450,7 @@ __inline bool IsLowID(uint32 id){
 	return (id < 16777216);
 }
 CString ipstr(uint32 nIP);
+CString ipstr_rev(uint32 nIP); // IP Filter White List [Stulle] - Stulle
 CString ipstr(uint32 nIP, uint16 nPort);
 CString ipstr(LPCTSTR pszAddress, uint16 nPort);
 CStringA ipstrA(uint32 nIP);
@@ -411,7 +467,12 @@ __inline CStringA ipstrA(in_addr nIP){
 // Date/Time
 //
 time_t safe_mktime(struct tm* ptm);
+// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+/*
 bool AdjustNTFSDaylightFileTime(uint32& ruFileDate, LPCTSTR pszFilePath);
+*/
+bool AdjustNTFSDaylightFileTime(time_t& ruFileDate, LPCTSTR pszFilePath);
+// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -431,3 +492,25 @@ struct RC4_Key_Struct{
 
 RC4_Key_Struct* RC4CreateKey(const uchar* pachKeyData, uint32 nLen, RC4_Key_Struct* key = NULL, bool bSkipDiscard = false);
 void RC4Crypt(const uchar* pachIn, uchar* pachOut, uint32 nLen, RC4_Key_Struct* key);
+
+// ==> Show in MSN7 [TPT] - Stulle
+void	UpdateMSN(float upRate, float upOvRate, float downRate, float downOvRate, bool killMSN = false);
+void	UpdateMSN1(uint64 Receiver, uint64 Sent, uint64 Src);
+void	UpdateMSN2(CString Connection);
+// <== Show in MSN7 [TPT] - Stulle
+
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+// Takes a string and returns bytes...
+ULONG	CastXBytesToI(const CString& strExpr);
+// Takes bytes and returns a string with only integers...
+CString CastItoUIXBytes(uint64 count);
+// Wildcard support for Category Selection Mask
+int wildcmp(TCHAR *wild, TCHAR *string);
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+#define ELEMENT_COUNT(X) (sizeof(X) / sizeof(X[0])) // Design Settings [eWombat/Stulle] - Stulle
+
+// ==> Feedback personalization [Stulle] - Stulle
+CString GetColoredText(UINT in, int iStyle);
+CString GetColoredText(CString str, int iStyle);
+// <== Feedback personalization [Stulle] - Stulle

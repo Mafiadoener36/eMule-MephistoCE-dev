@@ -99,13 +99,23 @@ BOOL CServerSocket::OnHostNameResolved(const SOCKADDR_IN *pSockAddr)
 			serverconnect->DestroySocket(this);
 			return FALSE;	// Do *NOT* connect to this server
 		}
+		//zz_fly :: support dynamic ip servers :: DolphinX :: Start
+		if (pServer)
+			pServer->ResetIP2Country(); //EastShare - added by AndCycle, IP to Country
+		//zz_fly :: End
 	}
 	return TRUE; // Connect to this server
 }
 
 void CServerSocket::OnConnect(int nErrorCode)
 {
+	//Xman
+	// MAella -QOS-
+	/*
 	CAsyncSocketEx::OnConnect(nErrorCode);
+	*/
+	CEMSocket::OnConnect(nErrorCode);
+	//Xman end
 
 	switch (nErrorCode)
 	{
@@ -154,6 +164,10 @@ void CServerSocket::OnReceive(int nErrorCode){
 	}
 	CEMSocket::OnReceive(nErrorCode);
 	m_dwLastTransmission = GetTickCount();
+	//zz_fly :: destory socket when serverconnection fail :: DolphinX :: Start
+	if(connectionstate == CS_ERROR)
+		serverconnect->DestroySocket(this);
+	//zz_fly :: destory socket when serverconnection fail :: DolphinX :: End
 }
 
 bool CServerSocket::ProcessPacket(const BYTE* packet, uint32 size, uint8 opcode)
@@ -325,6 +339,9 @@ bool CServerSocket::ProcessPacket(const BYTE* packet, uint32 size, uint8 opcode)
 
 				}
 
+				//Xman
+				// Maella -Activate Smart Low ID check-
+				/*
 				if (la->clientid == 0)
 				{
 					uint8 state = thePrefs.GetSmartIdState();
@@ -360,6 +377,35 @@ bool CServerSocket::ProcessPacket(const BYTE* packet, uint32 size, uint8 opcode)
 						}
 					}
 				}
+				*/
+				if(la->clientid == 0){
+					// Reset attempts counter
+					thePrefs.SetSmartIdState(0);
+				}
+				else if(la->clientid >= 16777216){
+					// High ID => reset attempts counter
+					thePrefs.SetSmartIdState(0);
+				}
+				else if(thePrefs.GetSmartIdCheck() == true){
+					// Low ID => Check and increment attempts counter
+					uint8 attempts = thePrefs.GetSmartIdState();
+					if(attempts < 3){
+						//zz_fly :: not needed, rebind upnp on ipchange :: start
+						//Official UPNP
+						/*
+						if (!thePrefs.m_bUseACATUPnPCurrent && (attempts == 1))
+							theApp.emuledlg->RefreshUPnP(false); // refresh the UPnP mappings once
+						*/
+						//zz_fly :: end
+						SetConnectionState(CS_ERROR);
+						thePrefs.SetSmartIdState(++attempts);
+						AddLogLine(true, _T("LowID -- Trying Again (attempts %i)"), attempts);
+						break; // Retries
+					}
+					else if (!m_bManualSingleConnect)
+						break; // if this is a connect to any/multiple server connection try, disconnect and try another one
+				}
+				//Xman end
 				
 				// we need to know our client's HighID when sending our shared files (done indirectly on SetConnectionState)
 				serverconnect->clientid = la->clientid;
@@ -372,6 +418,70 @@ bool CServerSocket::ProcessPacket(const BYTE* packet, uint32 size, uint8 opcode)
 				if (::IsLowID(la->clientid) && dwServerReportedIP != 0)
 					theApp.SetPublicIP(dwServerReportedIP);
 				AddLogLine(false, GetResString(IDS_NEWCLIENTID), la->clientid);
+
+				//Xman -Reask sources after IP change- v4
+				if(serverconnect->GetClientID() != 0 && theApp.last_valid_ip != 0
+				   && serverconnect->GetClientID() != theApp.last_valid_ip 
+				   && serverconnect->GetClientID() != theApp.last_valid_serverid)
+				{
+					//remark: this code doesn't trigger when changing low->hidh-ID and we already had
+					//a session with this HighID-IP. This is because we don't know when this last lowID-session was.
+					//but there is no need to trigger when changing low to high-id but keeping the IP, we can'tt loose the waiting-position!
+
+					{
+						// Public IP has been changed, it's necessary to inform all sources about it
+						// All sources would be informed during their next session refresh (with TCP)
+						// about the new IP.
+						// ==> Quick start [TPT] - Max
+						if(thePrefs.GetQuickStart() && thePrefs.GetQuickStartAfterIPChange())
+						{
+							theApp.downloadqueue->quickflag = 0;
+							theApp.downloadqueue->quickflags = 0;
+						}
+						// <== Quick start [TPT] - Max
+						if(GetTickCount() - theApp.last_ip_change > FILEREASKTIME + 60000){
+							theApp.clientlist->TrigReaskForDownload(true);
+							theApp.last_ip_change=::GetTickCount();
+							theApp.m_bneedpublicIP=false;
+							AddLogLine(false, _T("Change from %u (%s ID) to %u (%s ID) detected%s"), 
+								theApp.last_valid_serverid,
+								(theApp.last_valid_serverid < 16777216) ? _T("low") : _T("high"),
+								serverconnect->GetClientID(),
+								(serverconnect->GetClientID() < 16777216)  ? _T("low") : _T("high"),
+								_T(", all sources will be reasked immediately"));
+						}
+						else {
+							theApp.clientlist->TrigReaskForDownload(false);
+							theApp.last_ip_change=::GetTickCount();
+							theApp.m_bneedpublicIP=false;
+							AddLogLine(false, _T("Change from %u (%s ID) to %u (%s ID) detected%s"), 
+								theApp.last_valid_serverid,
+								(theApp.last_valid_serverid < 16777216) ? _T("low") : _T("high"),
+								serverconnect->GetClientID(),
+								(serverconnect->GetClientID() < 16777216)  ? _T("low") : _T("high"),
+								_T(", all sources will be reasked within the next 10 minutes"));
+						}
+						// ==> UPnP support [MoNKi] - leuk_he
+						/*
+						// official UPNP
+						theApp.emuledlg->RefreshUPnP(false); // refresh the UPnP mappings once
+						// official UPNP
+						*/
+						theApp.RebindUPnP();
+						// <== UPnP support [MoNKi] - leuk_he
+					}
+				}
+				if(serverconnect->GetClientID() != 0 && theApp.last_ip_change==0)
+					theApp.last_ip_change=::GetTickCount();
+				if(serverconnect->GetClientID() != 0 && serverconnect->GetClientID() != theApp.last_valid_serverid){
+					// Keep track of a change of the global IP
+					theApp.last_valid_serverid = serverconnect->GetClientID();
+				}
+				theApp.last_valid_ip=theApp.GetPublicIP(true); //can also be 0
+
+				theApp.last_traffic_reception=::GetTickCount();
+				theApp.internetmaybedown=false; //we have to reopen here if we are using server only
+				// Xman end
 
 				theApp.downloadqueue->ResetLocalServerRequests();
 				break;
@@ -560,7 +670,12 @@ bool CServerSocket::ProcessPacket(const BYTE* packet, uint32 size, uint8 opcode)
 					if (theApp.clientlist->IsBannedClient(dwIP)){
 						if (thePrefs.GetLogBannedClients()){
 							CUpDownClient* pClient = theApp.clientlist->FindClientByIP(dwIP);
+							//Xman Code Fix
+							/*
 							AddDebugLogLine(false, _T("Ignored callback request from banned client %s; %s"), ipstr(dwIP), pClient->DbgGetClientInfo());
+							*/
+							AddDebugLogLine(false, _T("Ignored callback request from banned client %s; %s"), ipstr(dwIP), pClient ? pClient->DbgGetClientInfo() : _T("unknown"));
+							//Xman end
 						}
 						break;
 					}
@@ -577,7 +692,12 @@ bool CServerSocket::ProcessPacket(const BYTE* packet, uint32 size, uint8 opcode)
 					if (client == NULL)
 					{
 						client = new CUpDownClient(0,nPort,dwIP,0,0,true);
+						//Xman Code Improvement don't search new generated clients in lists
+						/*
 						theApp.clientlist->AddClient(client);
+						*/
+						theApp.clientlist->AddClient(client, true);
+						//Xman end
 					}
 					if (size >= 23 && client->HasValidHash()){
 						if (md4cmp(client->GetUserHash(), achUserHash) != 0){

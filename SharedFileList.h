@@ -64,6 +64,9 @@ public:
 
 	// GUI is not initially updated 
 	bool	AddSingleSharedFile(const CString& rstrFilePath, bool bNoUpdate = false); // includes updating sharing preferences, calls CheckAndAddSingleSharedFile afterwards
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	bool	AddSingleSharedFile(const CString& rstrFilePath, bool bNoUpdate, int &iDoAsfuReset); // includes updating sharing preferences, calls CheckAndAddSingleSharedFile afterwards
+	// <== Automatic shared files updater [MoNKi] - Stulle
 	bool	AddSingleSharedDirectory(const CString& rstrFilePath, bool bNoUpdate = false); 
 	bool	ExcludeFile(CString strFilePath);	// excludes a specific file from being shared and removes it from the list if it exists
 	
@@ -74,9 +77,7 @@ public:
 	
 	CKnownFile* GetFileByID(const uchar* filehash) const;
 	CKnownFile* GetFileByIdentifier(const CFileIdentifierBase& rFileIdent, bool bStrict = false) const;
-	CKnownFile*	GetFileByIndex(int index) const; // slow
-	CKnownFile* GetFileByAICH(const CAICHHash& rHash) const; // slow
-
+	CKnownFile*	GetFileByIndex(int index);
 	bool	IsFilePtrInList(const CKnownFile* file) const; // slow
 	bool	IsUnsharedFile(const uchar* auFileHash) const;
 	bool	ShouldBeShared(CString strPath, CString strFilePath, bool bMustBeShared) const;
@@ -94,7 +95,15 @@ public:
 
 	bool	GetPopularityRank(const CKnownFile* pFile, uint32& rnOutSession, uint32& rnOutTotal) const;
 
-	CCriticalSection	m_mutWriteList; // don't acquire other locks while having this one in the main thread or make sure deadlocks are impossible
+	//Xman advanced upload-priority
+	void CalculateUploadPriority(bool force=false);
+	void CalculateUploadPriority_Standard();
+	float m_lastavgPercent;
+	uint32 m_avg_virtual_sources;
+	uint32 m_avg_client_on_uploadqueue;
+	//Xman end
+
+	CMutex	m_mutWriteList;
 
 protected:
 	bool	AddFile(CKnownFile* pFile);
@@ -118,7 +127,9 @@ private:
 	CTypedPtrList<CPtrList, UnknownFile_Struct*> currentlyhashing_list;	// SLUGFILLER: SafeHash
 	CServerConnect*		server;
 	CSharedFilesCtrl*	output;
+public: // Automatic shared files updater [MoNKi] - Stulle
 	CStringList			m_liSingleSharedFiles;
+private: // Automatic shared files updater [MoNKi] - Stulle
 	CStringList			m_liSingleExcludedFiles;
 
 	uint32 m_lastPublishED2K;
@@ -129,6 +140,11 @@ private:
 	uint32 m_lastPublishKadSrc;
 	uint32 m_lastPublishKadNotes;
 	bool bHaveSingleSharedFiles;
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+public:
+	void	UpdatePartsInfo(); //MORPH - Added by SiRoB, POWERSHARE Limit
+	// <== PowerShare [ZZ/MorphXT] - Stulle
 };
 
 class CAddFileThread : public CWinThread
@@ -141,10 +157,20 @@ public:
 	virtual int	Run();
 	void	SetValues(CSharedFileList* pOwner, LPCTSTR directory, LPCTSTR filename, LPCTSTR strSharedDir, CPartFile* partfile = NULL);
 
+	//MORPH START - Added by SiRoB, Import Parts [SR13] - added by zz_fly
+	bool	SR13_ImportParts();
+	uint16	SetPartToImport(LPCTSTR import);
+	//MORPH END   - Added by SiRoB, Import Parts [SR13]
+
 private:
 	CSharedFileList* m_pOwner;
 	CString			 m_strDirectory;
 	CString			 m_strFilename;
 	CString			 m_strSharedDir;
 	CPartFile*		 m_partfile;
+
+	//MORPH START - Added by SiRoB, Import Parts [SR13] - added by zz_fly
+	CString          m_strImport;
+	CArray<uint16,uint16>	m_PartsToImport;
+	//MORPH END   - Added by SiRoB, Import Parts [SR13]
 };

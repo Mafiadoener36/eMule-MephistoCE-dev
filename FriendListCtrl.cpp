@@ -28,6 +28,10 @@
 #include "ListenSocket.h"
 #include "MenuCmds.h"
 #include "ChatWnd.h"
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+#include "ED2KLink.h"
+#include "Log.h"
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -84,6 +88,12 @@ void CFriendListCtrl::SetAllIcons()
 	iml.Add(CTempIconLoader(_T("FriendNoClient")));
 	iml.Add(CTempIconLoader(_T("FriendWithClient")));
 	iml.Add(CTempIconLoader(_T("FriendConnected")));
+	//Xman friend visualization
+	iml.Add(CTempIconLoader(_T("FriendNoClientSlot")));
+	iml.Add(CTempIconLoader(_T("FriendWithClientSlot")));
+	iml.Add(CTempIconLoader(_T("FriendConnectedSlot")));
+	//Xman end
+
 	ASSERT( (GetStyle() & LVS_SHAREIMAGELISTS) == 0 );
 	HIMAGELIST himlOld = ApplyImageList(iml.Detach());
 	if (himlOld)
@@ -108,6 +118,11 @@ void CFriendListCtrl::Localize()
 
 void CFriendListCtrl::UpdateFriend(int iItem, const CFriend* pFriend)
 {
+	//Xman CodeFix
+	if (!theApp.emuledlg->IsRunning())
+		return;
+	//Xman end
+
 	SetItemText(iItem, 0, pFriend->m_strName.IsEmpty() ? _T('(') + GetResString(IDS_UNKNOWN) + _T(')') : pFriend->m_strName);
 
 	int iImage;
@@ -117,11 +132,26 @@ void CFriendListCtrl::UpdateFriend(int iItem, const CFriend* pFriend)
 		iImage = 2;
 	else
 		iImage = 1;
+
+	//Xman friend visualization
+	if (pFriend->GetFriendSlot()) iImage += 3;
+	//Xman end
+
 	SetItem(iItem, 0, LVIF_IMAGE, 0, iImage, 0, 0, 0, 0);
 }
 
 void CFriendListCtrl::AddFriend(const CFriend* pFriend)
 {
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	if (theApp.IsRunningAsService(SVC_LIST_OPT))
+		return;
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
+	//Xman CodeFix
+	if (!theApp.emuledlg->IsRunning())
+		return;
+	//Xman end
+
 	int iItem = InsertItem(LVIF_TEXT | LVIF_PARAM, GetItemCount(), pFriend->m_strName, 0, 0, 0, (LPARAM)pFriend);
 	if (iItem >= 0)
 		UpdateFriend(iItem, pFriend);
@@ -130,6 +160,11 @@ void CFriendListCtrl::AddFriend(const CFriend* pFriend)
 
 void CFriendListCtrl::RemoveFriend(const CFriend* pFriend)
 {
+	//Xman CodeFix
+	if (!theApp.emuledlg->IsRunning())
+		return;
+	//Xman end
+
 	LVFINDINFO find;
 	find.flags = LVFI_PARAM;
 	find.lParam = (LPARAM)pFriend;
@@ -141,6 +176,11 @@ void CFriendListCtrl::RemoveFriend(const CFriend* pFriend)
 
 void CFriendListCtrl::RefreshFriend(const CFriend* pFriend)
 {
+	//Xman CodeFix
+	if (!theApp.emuledlg->IsRunning())
+		return;
+	//Xman end
+
 	LVFINDINFO find;
 	find.flags = LVFI_PARAM;
 	find.lParam = (LPARAM)pFriend;
@@ -172,9 +212,24 @@ void CFriendListCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 
     ClientMenu.EnableMenuItem(MP_FRIENDSLOT, (cur_friend)?MF_ENABLED : MF_GRAYED);
 	ClientMenu.CheckMenuItem(MP_FRIENDSLOT, (cur_friend && cur_friend->GetFriendSlot()) ? MF_CHECKED : MF_UNCHECKED);
+	// MORPH START - Modified by Commander, Friendlinks [emulEspaa] - added by zz_fly
+	ClientMenu.AppendMenu(MF_SEPARATOR);
+    ClientMenu.AppendMenu(MF_STRING | (theApp.IsEd2kFriendLinkInClipboard() ? MF_ENABLED : MF_GRAYED), MP_PASTE, GetResString(IDS_PASTE), _T("PASTELINK"));
+	ClientMenu.AppendMenu(MF_STRING | (cur_friend ? MF_ENABLED : MF_GRAYED), MP_GETFRIENDED2KLINK, GetResString(IDS_GETFRIENDED2KLINK), _T("ED2KLINK"));
+	ClientMenu.AppendMenu(MF_STRING | (cur_friend ? MF_ENABLED : MF_GRAYED), MP_GETHTMLFRIENDED2KLINK, GetResString(IDS_GETHTMLFRIENDED2KLINK), _T("ED2KLINK"));
+	// MORPH END - Modified by Commander, Friendlinks [emulEspaa]
+	// ==> Multiple friendslots [ZZ] - Mephisto
+	ClientMenu.AppendMenu(MF_STRING | (theApp.friendlist->IsFriendSlot() ? MF_ENABLED : MF_GRAYED),MP_REMOVEALLFRIENDSLOT, GetResString(IDS_REMOVEALLFRIENDSLOT), _T("FRIENDSLOTREMOVE"));
+	// <== Multiple friendslots [ZZ] - Mephisto
+
+	// - show requested files (sivka/Xman)
+	ClientMenu.AppendMenu(MF_SEPARATOR); 
+	ClientMenu.AppendMenu(MF_STRING | (cur_friend && cur_friend->GetLinkedClient() ? MF_ENABLED : MF_GRAYED),MP_LIST_REQUESTED_FILES, GetResString(IDS_LISTREQUESTED), _T("FILEREQUESTED")); 
+	//Xman end
 
 	GetPopupMenuPos(*this, point);
 	ClientMenu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+	VERIFY( ClientMenu.DestroyMenu() ); // XP Style Menu [Xanatos] - Stulle
 }
 
 BOOL CFriendListCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
@@ -226,7 +281,12 @@ BOOL CFriendListCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 				{
 					CUpDownClient* newclient = new CUpDownClient(0, cur_friend->m_nLastUsedPort, cur_friend->m_dwLastUsedIP, 0, 0, true);
 					newclient->SetUserName(cur_friend->m_strName);
+					//Xman Code Improvement don't search new generated clients in lists
+					/*
 					theApp.clientlist->AddClient(newclient);
+					*/
+					theApp.clientlist->AddClient(newclient,true);
+					//Xman end
 					newclient->RequestSharedFileList();
 				}
 			}
@@ -235,11 +295,116 @@ BOOL CFriendListCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 			if (cur_friend)
 			{
 				bool bIsAlready = cur_friend->GetFriendSlot();
+				// ==> Multiple friendslots [ZZ] - Mephisto
+				/*
 				theApp.friendlist->RemoveAllFriendSlots();
+				*/
+				// <== Multiple friendslots [ZZ] - Mephisto
 				if (!bIsAlready)
-                    cur_friend->SetFriendSlot(true);
+				{ //Xman
+					cur_friend->SetFriendSlot(true);
+					//Xman friend visualization
+					UpdateFriend(iSel,cur_friend);
+					//Xman end
+				} //Xman
+				// ==> Multiple friendslots [ZZ] - Mephisto
+				else
+				{
+					cur_friend->SetFriendSlot(false);
+					//Xman friend visualization
+					UpdateFriend(iSel,cur_friend);
+					//Xman end
+				}
+				// <== Multiple friendslots [ZZ] - Mephisto
 			}
 			break;
+		// ==> Multiple friendslots [ZZ] - Mephisto
+		case MP_REMOVEALLFRIENDSLOT:
+			theApp.friendlist->RemoveAllFriendSlots();	
+			break;
+		// <== Multiple friendslots [ZZ] - Mephisto
+
+		// - show requested files (sivka/Xman)
+		case MP_LIST_REQUESTED_FILES:
+			{ 
+				if (cur_friend && cur_friend->GetLinkedClient())
+				{
+					cur_friend->GetLinkedClient()->ShowRequestedFiles(); 
+				}
+				break;
+			}
+		//Xman end
+		// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+		case MP_PASTE:
+		{
+			CString link = theApp.CopyTextFromClipboard();
+			link.Trim();
+			if ( link.IsEmpty() )
+				break;
+			try{
+				CED2KLink* pLink = CED2KLink::CreateLinkFromUrl(link);
+		
+				if (pLink && pLink->GetKind() == CED2KLink::kFriend )
+				{
+					// Better with dynamic_cast, but no RTTI enabled in the project
+					CED2KFriendLink* pFriendLink = static_cast<CED2KFriendLink*>(pLink);
+					uchar userHash[16];
+					pFriendLink->GetUserHash(userHash);
+
+					if ( ! theApp.friendlist->IsAlreadyFriend(userHash) )
+						theApp.friendlist->AddFriend(userHash, 0U, 0U, 0U, 0U, pFriendLink->GetUserName(), 1U);
+					else
+					{
+						CString msg;
+						msg.Format(GetResString(IDS_USER_ALREADY_FRIEND), pFriendLink->GetUserName());
+						AddLogLine(true, msg);
+					}
+				}
+				if(pLink) delete pLink; //zz_fly :: memleak :: thanks DolphinX
+			}
+			catch(CString strError){
+				AfxMessageBox(strError);
+			}
+		}
+			break;
+        case MP_GETFRIENDED2KLINK:
+		{
+			CString sCompleteLink;
+			if ( cur_friend && cur_friend->HasUserhash() )
+			{
+				CString sLink;
+				CED2KFriendLink friendLink(cur_friend->m_strName, cur_friend->m_abyUserhash);
+				friendLink.GetLink(sLink);
+				if ( !sCompleteLink.IsEmpty() )
+					sCompleteLink.Append(_T("\r\n"));
+				sCompleteLink.Append(sLink);
+			}
+
+			if ( !sCompleteLink.IsEmpty() )
+				theApp.CopyTextToClipboard(sCompleteLink);
+		}
+			break;
+		case MP_GETHTMLFRIENDED2KLINK:
+		{
+			CString sCompleteLink;
+			
+			if ( cur_friend && cur_friend->HasUserhash() )
+			{
+				CString sLink;
+				CED2KFriendLink friendLink(cur_friend->m_strName, cur_friend->m_abyUserhash);
+				friendLink.GetLink(sLink);
+				sLink = _T("<a href=\"") + sLink + _T("\">") + StripInvalidFilenameChars(cur_friend->m_strName) + _T("</a>");
+				if ( !sCompleteLink.IsEmpty() )
+					sCompleteLink.Append(_T("\r\n"));
+				sCompleteLink.Append(sLink);
+			}
+			
+			if ( !sCompleteLink.IsEmpty() )
+				theApp.CopyTextToClipboard(sCompleteLink);
+		}
+			break;
+		// MORPH END - Added by Commander, Friendlinks [emulEspaa]
+
 		case MP_FIND:
 			OnFindStart();
 			break;
@@ -309,6 +474,15 @@ int CFriendListCtrl::SortProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 	if (item1 == NULL || item2 == NULL)
 		return 0;
 
+	//Xman 
+	//sometimes I still receive crashdumps poiting to the CompareLocaleStringNoCase
+	//but this line may not crash, because items are not NULL and an empty String can't be the problem
+	//one user reported this happend when closing emule... maybe this part of code is called
+	//after/during the friends are destroyed.. a simple test doesn't hurt
+	if (!theApp.emuledlg->IsRunning())
+		return 0;
+	//Xman end
+
 	int iResult;
 	switch (LOWORD(lParamSort))
 	{
@@ -329,3 +503,15 @@ void CFriendListCtrl::UpdateList()
 	theApp.emuledlg->chatwnd->UpdateFriendlistCount(theApp.friendlist->GetCount());
 	SortItems(SortProc, MAKELONG(GetSortItem(), (GetSortAscending() ? 0 : 0x0001)));
 }
+
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+bool CFriendListCtrl::AddEmfriendsMetToList(const CString& strFile)
+{
+	ShowWindow(SW_HIDE);
+	bool ret = theApp.friendlist->AddEmfriendsMetToList(strFile);
+	theApp.friendlist->ShowFriends();
+	UpdateList();
+	ShowWindow(SW_SHOW);
+	return ret;
+}
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]

@@ -79,4 +79,19 @@ protected:
 	afx_msg void OnShowWindow(BOOL bShow, UINT nStatus);
 	afx_msg void OnStnDblClickFriendIcon();
 	afx_msg void OnSysColorChange();
+
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+public:
+	bool	UpdateEmfriendsMetFromURL(const CString& strURL);
+protected:
+	afx_msg void	OnBnClickedBnmenu();
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]
+
+	// ==> Design Settings [eWombat/Stulle] - Max
+protected:
+	CBrush m_brMyBrush;
+	COLORREF clrChatColor;
+public:
+	void OnBackcolor(); 
+	// <== Design Settings [eWombat/Stulle] - Max
 };

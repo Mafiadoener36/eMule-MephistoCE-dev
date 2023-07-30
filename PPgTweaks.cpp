@@ -29,6 +29,7 @@
 #include "HelpIDs.h"
 #include "Log.h"
 #include "UserMsgs.h"
+#include "SHAHashSet.h" //zz_fly :: known2 buffer
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -71,10 +72,17 @@ CPPgTweaks::CPPgTweaks()
 	m_bLogFilteredIPs = false;
 	m_bLogFileSaving = false;
 	m_bLogA4AF = false;
+	m_bLogDrop = 0; //Xman Xtreme Downloadmanager
+	m_bLogpartmismatch = 0; //Xman Log part/size-mismatch
 	m_bLogUlDlEvents = false;
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	m_bCreditSystem = false;
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	m_bLog2Disk = false;
 	m_bDebug2Disk = false;
+	m_bDateFileNameLog = false; // Date File Name Log [AndCycle] - Stulle
 	m_iCommitFiles = 0;
 	m_bFilterLANIPs = false;
 	m_bExtControls = false;
@@ -84,8 +92,14 @@ CPPgTweaks::CPPgTweaks()
 	m_bCheckDiskspace = false;
 	m_fMinFreeDiskSpaceMB = 0.0F;
 	(void)m_sYourHostname;
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	/*
 	m_bFirewallStartup = false;
+	*/
+	// <== Improved ICS-Firewall support [MoNKi] - Max
 	m_iLogLevel = 0;
+	//Xman
+	/*
     m_bDynUpEnabled = false;
     m_iDynUpMinUpload = 0;
     m_iDynUpPingTolerance = 0;
@@ -93,13 +107,21 @@ CPPgTweaks::CPPgTweaks()
     m_iDynUpGoingDownDivider = 0;
     m_iDynUpNumberOfPings = 0;
     m_bA4AFSaveCpu = false;
+	*/
+	//Xman end
 	m_iExtractMetaData = 0;
 	m_bAutoArchDisable = true;
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+	m_bIsUPnPEnabled = false; //zz_fly :: add UPnP option in Tweaks
 	m_bCloseUPnPOnExit = true;
 	m_bSkipWANIPSetup = false;
 	m_bSkipWANPPPSetup = false;
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 	m_iShareeMule = 0;
 	m_bResolveShellLinks = false;
+	m_iCryptTCPPaddingLength = 128; //Xman Added PaddingLength to Extended preferences
 
 	bShowedWarning = false;
 	m_bInitializedTreeOpts = false;
@@ -117,9 +139,14 @@ CPPgTweaks::CPPgTweaks()
 	m_htiLogFilteredIPs = NULL;
 	m_htiLogFileSaving = NULL;
 	m_htiLogUlDlEvents = NULL;
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	m_htiCreditSystem = NULL;
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	m_htiLog2Disk = NULL;
 	m_htiDebug2Disk = NULL;
+	m_htiDateFileNameLog = NULL; // Date File Name Log [AndCycle] - Stulle
 	m_htiCommit = NULL;
 	m_htiCommitNever = NULL;
 	m_htiCommitOnShutdown = NULL;
@@ -132,8 +159,14 @@ CPPgTweaks::CPPgTweaks()
 	m_htiCheckDiskspace = NULL;
 	m_htiMinFreeDiskSpace = NULL;
 	m_htiYourHostname = NULL;
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	/*
 	m_htiFirewallStartup = NULL;
+	*/
+	// <== Improved ICS-Firewall support [MoNKi] - Max
 	m_htiLogLevel = NULL;
+	//Xman
+	/*
     m_htiDynUp = NULL;
 	m_htiDynUpEnabled = NULL;
     m_htiDynUpMinUpload = NULL;
@@ -146,18 +179,38 @@ CPPgTweaks::CPPgTweaks()
     m_htiDynUpGoingDownDivider = NULL;
     m_htiDynUpNumberOfPings = NULL;
     m_htiA4AFSaveCpu = NULL;
+	*/
+	//Xman end
 	m_htiLogA4AF = NULL;
+	m_htiLogDrop = NULL; //Xman Xtreme Downloadmanager
+	m_htiLogpartmismtach = NULL; //Xman Log part/size-mismatch
+	// ==> UPnP support [MoNKi] - leuk_he verbose log
+	m_bLogUPnP = false;
+	m_htiLogUPnP = NULL;
+	// <== UPnP support [MoNKi] - leuk_he verbose log
+
 	m_htiExtractMetaData = NULL;
 	m_htiAutoArch = NULL;
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	m_htiUPnP = NULL;
+	m_htiIsUPnPEnabled = NULL; //zz_fly :: add UPnP option in Tweaks
 	m_htiCloseUPnPPorts = NULL;
 	m_htiSkipWANIPSetup = NULL;
 	m_htiSkipWANPPPSetup = NULL;
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 	m_htiShareeMule = NULL;
 	m_htiShareeMuleMultiUser = NULL;
 	m_htiShareeMulePublicUser = NULL;
 	m_htiShareeMuleOldStyle = NULL;
 	m_htiResolveShellLinks = NULL;
+	m_htiCryptTCPPaddingLength=NULL; //Xman Added PaddingLength to Extended preferences
+
+	//zz_fly
+	m_htiKnown2Buffer = NULL; //known2 buffer
+	m_htiKnown2Split = NULL; //known2 split
+	//zz_fly end
 }
 
 CPPgTweaks::~CPPgTweaks()
@@ -174,9 +227,17 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 	{
 		int iImgBackup = 8; // default icon
 		int iImgLog = 8;
+		//Xman
+		/*
 		int iImgDynyp = 8;
+		*/
+		//Xman end
 		int iImgConnection = 8;
+		//Xman
+		/*
 		int iImgA4AF = 8;
+		*/
+		//Xman end
 		int iImgMetaData = 8;
 		int iImgUPnP = 8;
 		int iImgShareeMule = 8;
@@ -184,9 +245,17 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 		if (piml){
 			iImgBackup =	piml->Add(CTempIconLoader(_T("Harddisk")));
 			iImgLog =		piml->Add(CTempIconLoader(_T("Log")));
+			//Xman
+			/*
 			iImgDynyp =		piml->Add(CTempIconLoader(_T("upload")));
+			*/
+			//Xman end
 			iImgConnection=	piml->Add(CTempIconLoader(_T("connection")));
+			//Xman
+			/*
             iImgA4AF =		piml->Add(CTempIconLoader(_T("Download")));
+			*/
+			//Xman end
             iImgMetaData =	piml->Add(CTempIconLoader(_T("MediaInfo")));
 			iImgUPnP =		piml->Add(CTempIconLoader(_T("connectedhighhigh")));
 			iImgShareeMule =piml->Add(CTempIconLoader(_T("viewfiles")));
@@ -208,11 +277,23 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 		// Miscellaneous group
 		//
 		m_htiAutoTakeEd2kLinks = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_AUTOTAKEED2KLINKS), TVI_ROOT, m_bAutoTakeEd2kLinks);
+		// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+		/*
 		m_htiCreditSystem = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_USECREDITSYSTEM), TVI_ROOT, m_bCreditSystem);
+		*/
+		// <== CreditSystems [EastShare/ MorphXT] - Stulle
+		// ==> Improved ICS-Firewall support [MoNKi] - Max
+		/*
 		m_htiFirewallStartup = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_FO_PREF_STARTUP), TVI_ROOT, m_bFirewallStartup);
+		*/
+		// <== Improved ICS-Firewall support [MoNKi] - Max
 		m_htiFilterLANIPs = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_PW_FILTER), TVI_ROOT, m_bFilterLANIPs);
 		m_htiExtControls = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_SHOWEXTSETTINGS), TVI_ROOT, m_bExtControls);
+		//Xman
+		/*
         m_htiA4AFSaveCpu = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_A4AF_SAVE_CPU), TVI_ROOT, m_bA4AFSaveCpu); // ZZ:DownloadManager
+		*/
+		//Xman end
 		m_htiAutoArch  = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_DISABLE_AUTOARCHPREV), TVI_ROOT, m_bAutoArchDisable);
 		m_htiYourHostname = m_ctrlTreeOptions.InsertItem(GetResString(IDS_YOURHOSTNAME), TREEOPTSCTRLIMG_EDIT, TREEOPTSCTRLIMG_EDIT, TVI_ROOT);
 		m_ctrlTreeOptions.AddEditBox(m_htiYourHostname, RUNTIME_CLASS(CTreeOptionsEditEx));
@@ -239,6 +320,7 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 		// Logging group
 		//
 		m_htiLog2Disk = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOG2DISK), TVI_ROOT, m_bLog2Disk);
+		m_htiDateFileNameLog = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_DATEFILENAMELOG), TVI_ROOT, m_bDateFileNameLog); // Date File Name Log [AndCycle] - Stulle
 		if (thePrefs.GetEnableVerboseOptions())
 		{
 			m_htiVerboseGroup = m_ctrlTreeOptions.InsertGroup(GetResString(IDS_VERBOSE), iImgLog, TVI_ROOT);
@@ -253,12 +335,20 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 			m_htiLogFilteredIPs = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOG_FILTERED_IPS), m_htiVerboseGroup, m_bLogFilteredIPs);
 			m_htiLogFileSaving = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOG_FILE_SAVING), m_htiVerboseGroup, m_bLogFileSaving);
 			m_htiLogA4AF = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOG_A4AF), m_htiVerboseGroup, m_bLogA4AF); // ZZ:DownloadManager
+			m_htiLogDrop = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOGDROP), m_htiVerboseGroup, m_bLogDrop); //Xman Xtreme Downloadmanager
+			m_htiLogpartmismtach = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOGPARTMISMATCH), m_htiVerboseGroup, m_bLogpartmismatch); //Xman Log part/size-mismatch
 			m_htiLogUlDlEvents = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_LOG_ULDL_EVENTS), m_htiVerboseGroup, m_bLogUlDlEvents);
+
+			// ==> UPnP support [MoNKi] - leuk_he  verbose log
+			m_htiLogUPnP = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_UPNP_VERBOSELOG), m_htiVerboseGroup, m_bLogUPnP); //JP log webcache events
+			// <== UPnP support [MoNKi] - leuk_he verbose log
 		}
 
 		/////////////////////////////////////////////////////////////////////////////
 		// USS group
 		//
+		//Xman
+		/*
         m_htiDynUp = m_ctrlTreeOptions.InsertGroup(GetResString(IDS_DYNUP), iImgDynyp, TVI_ROOT);
 		m_htiDynUpEnabled = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_DYNUPENABLED), m_htiDynUp, m_bDynUpEnabled);
         m_htiDynUpMinUpload = m_ctrlTreeOptions.InsertItem(GetResString(IDS_DYNUP_MINUPLOAD), TREEOPTSCTRLIMG_EDIT, TREEOPTSCTRLIMG_EDIT, m_htiDynUp);
@@ -276,14 +366,39 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 		m_ctrlTreeOptions.AddEditBox(m_htiDynUpGoingDownDivider, RUNTIME_CLASS(CNumTreeOptionsEdit));
         m_htiDynUpNumberOfPings = m_ctrlTreeOptions.InsertItem(GetResString(IDS_DYNUP_NUMBEROFPINGS), TREEOPTSCTRLIMG_EDIT, TREEOPTSCTRLIMG_EDIT, m_htiDynUp);
 		m_ctrlTreeOptions.AddEditBox(m_htiDynUpNumberOfPings, RUNTIME_CLASS(CNumTreeOptionsEdit));
+		*/
+		//Xman end
 
+		// ==> UPnP support [MoNKi] - leuk_he
+		/*
 		/////////////////////////////////////////////////////////////////////////////
 		// UPnP group
 		//
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+		if (thePrefs.m_bUseACATUPnPCurrent){
+			m_htiUPnP = m_ctrlTreeOptions.InsertGroup(_T("ACAT UPnP"), iImgUPnP, TVI_ROOT);
+			//ACAT UPnP
+			m_htiUPnPNat = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_CN_UPNPNAT), m_htiUPnP, m_iUPnPNat);
+			m_htiUPnPTryRandom = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_CN_UPNPTRYRANDOM), m_htiUPnP, m_iUPnPTryRandom);
+		}
+		else{
+#endif //zz_fly :: dual upnp
         m_htiUPnP = m_ctrlTreeOptions.InsertGroup(GetResString(IDS_UPNP), iImgUPnP, TVI_ROOT);
+		m_htiIsUPnPEnabled = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_UPNPSTART), m_htiUPnP, m_bIsUPnPEnabled); //zz_fly :: add UPnP option in Tweaks
 		m_htiCloseUPnPPorts = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_UPNPCLOSEONEXIT), m_htiUPnP, m_bCloseUPnPOnExit);
 		m_htiSkipWANIPSetup = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_UPNPSKIPWANIP), m_htiUPnP, m_bSkipWANIPSetup);
 		m_htiSkipWANPPPSetup = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_UPNPSKIPWANPPP), m_htiUPnP, m_bSkipWANPPPSetup);
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+		}
+		//UPnP chooser
+		if(thePrefs.IsExtControlsEnabled())
+			m_htiUseACATUPnPNextStart = m_ctrlTreeOptions.InsertCheckBox(GetResString(thePrefs.m_bUseACATUPnPCurrent ? IDS_USEACATUPNPNEXTSTART1 : IDS_USEACATUPNPNEXTSTART2), m_htiUPnP, m_iUseACATUPnPNextStart);
+		else
+			m_htiUseACATUPnPNextStart = NULL;
+#endif //zz_fly :: dual upnp
+		m_htiUPnPRebindOnIPChange = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_UPNP_REBINDTEXT), m_htiUPnP, m_iUPnPRebindOnIPChange); //zz_fly :: Rebind UPnP on IP-change
+		*/
+		// <== UPnP support [MoNKi] - leuk_he
 
 		/////////////////////////////////////////////////////////////////////////////
 		// eMule Shared User
@@ -292,17 +407,35 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 		m_htiShareeMuleMultiUser = m_ctrlTreeOptions.InsertRadioButton(GetResString(IDS_SHAREEMULEMULTI), m_htiShareeMule, m_iShareeMule == 0);
 		m_htiShareeMulePublicUser = m_ctrlTreeOptions.InsertRadioButton(GetResString(IDS_SHAREEMULEPUBLIC), m_htiShareeMule, m_iShareeMule == 1);
 		m_htiShareeMuleOldStyle = m_ctrlTreeOptions.InsertRadioButton(GetResString(IDS_SHAREEMULEOLD), m_htiShareeMule, m_iShareeMule == 2);
-		
+
+		//Xman Added PaddingLength to Extended preferences
+		m_htiCryptTCPPaddingLength=m_ctrlTreeOptions.InsertItem(GetResString(IDS_OBFUSCATION_PADDING_LENGTH),TREEOPTSCTRLIMG_EDIT,TREEOPTSCTRLIMG_EDIT,TVI_ROOT);
+		m_ctrlTreeOptions.AddEditBox(m_htiCryptTCPPaddingLength, RUNTIME_CLASS(CNumTreeOptionsEdit));
+		//Xman end
 
 	    m_ctrlTreeOptions.Expand(m_htiTCPGroup, TVE_EXPAND);
         if (m_htiVerboseGroup)
 		    m_ctrlTreeOptions.Expand(m_htiVerboseGroup, TVE_EXPAND);
+
+		//zz_fly
+		m_htiKnown2Buffer = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_ENABLEKNOWN2BUFFER),TVI_ROOT,m_bKnown2Buffer); //known2 buffer
+		m_htiKnown2Split = m_ctrlTreeOptions.InsertCheckBox(GetResString(IDS_ENABLEKNOWN2SPLIT),TVI_ROOT,m_bKnown2Split); //known2 split
+		//zz_fly end
+
 		m_ctrlTreeOptions.Expand(m_htiCommit, TVE_EXPAND);
 		m_ctrlTreeOptions.Expand(m_htiCheckDiskspace, TVE_EXPAND);
+		//Xman
+		/*
 		m_ctrlTreeOptions.Expand(m_htiDynUp, TVE_EXPAND);
         m_ctrlTreeOptions.Expand(m_htiDynUpPingToleranceGroup, TVE_EXPAND);
+		*/
+		//Xman end
 		m_ctrlTreeOptions.Expand(m_htiExtractMetaData, TVE_EXPAND);
+		// ==> UPnP support [MoNKi] - leuk_he
+		/*
 		m_ctrlTreeOptions.Expand(m_htiUPnP, TVE_EXPAND);
+		*/
+		// <== UPnP support [MoNKi] - leuk_he
 		m_ctrlTreeOptions.Expand(m_htiShareeMule, TVE_EXPAND);
         m_ctrlTreeOptions.SendMessage(WM_VSCROLL, SB_TOP);
         m_bInitializedTreeOpts = true;
@@ -322,12 +455,24 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 	// Miscellaneous group
 	//
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiAutoTakeEd2kLinks, m_bAutoTakeEd2kLinks);
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiCreditSystem, m_bCreditSystem);
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	/*
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiFirewallStartup, m_bFirewallStartup);
 	m_ctrlTreeOptions.SetCheckBoxEnable(m_htiFirewallStartup, thePrefs.GetWindowsVersion() == _WINVER_XP_ && IsRunningXPSP2() == 0);
+	*/
+	// <== Improved ICS-Firewall support [MoNKi] - Max
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiFilterLANIPs, m_bFilterLANIPs);
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiExtControls, m_bExtControls);
+	//Xman
+	/*
     DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiA4AFSaveCpu, m_bA4AFSaveCpu);
+	*/
+	//Xman end
 	DDX_TreeEdit(pDX, IDC_EXT_OPTS, m_htiYourHostname, m_sYourHostname);
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiAutoArch, m_bAutoArchDisable);
 	
@@ -348,6 +493,7 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 	// Logging group
 	//
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiLog2Disk, m_bLog2Disk);
+	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiDateFileNameLog, m_bDateFileNameLog); // Date File Name Log [AndCycle] - Stulle
 	if (m_htiLogLevel){
 		DDX_TreeEdit(pDX, IDC_EXT_OPTS, m_htiLogLevel, m_iLogLevel);
 		DDV_MinMaxInt(pDX, m_iLogLevel, 1, 5);
@@ -369,12 +515,22 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 	if (m_htiLogFileSaving)			m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogFileSaving, m_bVerbose);
     if (m_htiLogA4AF)			    DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiLogA4AF, m_bLogA4AF);
 	if (m_htiLogA4AF)               m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogA4AF, m_bVerbose);
+	if (m_htiLogDrop)			    DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiLogDrop, m_bLogDrop); //Xman Xtreme Downloadmanager
+	if (m_htiLogDrop)               m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogDrop, m_bVerbose); //Xman Xtreme Downloadmanager
+	if (m_htiLogpartmismtach)		DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiLogpartmismtach, m_bLogpartmismatch); //Xman Log part/size-mismatch
+	if (m_htiLogpartmismtach)		m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogpartmismtach, m_bVerbose); //Xman Log part/size-mismatch
 	if (m_htiLogUlDlEvents)			DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiLogUlDlEvents, m_bLogUlDlEvents);
 	if (m_htiLogUlDlEvents)         m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogUlDlEvents, m_bVerbose);
+	// ==> UPnP support [MoNKi] - leuk_he 
+	if (m_htiLogUPnP)				DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiLogUPnP, m_bLogUPnP);
+	if (m_htiLogUPnP)				m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogUPnP, m_bVerbose);
+	// <== UPnP support [MoNKi] - leuk_he
 
 	/////////////////////////////////////////////////////////////////////////////
 	// USS group
 	//
+	//Xman
+	/*
     DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiDynUpEnabled, m_bDynUpEnabled);
     DDX_TreeEdit(pDX, IDC_EXT_OPTS, m_htiDynUpMinUpload, m_iDynUpMinUpload);
 	DDV_MinMaxInt(pDX, m_iDynUpMinUpload, 1, INT_MAX);
@@ -389,19 +545,58 @@ void CPPgTweaks::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxInt(pDX, m_iDynUpGoingDownDivider, 1, INT_MAX);
     DDX_TreeEdit(pDX, IDC_EXT_OPTS, m_htiDynUpNumberOfPings, m_iDynUpNumberOfPings);
 	DDV_MinMaxInt(pDX, m_iDynUpNumberOfPings, 1, INT_MAX);
+	*/
+	//Xman end
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	/////////////////////////////////////////////////////////////////////////////
 	// UPnP group
 	//
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	if (thePrefs.m_bUseACATUPnPCurrent){
+		//ACAT UPnP
+		DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiUPnPNat, m_iUPnPNat);
+		DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiUPnPTryRandom, m_iUPnPTryRandom);	
+		DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiUPnPRebindOnIPChange, m_iUPnPRebindOnIPChange); //zz_fly :: Rebind UPnP on IP-change
+		m_ctrlTreeOptions.SetCheckBoxEnable(m_htiUPnPTryRandom, m_iUPnPNat);
+		m_ctrlTreeOptions.SetCheckBoxEnable(m_htiUPnPRebindOnIPChange, m_iUPnPNat); //zz_fly :: Rebind UPnP on IP-change
+	}
+	else{
+#endif //zz_fly :: dual upnp
+	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiIsUPnPEnabled, m_bIsUPnPEnabled); //zz_fly :: add UPnP option in Tweaks
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiCloseUPnPPorts, m_bCloseUPnPOnExit);
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiSkipWANIPSetup, m_bSkipWANIPSetup);
 	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiSkipWANPPPSetup, m_bSkipWANPPPSetup);
+	DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiUPnPRebindOnIPChange, m_iUPnPRebindOnIPChange); //zz_fly :: Rebind UPnP on IP-change
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	}
+	//UPnP chooser
+	if (m_htiUseACATUPnPNextStart)	 
+		DDX_TreeCheck(pDX, IDC_EXT_OPTS, m_htiUseACATUPnPNextStart, m_iUseACATUPnPNextStart);
+#endif //zz_fly :: dual upnp
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 
 	/////////////////////////////////////////////////////////////////////////////
 	// eMule Shared User
 	//
 	DDX_TreeRadio(pDX, IDC_EXT_OPTS, m_htiShareeMule, m_iShareeMule);
 	m_ctrlTreeOptions.SetRadioButtonEnable(m_htiShareeMulePublicUser, thePrefs.GetWindowsVersion() >= _WINVER_VISTA_);
+
+	//Xman Added PaddingLength to Extended preferences
+	DDX_TreeEdit(pDX,IDC_EXT_OPTS,m_htiCryptTCPPaddingLength,m_iCryptTCPPaddingLength );
+	DDV_MinMaxInt(pDX, m_iCryptTCPPaddingLength , 10,254);
+	//Xman end
+	
+	//zz_fly
+	if(m_htiKnown2Buffer) DDX_TreeCheck(pDX,IDC_EXT_OPTS,m_htiKnown2Buffer,m_bKnown2Buffer); //known2 buffer
+	 //known2 split
+	if(m_htiKnown2Split) {
+		DDX_TreeCheck(pDX,IDC_EXT_OPTS,m_htiKnown2Split,m_bKnown2Split);
+		m_ctrlTreeOptions.SetCheckBoxEnable(m_htiKnown2Split, thePrefs.GetRememberAICH()); //this feature only available when user want to remember unused AichHashSet.
+	}
+	//zz_fly end
 }
 
 BOOL CPPgTweaks::OnInitDialog()
@@ -421,11 +616,21 @@ BOOL CPPgTweaks::OnInitDialog()
 		m_bLogFilteredIPs = thePrefs.m_bLogFilteredIPs;					// do *not* use the according 'Get...' function here!
 		m_bLogFileSaving = thePrefs.m_bLogFileSaving;					// do *not* use the according 'Get...' function here!
         m_bLogA4AF = thePrefs.m_bLogA4AF;                   		    // do *not* use the according 'Get...' function here! // ZZ:DownloadManager
+		m_bLogDrop = thePrefs.m_bLogDrop; //Xman Xtreme Downloadmanager
+		m_bLogpartmismatch = thePrefs.m_bLogpartmismatch; //Xman Log part/size-mismatch
 		m_bLogUlDlEvents = thePrefs.m_bLogUlDlEvents;
+		// ==> UPnP support [MoNKi] - leuk_he 
+		m_bLogUPnP = thePrefs.GetUPnPVerboseLog();
+		// <== UPnP support [MoNKi] - leuk_he 
 		m_iLogLevel = 5 - thePrefs.m_byLogLevel;
 	}
 	m_bLog2Disk = thePrefs.log2disk;
+	m_bDateFileNameLog = thePrefs.m_bDateFileNameLog; // Date File Name Log [AndCycle] - Stulle
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	m_bCreditSystem = thePrefs.m_bCreditSystem;
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	m_iCommitFiles = thePrefs.m_iCommitFiles;
 	m_iExtractMetaData = thePrefs.m_iExtractMetaData;
 	m_bFilterLANIPs = thePrefs.filterLANIPs;
@@ -437,9 +642,15 @@ BOOL CPPgTweaks::OnInitDialog()
 	m_bResolveShellLinks = thePrefs.GetResolveSharedShellLinks();
 	m_fMinFreeDiskSpaceMB = (float)(thePrefs.m_uMinFreeDiskSpace / (1024.0 * 1024.0));
 	m_sYourHostname = thePrefs.GetYourHostname();
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	/*
 	m_bFirewallStartup = ((thePrefs.GetWindowsVersion() == _WINVER_XP_) ? thePrefs.m_bOpenPortsOnStartUp : 0); 
+	*/
+	// <== Improved ICS-Firewall support [MoNKi] - Max
 	m_bAutoArchDisable = !thePrefs.m_bAutomaticArcPreviewStart;
 
+	//Xman
+	/*
     m_bDynUpEnabled = thePrefs.m_bDynUpEnabled;
     m_iDynUpMinUpload = thePrefs.GetMinUpload();
     m_iDynUpPingTolerance = thePrefs.GetDynUpPingTolerance();
@@ -448,14 +659,44 @@ BOOL CPPgTweaks::OnInitDialog()
     m_iDynUpGoingUpDivider = thePrefs.GetDynUpGoingUpDivider();
     m_iDynUpGoingDownDivider = thePrefs.GetDynUpGoingDownDivider();
     m_iDynUpNumberOfPings = thePrefs.GetDynUpNumberOfPings();
+	*/
+	//Xman end
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	m_iUseACATUPnPNextStart = thePrefs.m_bUseACATUPnPNextStart;
+
+	//ACAT UPnP
+	m_iUPnPNat = thePrefs.GetUPnPNat();
+	m_iUPnPTryRandom = thePrefs.GetUPnPNatTryRandom();
+#endif //zz_fly :: dual upnp
+	m_bIsUPnPEnabled = thePrefs.IsUPnPEnabled(); //zz_fly :: add UPnP option in Tweaks
 	m_bCloseUPnPOnExit = thePrefs.CloseUPnPOnExit();
 	m_bSkipWANIPSetup = thePrefs.GetSkipWANIPSetup();
 	m_bSkipWANPPPSetup = thePrefs.GetSkipWANPPPSetup();
 
+	m_iUPnPRebindOnIPChange = thePrefs.GetUPnPNatRebind(); //zz_fly :: Rebind UPnP on IP-change
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	m_iShareeMule = thePrefs.m_nCurrentUserDirMode;
 
+	//Xman Added PaddingLength to Extended preferences
+	m_iCryptTCPPaddingLength  = thePrefs.GetCryptTCPPaddingLength(); 
+	//Xman end
+
+	//Xman
+	/*
     m_bA4AFSaveCpu = thePrefs.GetA4AFSaveCpu();
+	*/
+	//Xman end
+
+	//zz_fly
+	m_bKnown2Buffer = thePrefs.m_bKnown2Buffer; //known2 buffer
+	m_bKnown2Split = thePrefs.m_bKnown2Split_next; //known2 split
+	//zz_fly end
 
 	m_ctrlTreeOptions.SetImageListColorFlags(theApp.m_iDfltImageListColorFlags);
     CPropertyPage::OnInitDialog();
@@ -463,7 +704,12 @@ BOOL CPPgTweaks::OnInitDialog()
 	m_ctrlTreeOptions.SetItemHeight(m_ctrlTreeOptions.GetItemHeight() + 2);
 
 	m_iFileBufferSize = thePrefs.m_iFileBufferSize;
+	//Xman increased to 2 MB
+	/*
 	m_ctlFileBuffSize.SetRange(16, 1024+512, TRUE);
+	*/
+	m_ctlFileBuffSize.SetRange(16, 2048, TRUE);
+	//Xman end
 	int iMin, iMax;
 	m_ctlFileBuffSize.GetRange(iMin, iMax);
 	m_ctlFileBuffSize.SetPos(m_iFileBufferSize/1024);
@@ -521,6 +767,26 @@ BOOL CPPgTweaks::OnApply()
 		theLog.Close();
 	thePrefs.log2disk = m_bLog2Disk;
 
+	// ==> Date File Name Log [AndCycle] - Stulle
+	if(thePrefs.m_bDateFileNameLog != (m_bDateFileNameLog != 0))
+	{
+		//close log first
+		theLog.Close();
+		theVerboseLog.Close();
+
+		//reset path
+		// Mighty Knife: log files are places in the "log" folder
+		VERIFY( theLog.SetFilePath(thePrefs.GetMuleDirectory(EMULE_LOGDIR) + _T("eMule.log")) );
+		VERIFY( theVerboseLog.SetFilePath(thePrefs.GetMuleDirectory(EMULE_LOGDIR) + _T("eMule_Verbose.log")) );
+		// [end] Mighty Knife
+
+		//open log again
+		theLog.Open();
+		theVerboseLog.Open();
+	}
+	thePrefs.m_bDateFileNameLog = m_bDateFileNameLog;
+	// <== Date File Name Log [AndCycle] - Stulle
+
 	if (thePrefs.GetEnableVerboseOptions())
 	{
 		if (!thePrefs.GetDebug2Disk() && m_bVerbose && m_bDebug2Disk)
@@ -536,13 +802,22 @@ BOOL CPPgTweaks::OnApply()
 		thePrefs.m_bLogFilteredIPs = m_bLogFilteredIPs;
 		thePrefs.m_bLogFileSaving = m_bLogFileSaving;
         thePrefs.m_bLogA4AF = m_bLogA4AF;
+		thePrefs.m_bLogDrop = m_bLogDrop; //Xman Xtreme Downloadmanager
+		thePrefs.m_bLogpartmismatch = m_bLogpartmismatch; //Xman Log part/size-mismatch
 		thePrefs.m_bLogUlDlEvents = m_bLogUlDlEvents;
+		// ==> UPnP support [MoNKi] - leuk_he 
+		thePrefs.SetUPnPVerboseLog(m_bLogUPnP);
+		// <== UPnP support [MoNKi] - leuk_he 
 		thePrefs.m_byLogLevel = 5 - m_iLogLevel;
 
 		thePrefs.m_bVerbose = m_bVerbose; // store after related options were stored!
 	}
 
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	thePrefs.m_bCreditSystem = m_bCreditSystem;
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	thePrefs.m_iCommitFiles = m_iCommitFiles;
 	thePrefs.m_iExtractMetaData = m_iExtractMetaData;
 	thePrefs.filterLANIPs = m_bFilterLANIPs;
@@ -564,8 +839,14 @@ BOOL CPPgTweaks::OnApply()
 		thePrefs.SetYourHostname(m_sYourHostname);
 		theApp.emuledlg->serverwnd->UpdateMyInfo();
 	}
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	/*
 	thePrefs.m_bOpenPortsOnStartUp = m_bFirewallStartup;
+	*/
+	// <== Improved ICS-Firewall support [MoNKi] - Max
 
+	//Xman
+	/*
     thePrefs.m_bDynUpEnabled = m_bDynUpEnabled;
     thePrefs.minupload = (uint16)m_iDynUpMinUpload;
     thePrefs.m_iDynUpPingTolerance = m_iDynUpPingTolerance;
@@ -574,15 +855,68 @@ BOOL CPPgTweaks::OnApply()
     thePrefs.m_iDynUpGoingUpDivider = m_iDynUpGoingUpDivider;
     thePrefs.m_iDynUpGoingDownDivider = m_iDynUpGoingDownDivider;
     thePrefs.m_iDynUpNumberOfPings = m_iDynUpNumberOfPings;
+	*/
+	//Xman end
 	thePrefs.m_bAutomaticArcPreviewStart = !m_bAutoArchDisable;
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	thePrefs.m_bUseACATUPnPNextStart = m_iUseACATUPnPNextStart;
+	if (thePrefs.m_bUseACATUPnPCurrent){
+		//ACAT UPnP
+		if(thePrefs.GetUPnPNat()!=m_iUPnPNat || thePrefs.GetUPnPNatTryRandom() != m_iUPnPTryRandom)
+			AfxMessageBox(_T("You must restart emule to apply the changes in UPnP"));
+		thePrefs.SetUPnPNat( m_iUPnPNat );
+		thePrefs.SetUPnPNatTryRandom( m_iUPnPTryRandom );
+	}
+	else
+#endif //zz_fly :: dual upnp
+	{
+	//zz_fly :: add UPnP option in Tweaks :: start
+	if (m_bIsUPnPEnabled){
+		if (!thePrefs.IsUPnPEnabled()){
+			thePrefs.m_bEnableUPnP = true;
+			theApp.emuledlg->StartUPnP();
+		}
+	}
+	else
+		thePrefs.m_bEnableUPnP = false;
+	//zz_fly :: end
 	thePrefs.m_bCloseUPnPOnExit = m_bCloseUPnPOnExit;
 	thePrefs.SetSkipWANIPSetup(m_bSkipWANIPSetup);
 	thePrefs.SetSkipWANPPPSetup(m_bSkipWANPPPSetup);
+	}
+	thePrefs.SetUPnPNatRebind( m_iUPnPRebindOnIPChange ); //zz_fly :: Rebind UPnP on IP-change
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 
 	thePrefs.ChangeUserDirMode(m_iShareeMule);
 
+	//Xman Added PaddingLength to Extended preferences
+	/*
+	thePrefs.m_byCryptTCPPaddingLength=(uint8)m_iCryptTCPPaddingLength;
+	*/
+	thePrefs.SetCryptTCPPaddingLength(m_iCryptTCPPaddingLength);
+	//Xman end
+
+	//Xman
+	/*
     thePrefs.m_bA4AFSaveCpu = m_bA4AFSaveCpu;
+	*/
+	//Xman end
+
+	//zz_fly
+	//known2 buffer
+	//there maybe something in buffer. don't worry, it will be wrote to file in uploadtimer.
+	thePrefs.m_bKnown2Buffer = m_bKnown2Buffer;
+
+	//known2 split
+	if(thePrefs.m_bKnown2Split != m_bKnown2Split && thePrefs.m_bKnown2Split_next != m_bKnown2Split)
+		AfxMessageBox(_T("The changes in knwon2.met will not take effects until you restart emule!"));
+	thePrefs.m_bKnown2Split_next = m_bKnown2Split;
+	//zz_fly end
 
 	if (thePrefs.GetEnableVerboseOptions())
 	{
@@ -629,8 +963,13 @@ void CPPgTweaks::Localize(void)
 		if (m_htiMaxHalfOpen) m_ctrlTreeOptions.SetEditLabel(m_htiMaxHalfOpen, GetResString(IDS_MAXHALFOPENCONS));
 		if (m_htiConditionalTCPAccept) m_ctrlTreeOptions.SetItemText(m_htiConditionalTCPAccept, GetResString(IDS_CONDTCPACCEPT));
 		if (m_htiAutoTakeEd2kLinks) m_ctrlTreeOptions.SetItemText(m_htiAutoTakeEd2kLinks, GetResString(IDS_AUTOTAKEED2KLINKS));
+		// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+		/*
 		if (m_htiCreditSystem) m_ctrlTreeOptions.SetItemText(m_htiCreditSystem, GetResString(IDS_USECREDITSYSTEM));
+		*/
+		// <== CreditSystems [EastShare/ MorphXT] - Stulle
 		if (m_htiLog2Disk) m_ctrlTreeOptions.SetItemText(m_htiLog2Disk, GetResString(IDS_LOG2DISK));
+		if (m_htiDateFileNameLog) m_ctrlTreeOptions.SetItemText(m_htiDateFileNameLog, GetResString(IDS_DATEFILENAMELOG)); // Date File Name Log [AndCycle] - Stulle
 		if (m_htiVerboseGroup) m_ctrlTreeOptions.SetItemText(m_htiVerboseGroup, GetResString(IDS_VERBOSE));
 		if (m_htiVerbose) m_ctrlTreeOptions.SetItemText(m_htiVerbose, GetResString(IDS_ENABLED));
 		if (m_htiDebug2Disk) m_ctrlTreeOptions.SetItemText(m_htiDebug2Disk, GetResString(IDS_LOG2DISK));
@@ -642,6 +981,8 @@ void CPPgTweaks::Localize(void)
 		if (m_htiLogFileSaving) m_ctrlTreeOptions.SetItemText(m_htiLogFileSaving, GetResString(IDS_LOG_FILE_SAVING));
 		if (m_htiLogLevel) m_ctrlTreeOptions.SetEditLabel(m_htiLogLevel, GetResString(IDS_LOG_LEVEL));
 		if (m_htiLogA4AF) m_ctrlTreeOptions.SetItemText(m_htiLogA4AF, GetResString(IDS_LOG_A4AF));
+		if (m_htiLogDrop) m_ctrlTreeOptions.SetItemText(m_htiLogDrop, GetResString(IDS_LOGDROP)); //Xman Xtreme Downloadmanager
+		if (m_htiLogpartmismtach) m_ctrlTreeOptions.SetItemText(m_htiLogpartmismtach, GetResString(IDS_LOGPARTMISMATCH)); //Xman Log part/size-mismatch
 		if (m_htiLogUlDlEvents) m_ctrlTreeOptions.SetItemText(m_htiLogUlDlEvents, GetResString(IDS_LOG_ULDL_EVENTS));
 		if (m_htiCommit) m_ctrlTreeOptions.SetItemText(m_htiCommit, GetResString(IDS_COMMITFILES));
 		if (m_htiCommitNever) m_ctrlTreeOptions.SetItemText(m_htiCommitNever, GetResString(IDS_NEVER));
@@ -658,7 +999,13 @@ void CPPgTweaks::Localize(void)
 		if (m_htiCheckDiskspace) m_ctrlTreeOptions.SetItemText(m_htiCheckDiskspace, GetResString(IDS_CHECKDISKSPACE));
 		if (m_htiMinFreeDiskSpace) m_ctrlTreeOptions.SetEditLabel(m_htiMinFreeDiskSpace, GetResString(IDS_MINFREEDISKSPACE));
 		if (m_htiYourHostname) m_ctrlTreeOptions.SetEditLabel(m_htiYourHostname, GetResString(IDS_YOURHOSTNAME));	// itsonlyme: hostnameSource
+		// ==> Improved ICS-Firewall support [MoNKi] - Max
+		/*
 		if (m_htiFirewallStartup) m_ctrlTreeOptions.SetItemText(m_htiFirewallStartup, GetResString(IDS_FO_PREF_STARTUP));
+		*/
+		// <== Improved ICS-Firewall support [MoNKi] - Max
+		//Xman
+		/*
         if (m_htiDynUp) m_ctrlTreeOptions.SetItemText(m_htiDynUp, GetResString(IDS_DYNUP));
 		if (m_htiDynUpEnabled) m_ctrlTreeOptions.SetItemText(m_htiDynUpEnabled, GetResString(IDS_DYNUPENABLED));
         if (m_htiDynUpMinUpload) m_ctrlTreeOptions.SetEditLabel(m_htiDynUpMinUpload, GetResString(IDS_DYNUP_MINUPLOAD));
@@ -666,18 +1013,54 @@ void CPPgTweaks::Localize(void)
         if (m_htiDynUpGoingUpDivider) m_ctrlTreeOptions.SetEditLabel(m_htiDynUpGoingUpDivider, GetResString(IDS_DYNUP_GOINGUPDIVIDER));
         if (m_htiDynUpGoingDownDivider) m_ctrlTreeOptions.SetEditLabel(m_htiDynUpGoingDownDivider, GetResString(IDS_DYNUP_GOINGDOWNDIVIDER));
         if (m_htiDynUpNumberOfPings) m_ctrlTreeOptions.SetEditLabel(m_htiDynUpNumberOfPings, GetResString(IDS_DYNUP_NUMBEROFPINGS));
+		*/
+		//Xman end
+		
+		//Xman
+		/*
         if (m_htiA4AFSaveCpu) m_ctrlTreeOptions.SetItemText(m_htiA4AFSaveCpu, GetResString(IDS_A4AF_SAVE_CPU));
+		*/
+		//Xman end
         if (m_htiFullAlloc) m_ctrlTreeOptions.SetItemText(m_htiFullAlloc, GetResString(IDS_FULLALLOC));
 		if (m_htiAutoArch) m_ctrlTreeOptions.SetItemText(m_htiAutoArch, GetResString(IDS_DISABLE_AUTOARCHPREV));
+
+		// ==> UPnP support [MoNKi] - leuk_he
+		/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+		if (thePrefs.m_bUseACATUPnPCurrent){
+			//ACAT UPnP
+			if (m_htiUPnP) m_ctrlTreeOptions.SetItemText(m_htiUPnP, _T("ACAT UPnP"));
+			if (m_htiUPnPNat) m_ctrlTreeOptions.SetItemText(m_htiUPnPNat, GetResString(IDS_CN_UPNPNAT));
+			if (m_htiUPnPTryRandom) m_ctrlTreeOptions.SetItemText(m_htiUPnPTryRandom, GetResString(IDS_CN_UPNPTRYRANDOM));
+			//UPnP chooser
+			if (m_htiUseACATUPnPNextStart) m_ctrlTreeOptions.SetItemText(m_htiUseACATUPnPNextStart, GetResString(IDS_USEACATUPNPNEXTSTART1));
+		}
+		else{
+#endif //zz_fly :: dual upnp
         if (m_htiUPnP) m_ctrlTreeOptions.SetItemText(m_htiUPnP, GetResString(IDS_UPNP));
+		if (m_htiIsUPnPEnabled) m_ctrlTreeOptions.SetItemText(m_htiIsUPnPEnabled, GetResString(IDS_UPNPSTART)); //zz_fly :: add UPnP option in Tweaks
 		if (m_htiCloseUPnPPorts) m_ctrlTreeOptions.SetItemText(m_htiCloseUPnPPorts, GetResString(IDS_UPNPCLOSEONEXIT));
 		if (m_htiSkipWANIPSetup) m_ctrlTreeOptions.SetItemText(m_htiSkipWANIPSetup, GetResString(IDS_UPNPSKIPWANIP));
 		if (m_htiSkipWANPPPSetup) m_ctrlTreeOptions.SetItemText(m_htiSkipWANPPPSetup, GetResString(IDS_UPNPSKIPWANPPP));
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+			//UPnP chooser
+			if (m_htiUseACATUPnPNextStart) m_ctrlTreeOptions.SetItemText(m_htiUseACATUPnPNextStart, GetResString(IDS_USEACATUPNPNEXTSTART2));
+		}
+#endif //zz_fly :: dual upnp
+		if (m_htiUPnPRebindOnIPChange) m_ctrlTreeOptions.SetItemText(m_htiUPnPRebindOnIPChange, GetResString(IDS_UPNP_REBINDTEXT)); //zz_fly :: Rebind UPnP on IP-change
+		*/
+		// <== UPnP support [MoNKi] - leuk_he
+
 		if (m_htiShareeMule) m_ctrlTreeOptions.SetItemText(m_htiShareeMule, GetResString(IDS_SHAREEMULELABEL));
 		if (m_htiShareeMuleMultiUser) m_ctrlTreeOptions.SetItemText(m_htiShareeMuleMultiUser, GetResString(IDS_SHAREEMULEMULTI));
 		if (m_htiShareeMulePublicUser) m_ctrlTreeOptions.SetItemText(m_htiShareeMulePublicUser, GetResString(IDS_SHAREEMULEPUBLIC));
 		if (m_htiShareeMuleOldStyle) m_ctrlTreeOptions.SetItemText(m_htiShareeMuleOldStyle, GetResString(IDS_SHAREEMULEOLD));
 		if (m_htiResolveShellLinks) m_ctrlTreeOptions.SetItemText(m_htiResolveShellLinks, GetResString(IDS_RESOLVELINKS));
+
+		//zz_fly
+		if (m_htiKnown2Buffer) m_ctrlTreeOptions.SetItemText(m_htiKnown2Buffer, GetResString(IDS_ENABLEKNOWN2BUFFER)); //known2 buffer
+		if (m_htiKnown2Split) m_ctrlTreeOptions.SetItemText(m_htiKnown2Split, GetResString(IDS_ENABLEKNOWN2SPLIT)); //known2 split
+		//zz_fly end
 
         CString temp;
 		temp.Format(_T("%s: %s"), GetResString(IDS_FILEBUFFERSIZE), CastItoXBytes(m_iFileBufferSize, false, false));
@@ -706,11 +1089,18 @@ void CPPgTweaks::OnDestroy()
 	m_htiLogFilteredIPs = NULL;
 	m_htiLogFileSaving = NULL;
     m_htiLogA4AF = NULL;
+	m_htiLogDrop = NULL; //Xman Xtreme Downloadmanager
+	m_htiLogpartmismtach = NULL; //Xman Log part/size-mismatch
 	m_htiLogLevel = NULL;
 	m_htiLogUlDlEvents = NULL;
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	m_htiCreditSystem = NULL;
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	m_htiLog2Disk = NULL;
 	m_htiDebug2Disk = NULL;
+	m_htiDateFileNameLog = NULL; // Date File Name Log [AndCycle] - Stulle
 	m_htiCommit = NULL;
 	m_htiCommitNever = NULL;
 	m_htiCommitOnShutdown = NULL;
@@ -723,7 +1113,13 @@ void CPPgTweaks::OnDestroy()
 	m_htiCheckDiskspace = NULL;
 	m_htiMinFreeDiskSpace = NULL;
 	m_htiYourHostname = NULL;
+	// ==> Improved ICS-Firewall support [MoNKi] - Max
+	/*
 	m_htiFirewallStartup = NULL;
+	*/
+	// <== Improved ICS-Firewall support [MoNKi] - Max
+	//Xman
+	/*
     m_htiDynUp = NULL;
 	m_htiDynUpEnabled = NULL;
     m_htiDynUpMinUpload = NULL;
@@ -736,14 +1132,39 @@ void CPPgTweaks::OnDestroy()
     m_htiDynUpGoingDownDivider = NULL;
     m_htiDynUpNumberOfPings = NULL;
     m_htiA4AFSaveCpu = NULL;
+	*/
+	//Xman end
 	m_htiExtractMetaData = NULL;
 	m_htiExtractMetaDataNever = NULL;
 	m_htiExtractMetaDataID3Lib = NULL;
 	m_htiAutoArch = NULL;
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	m_htiUseACATUPnPNextStart = NULL;
+	m_iUseACATUPnPNextStart = 0;
+
+	//ACAT UPnP
+	m_htiUPnPNat = NULL;
+	m_htiUPnPTryRandom = NULL;
+	m_iUPnPNat = 0;
+	m_iUPnPTryRandom = 0;
+#endif //zz_fly :: dual upnp
 	m_htiUPnP = NULL;
+	m_htiIsUPnPEnabled = NULL; //zz_fly :: add UPnP option in Tweaks
 	m_htiCloseUPnPPorts = NULL;
 	m_htiSkipWANIPSetup = NULL;
 	m_htiSkipWANPPPSetup = NULL;
+
+	//zz_fly :: Rebind UPnP on IP-change
+	m_htiUPnPRebindOnIPChange = NULL;
+	m_iUPnPRebindOnIPChange = 0;
+	//zz_fly :: end
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	m_htiShareeMule = NULL;
 	m_htiShareeMuleMultiUser = NULL;
 	m_htiShareeMulePublicUser = NULL;
@@ -751,6 +1172,13 @@ void CPPgTweaks::OnDestroy()
 	//m_htiExtractMetaDataMediaDet = NULL;
 	m_htiResolveShellLinks = NULL;
     
+	m_htiCryptTCPPaddingLength = NULL; //Xman Added PaddingLength to Extended preferences
+
+	//zz_fly
+	m_htiKnown2Buffer = NULL; //known2 buffer
+	m_htiKnown2Split = NULL; //known2 split
+	//zz_fly end
+
     CPropertyPage::OnDestroy();
 }
 
@@ -772,6 +1200,8 @@ LRESULT CPPgTweaks::OnTreeOptsCtrlNotify(WPARAM wParam, LPARAM lParam)
 				if (m_htiLogFilteredIPs)		m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogFilteredIPs, bCheck);
 				if (m_htiLogFileSaving)			m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogFileSaving, bCheck);
                 if (m_htiLogA4AF)			    m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogA4AF, bCheck);
+				if (m_htiLogDrop)			    m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogDrop, bCheck); //Xman Xtreme Downloadmanager
+				if (m_htiLogpartmismtach)		m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogpartmismtach, bCheck); //Xman Log part/size-mismatch
 				if (m_htiLogUlDlEvents)			m_ctrlTreeOptions.SetCheckBoxEnable(m_htiLogUlDlEvents, bCheck);
 			}
 		}
@@ -790,6 +1220,25 @@ LRESULT CPPgTweaks::OnTreeOptsCtrlNotify(WPARAM wParam, LPARAM lParam)
 				}
 			}
 		}
+
+		if(m_htiKnown2Split) m_ctrlTreeOptions.SetCheckBoxEnable(m_htiKnown2Split, thePrefs.GetRememberAICH()); //zz_fly :: known2 split, this feature only available when user want to remember unused AichHashSet.
+
+		// ==> UPnP support [MoNKi] - leuk_he
+		/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+		//ACAT UPnP
+		if (thePrefs.m_bUseACATUPnPCurrent && m_htiUPnPNat && pton->hItem == m_htiUPnPNat)
+		{
+			BOOL bCheck;
+			if (m_ctrlTreeOptions.GetCheckBox(m_htiUPnPNat, bCheck))
+			{
+				if (m_htiUPnPTryRandom)	m_ctrlTreeOptions.SetCheckBoxEnable(m_htiUPnPTryRandom, bCheck);
+				if (m_htiUPnPRebindOnIPChange)	m_ctrlTreeOptions.SetCheckBoxEnable(m_htiUPnPRebindOnIPChange, bCheck); //zz_fly :: Rebind UPnP on IP-change
+			}
+		}
+#endif //zz_fly :: dual upnp
+		*/
+		// <== UPnP support [MoNKi] - leuk_he
 		SetModified();
 	}
 	return 0;

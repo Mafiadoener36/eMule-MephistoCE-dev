@@ -136,17 +136,9 @@ void CKadContactListCtrl::UpdateContact(int iItem, const Kademlia::CContact *con
 	contact->GetDistance(&id);
 	SetItemText(iItem, colDistance, id);
 
-	UINT nImageShown;
-	if (contact->IsBootstrapContact())
-	{
-		nImageShown = contact->IsBootstrapFailed() ? 4 : 5;
-	}
-	else
-	{
-		nImageShown = contact->GetType() > 4 ? 4 : contact->GetType();
-		if (nImageShown < 3 && !contact->IsIpVerified())
-			nImageShown = 5; // if we have an active contact, which is however not IP verified (and therefore not used), show this icon instead
-	}
+	UINT nImageShown = contact->GetType() > 4 ? 4 : contact->GetType();
+	if (nImageShown < 3 && !contact->IsIpVerified())
+		nImageShown = 5; // if we have an active contact, which is however not IP verified (and therefore not used), show this icon instead
 	SetItem(iItem, 0, LVIF_IMAGE, 0, nImageShown, 0, 0, 0, 0);
 }
 
@@ -168,7 +160,12 @@ bool CKadContactListCtrl::ContactAdd(const Kademlia::CContact *contact)
 	//		Trying to update all the columns causes one of the connection freezes in win98
 	//		ContactRef(contact);
 			// If it still doesn't work under Win98, uncomment the '!afxData.bWin95' term
+			// ==> Drop Win95 support [MorphXT] - Stulle
+			/*
 			if (!afxIsWin95() && iItem >= 0)
+			*/
+			if (iItem >= 0)
+			// <== Drop Win95 support [MorphXT] - Stulle
 				UpdateContact(iItem, contact);
 			UpdateKadContactCount();
 		}

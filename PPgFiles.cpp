@@ -50,7 +50,13 @@ BEGIN_MESSAGE_MAP(CPPgFiles, CPropertyPage)
 	ON_EN_CHANGE(IDC_VIDEOPLAYER, OnSettingsChange)
 	ON_EN_CHANGE(IDC_VIDEOPLAYER_ARGS, OnSettingsChange)
 	ON_BN_CLICKED(IDC_VIDEOBACKUP, OnSettingsChange)
+	//Xman remove unused AICH-hashes
+	/*
 	ON_BN_CLICKED(IDC_REMEMBERDOWNLOADED, OnSettingsChange) 
+	*/
+	ON_BN_CLICKED(IDC_REMEMBERDOWNLOADED, OnBnClickedRememberdownloaded)
+	ON_BN_CLICKED(IDC_REMEMBERAICH, OnSettingsChange)
+	//Xman end
 	ON_BN_CLICKED(IDC_REMEMBERCANCELLED, OnSettingsChange) 
 	ON_BN_CLICKED(IDC_BROWSEV, BrowseVideoplayer)
 	ON_WM_HELPINFO()
@@ -156,6 +162,16 @@ void CPPgFiles::LoadSettings(void)
 	else
 		CheckDlgButton(IDC_REMEMBERCANCELLED,0);
 	
+	//Xman remove unused AICH-hashes
+	if(thePrefs.IsRememberingDownloadedFiles()==false)
+	{
+		CheckDlgButton(IDC_REMEMBERAICH,FALSE);
+		GetDlgItem(IDC_REMEMBERAICH)->EnableWindow(FALSE);
+	}
+	else
+		CheckDlgButton(IDC_REMEMBERAICH, thePrefs.GetRememberAICH());
+	//Xman end
+
 	GetDlgItem(IDC_STARTNEXTFILECAT)->EnableWindow(IsDlgButtonChecked(IDC_STARTNEXTFILE));
 }
 
@@ -214,6 +230,8 @@ BOOL CPPgFiles::OnApply()
 	else
 		thePrefs.SetRememberCancelledFiles(false);
 
+	thePrefs.SetRememberAICH(IsDlgButtonChecked(IDC_REMEMBERAICH)!=0); //Xman remove unused AICH-hashes
+
 	thePrefs.addnewfilespaused = IsDlgButtonChecked(IDC_ADDNEWFILESPAUSED)!=0;
 	thePrefs.autofilenamecleanup = IsDlgButtonChecked(IDC_FNCLEANUP)!=0;
 	thePrefs.m_bUseOldTimeRemaining = IsDlgButtonChecked(IDC_PF_TIMECALC)==0;
@@ -234,7 +252,11 @@ void CPPgFiles::Localize(void)
 	if (m_hWnd)
 	{
 		SetWindowText(GetResString(IDS_PW_FILES));
+		//Xman removed: not enough space
+		/*
 		GetDlgItem(IDC_LBL_MISC)->SetWindowText(GetResString(IDS_PW_MISC));
+		*/
+		//Xman end
 		GetDlgItem(IDC_PF_TIMECALC)->SetWindowText(GetResString(IDS_PF_ADVANCEDCALC));
 		GetDlgItem(IDC_UAP)->SetWindowText(GetResString(IDS_PW_UAP));
 		GetDlgItem(IDC_DAP)->SetWindowText(GetResString(IDS_PW_DAP));
@@ -242,6 +264,10 @@ void CPPgFiles::Localize(void)
 		GetDlgItem(IDC_ADDNEWFILESPAUSED)->SetWindowText(GetResString(IDS_ADDNEWFILESPAUSED));
 		GetDlgItem(IDC_WATCHCB)->SetWindowText(GetResString(IDS_PF_WATCHCB));
 		GetDlgItem(IDC_FULLCHUNKTRANS)->SetWindowText(GetResString(IDS_FULLCHUNKTRANS));
+		// ==> Multiple Part Transfer [Stulle] - Mephisto
+		GetDlgItem(IDC_FULLCHUNKTRANS)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_FULLCHUNKTRANS)->EnableWindow(FALSE);
+		// <== Multiple Part Transfer [Stulle] - Mephisto
 		GetDlgItem(IDC_STARTNEXTFILE)->SetWindowText(GetResString(IDS_STARTNEXTFILE));
 		GetDlgItem(IDC_STARTNEXTFILECAT)->SetWindowText(GetResString(IDS_PREF_STARTNEXTFILECAT));
 		GetDlgItem(IDC_STARTNEXTFILECAT2)->SetWindowText(GetResString(IDS_PREF_STARTNEXTFILECATONLY));
@@ -254,6 +280,7 @@ void CPPgFiles::Localize(void)
 		GetDlgItem(IDC_VIDEOBACKUP)->SetWindowText(GetResString(IDS_VIDEOBACKUP));		
 		GetDlgItem(IDC_REMEMBERDOWNLOADED)->SetWindowText(GetResString(IDS_PW_REMEMBERDOWNLOADED));
 		GetDlgItem(IDC_REMEMBERCANCELLED)->SetWindowText(GetResString(IDS_PW_REMEMBERCANCELLED));		
+		GetDlgItem(IDC_REMEMBERAICH)->SetWindowText(GetResString(IDS_REMEMBERAICH)); //Xman remove unused AICH-hashes
 	}
 }
 
@@ -324,3 +351,19 @@ void CPPgFiles::OnDestroy()
 		m_icoBrowse = NULL;
 	}
 }
+
+//Xman remove unused AICH-hashes
+void CPPgFiles::OnBnClickedRememberdownloaded()
+{
+	SetModified();
+	if(IsDlgButtonChecked(IDC_REMEMBERDOWNLOADED))
+	{
+		GetDlgItem(IDC_REMEMBERAICH)->EnableWindow(true);
+	}
+	else
+	{
+		CheckDlgButton(IDC_REMEMBERAICH,FALSE);
+		GetDlgItem(IDC_REMEMBERAICH)->EnableWindow(false);
+	}
+}
+//Xman end

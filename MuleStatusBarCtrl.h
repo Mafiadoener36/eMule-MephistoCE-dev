@@ -6,7 +6,6 @@ enum EStatusBarPane
 	SBarUsers,
 	SBarUpDown,
 	SBarConnected,
-	SBarUSS,
 	SBarChatMsg
 };
 
@@ -20,6 +19,8 @@ public:
 
 	void Init(void);
 
+	void UpdateColor(); // Design Settings [eWombat/Stulle] - Max
+
 protected:
 	int GetPaneAtPosition(CPoint& point) const;
 	CString GetPaneToolTipText(EStatusBarPane iPane) const;
@@ -28,4 +29,7 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 	afx_msg void OnLButtonDblClk(UINT nFlags,CPoint point);
+	// ==> Enforce Ratio [Stulle] - Stulle
+	afx_msg void OnToolTipNotify( UINT id, NMHDR * pNotifyStruct, LRESULT * result );
+	// <== Enforce Ratio [Stulle] - Stulle
 };

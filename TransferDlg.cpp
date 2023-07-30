@@ -123,6 +123,8 @@ void CTransferDlg::OnShowWindow(BOOL bShow, UINT nStatus)
 void CTransferDlg::OnSetFocus(CWnd* pOldWnd)
 {
 	CFrameWnd::OnSetFocus(pOldWnd);
+	if (m_pwndToolbar->m_hWnd)
+		m_pwndToolbar->SetFocus();
 }
 
 void CTransferDlg::DockToolbarWnd()
@@ -200,10 +202,18 @@ void CTransferDlg::ShowQueueCount(uint32 number)
 	m_pwndTransfer->ShowQueueCount(number);
 }
 
+//Xman see all sources
+/*
 void CTransferDlg::UpdateFilesCount(int iCount)
 {
 	m_pwndTransfer->UpdateFilesCount(iCount);
 }
+*/
+void CTransferDlg::UpdateFilesCount(UINT iCount, UINT countsources, UINT countreadyfiles)
+{
+	m_pwndTransfer->UpdateFilesCount(iCount, countsources, countreadyfiles);
+}
+//Xman end
 
 void CTransferDlg::UpdateCatTabTitles(bool force)
 {
@@ -239,6 +249,37 @@ void CTransferDlg::OnDisableList()
 {
 	m_pwndTransfer->OnDisableList();
 }
+
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+int CTransferDlg::GetActiveCategory()
+{
+	return m_pwndTransfer->GetActiveCategory();
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+// ==> Design Settings [eWombat/Stulle] - Max
+void CTransferDlg::SetBackgroundColor(int nStyle)
+{
+	m_pwndTransfer->SetBackgroundColor(nStyle);
+}
+
+void CTransferDlg::OnBackcolor()
+{
+	m_pwndTransfer->OnBackcolor();
+}
+// <== Design Settings [eWombat/Stulle] - Max
+
+// ==> CPU/MEM usage [$ick$/Stulle] - Max
+void CTransferDlg::ShowRessources()
+{
+	m_pwndTransfer->ShowRessources();
+}
+
+void CTransferDlg::EnableSysInfo(bool bEnable)
+{
+	m_pwndTransfer->EnableSysInfo(bEnable);
+}
+// <== CPU/MEM usage [$ick$/Stulle] - Max
 
 void CTransferDlg::UpdateListCount(EWnd2 listindex, int iCount)
 {

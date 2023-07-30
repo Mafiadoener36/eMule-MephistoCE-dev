@@ -87,6 +87,10 @@ BEGIN_MESSAGE_MAP(CSharedDirsTreeCtrl, CTreeCtrl)
 	ON_NOTIFY_REFLECT(TVN_ITEMEXPANDING, OnTvnItemexpanding)
 	ON_NOTIFY_REFLECT(TVN_GETDISPINFO, OnTvnGetdispinfo)
 	ON_NOTIFY_REFLECT(TVN_BEGINDRAG, OnTvnBeginDrag)
+	// ==> XP Style Menu [Xanatos] - Stulle
+	ON_WM_MEASUREITEM()
+	ON_WM_MENUCHAR()
+	// <== XP Style Menu [Xanatos] - Stulle
 END_MESSAGE_MAP()
 
 CSharedDirsTreeCtrl::CSharedDirsTreeCtrl()
@@ -97,12 +101,19 @@ CSharedDirsTreeCtrl::CSharedDirsTreeCtrl()
 	m_pRootUnsharedDirectries = NULL;
 	m_pDraggingItem = NULL;
 	m_bFileSystemRootDirty = false;
+	pHistory=NULL; //Xman [MoNKi: -Downloaded History-]
 }
 
 CSharedDirsTreeCtrl::~CSharedDirsTreeCtrl()
 {
+	// ==> XP Style Menu [Xanatos] - Stulle
+	if (m_PrioMenu) VERIFY( m_PrioMenu.DestroyMenu() );
+	if (m_SharedFilesMenu) VERIFY( m_SharedFilesMenu.DestroyMenu() );
+	if (m_ShareDirsMenu) VERIFY( m_ShareDirsMenu.DestroyMenu() );
+	// <== XP Style Menu [Xanatos] - Stulle
 	delete m_pRootDirectoryItem;
 	delete m_pRootUnsharedDirectries;
+	delete pHistory; //Xman [MoNKi: -Downloaded History-]
 }
 
 void CSharedDirsTreeCtrl::Initalize(CSharedFilesCtrl* pSharedFilesCtrl){
@@ -153,8 +164,27 @@ void CSharedDirsTreeCtrl::SetAllIcons()
 		else{
 			pCurImageList->Replace(5, CTempIconLoader(_T("OpenFolder")));
 		}
+		//Xman [MoNKi: -Downloaded History-]
+		/*
 		pCurImageList->Replace(6, CTempIconLoader(_T("SharedFolderOvl")));	// 6: Overlay
 		pCurImageList->Replace(7, CTempIconLoader(_T("NoAccessFolderOvl")));// 7: Overlay
+		*/
+		pCurImageList->Replace(6, CTempIconLoader(_T("DOWNLOAD"))); //6
+
+		// Avi3k: SharedView Ed2kType
+		pCurImageList->Replace(7, CTempIconLoader(_T("SearchFileType_Audio"))); //7
+		pCurImageList->Replace(8, CTempIconLoader(_T("SearchFileType_Video"))); //8
+		pCurImageList->Replace(9, CTempIconLoader(_T("SearchFileType_Picture"))); //9
+		pCurImageList->Replace(10, CTempIconLoader(_T("SearchFileType_Program"))); //10
+		pCurImageList->Replace(11, CTempIconLoader(_T("SearchFileType_Document")));  //11
+		pCurImageList->Replace(12, CTempIconLoader(_T("SearchFileType_Archive"))); //12
+		pCurImageList->Replace(13, CTempIconLoader(_T("SearchFileType_CDImage"))); //13
+		pCurImageList->Replace(14, CTempIconLoader(_T("AABCollectionFileType"))); // 14
+		// end Avi3k: SharedView Ed2kType
+
+		pCurImageList->Replace(15, CTempIconLoader(_T("SharedFolderOvl")));	// 15: Overlay
+		pCurImageList->Replace(16, CTempIconLoader(_T("NoAccessFolderOvl")));// 16: Overlay
+		//Xman end
 	}
 	else
 	{
@@ -177,8 +207,27 @@ void CSharedDirsTreeCtrl::SetAllIcons()
 		else{
 			iml.Add(CTempIconLoader(_T("OpenFolder")));
 		}
+		//Xman [MoNKi: -Downloaded History-]
+		/*
 		iml.SetOverlayImage(iml.Add(CTempIconLoader(_T("SharedFolderOvl"))), 1);	// 6: Overlay
 		iml.SetOverlayImage(iml.Add(CTempIconLoader(_T("NoAccessFolderOvl"))), 2);	// 7: Overlay
+		*/
+		iml.Add(CTempIconLoader(_T("DOWNLOAD"))); //6
+
+		// Avi3k: SharedView Ed2kType
+		iml.Add(CTempIconLoader(_T("SearchFileType_Audio"))); //7
+		iml.Add(CTempIconLoader(_T("SearchFileType_Video"))); //8
+		iml.Add(CTempIconLoader(_T("SearchFileType_Picture"))); //9
+		iml.Add(CTempIconLoader(_T("SearchFileType_Program"))); //10
+		iml.Add(CTempIconLoader(_T("SearchFileType_Document")));  //11
+		iml.Add(CTempIconLoader(_T("SearchFileType_Archive"))); //12
+		iml.Add(CTempIconLoader(_T("SearchFileType_CDImage"))); //13
+		iml.Add(CTempIconLoader(_T("AABCollectionFileType")));// 14
+		// end Avi3k: SharedView Ed2kType
+
+		iml.SetOverlayImage(iml.Add(CTempIconLoader(_T("SharedFolderOvl"))), 1); // 15: Overlay
+		iml.SetOverlayImage(iml.Add(CTempIconLoader(_T("NoAccessFolderOvl"))), 2);	// 16: Overlay
+		//Xman end
 
 		SetImageList(&iml, TVSIL_NORMAL);
 		m_mapSystemIcons.RemoveAll();
@@ -205,6 +254,7 @@ void CSharedDirsTreeCtrl::InitalizeStandardItems(){
 	DeleteAllItems();
 	delete m_pRootDirectoryItem;
 	delete m_pRootUnsharedDirectries;
+	delete pHistory; //Xman [MoNKi: -Downloaded History-]
 
 	FetchSharedDirsList();
 
@@ -226,7 +276,31 @@ void CSharedDirsTreeCtrl::InitalizeStandardItems(){
 	m_pRootDirectoryItem->liSubDirectories.AddTail(pDir);
 
 	m_pRootUnsharedDirectries = new CDirectoryItem(_T(""), TVI_ROOT, SDI_FILESYSTEMPARENT);
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#if _MSC_VER<1600
 	m_pRootUnsharedDirectries->m_htItem = InsertItem(TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_CHILDREN, GetResString(IDS_ALLDIRECTORIES), 4, 4, 0, 0, (LPARAM)m_pRootUnsharedDirectries, TVI_ROOT, TVI_LAST);
+#else
+	CString strLabel = GetResString(IDS_ALLDIRECTORIES);
+	TVINSERTSTRUCT tvs = {0};
+	tvs.item.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_CHILDREN;
+	tvs.item.pszText = strLabel.GetBuffer();
+	tvs.item.iImage = 4;
+	tvs.item.iImage = 4;
+	tvs.item.state = 0;
+	tvs.item.state = 0;
+	tvs.item.lParam = (LPARAM)m_pRootUnsharedDirectries;
+	tvs.item.cChildren = I_CHILDRENCALLBACK;
+	tvs.hParent = TVI_ROOT;
+	tvs.hInsertAfter = TVI_LAST;
+	m_pRootUnsharedDirectries->m_htItem = InsertItem(&tvs);
+	strLabel.ReleaseBuffer();
+#endif
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+
+	//Xman [MoNKi: -Downloaded History-]
+	pHistory = new CDirectoryItem(_T(""), TVI_ROOT, SDI_DIRECTORY);
+	pHistory->m_htItem = InsertItem(TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE, GetResString(IDS_DOWNHISTORY), 6, 6, TVIS_EXPANDED, TVIS_EXPANDED, (LPARAM)pHistory, TVI_ROOT, TVI_LAST);
+	//Xman end
 }
 
 bool CSharedDirsTreeCtrl::FilterTreeIsSubDirectory(CString strDir, CString strRoot, const CStringList& liDirs){
@@ -312,6 +386,24 @@ void CSharedDirsTreeCtrl::FilterTreeAddSubDirectories(CDirectoryItem* pDirectory
 	}
 }
 
+// Avi3k: SharedView Ed2kType
+struct SEd2kTypeView
+{
+	int eType;
+	UINT uStringId;
+} _aEd2kTypeView[] =
+{
+	{ ED2KFT_AUDIO, IDS_SEARCH_AUDIO },
+	{ ED2KFT_VIDEO, IDS_SEARCH_VIDEO },
+	{ ED2KFT_IMAGE, IDS_SEARCH_PICS },
+	{ ED2KFT_PROGRAM, IDS_SEARCH_PRG },
+	{ ED2KFT_DOCUMENT, IDS_SEARCH_DOC },
+	{ ED2KFT_ARCHIVE, IDS_SEARCH_ARC },
+	{ ED2KFT_CDIMAGE, IDS_SEARCH_CDIMG },
+	{ ED2KFT_EMULECOLLECTION, IDS_SEARCH_EMULECOLLECTION }
+};
+// end Avi3k: SharedView Ed2kType
+
 void CSharedDirsTreeCtrl::FilterTreeReloadTree(){
 	m_bCreatingTree = true;
 	// store current selection
@@ -331,6 +423,16 @@ void CSharedDirsTreeCtrl::FilterTreeReloadTree(){
 		switch( pCurrent->m_eItemType ){
 
 			case SDI_ALL:
+				// Avi3k: SharedView Ed2kType
+				{
+					for (int i = 0; i < ARRSIZE(_aEd2kTypeView); i++)
+					{
+						CDirectoryItem* pEd2kType = new CDirectoryItem(CString(_T("")), 0, SDI_ED2KFILETYPE, _aEd2kTypeView[i].eType);
+						pEd2kType->m_htItem = InsertItem(TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE, GetResString(_aEd2kTypeView[i].uStringId), i+7, i+7, 0, 0, (LPARAM)pEd2kType, pCurrent->m_htItem, TVI_LAST);
+						pCurrent->liSubDirectories.AddTail(pEd2kType);
+					}
+				}
+				// end Avi3k: SharedView Ed2kType
 				break;
 			case SDI_INCOMING:{
 				CString strMainIncDir = thePrefs.GetMuleDirectory(EMULE_INCOMINGDIR);
@@ -420,6 +522,7 @@ void CSharedDirsTreeCtrl::CreateMenues()
 	if (m_ShareDirsMenu) VERIFY( m_ShareDirsMenu.DestroyMenu() );
 
 	m_PrioMenu.CreateMenu();
+	m_PrioMenu.AddMenuTitle(GetResString(IDS_PRIORITY), true, false); // XP Style Menu [Xanatos] - Stulle
 	m_PrioMenu.AppendMenu(MF_STRING, MP_PRIOVERYLOW, GetResString(IDS_PRIOVERYLOW));
 	m_PrioMenu.AppendMenu(MF_STRING, MP_PRIOLOW, GetResString(IDS_PRIOLOW));
 	m_PrioMenu.AppendMenu(MF_STRING, MP_PRIONORMAL, GetResString(IDS_PRIONORMAL));
@@ -441,18 +544,33 @@ void CSharedDirsTreeCtrl::CreateMenues()
 	else
 		m_SharedFilesMenu.AppendMenu(MF_STRING, MP_SHOWED2KLINK, GetResString(IDS_DL_SHOWED2KLINK), _T("ED2KLINK"));
 	m_SharedFilesMenu.AppendMenu(MF_STRING | MF_SEPARATOR);
+	// ==> more icons - Stulle
+	/*
 	m_SharedFilesMenu.AppendMenu(MF_STRING, MP_UNSHAREDIR, GetResString(IDS_UNSHAREDIR));
 	m_SharedFilesMenu.AppendMenu(MF_STRING, MP_UNSHAREDIRSUB, GetResString(IDS_UNSHAREDIRSUB));
+	*/
+	m_SharedFilesMenu.AppendMenu(MF_STRING, MP_UNSHAREDIR, GetResString(IDS_UNSHAREDIR), _T("NOTSHARED"));
+	m_SharedFilesMenu.AppendMenu(MF_STRING, MP_UNSHAREDIRSUB, GetResString(IDS_UNSHAREDIRSUB), _T("NOTSHARED"));
+	// <== more icons - Stulle
 
 	m_ShareDirsMenu.CreatePopupMenu();
 	m_ShareDirsMenu.AddMenuTitle(GetResString(IDS_SHAREDFILES), true);
 	m_ShareDirsMenu.AppendMenu(MF_STRING, MP_OPENFOLDER, GetResString(IDS_OPENFOLDER), _T("OPENFOLDER"));
 	m_ShareDirsMenu.AppendMenu(MF_STRING | MF_SEPARATOR);
+	// ==> more icons - Stulle
+	/*
 	m_ShareDirsMenu.AppendMenu(MF_STRING, MP_SHAREDIR, GetResString(IDS_SHAREDIR));
 	m_ShareDirsMenu.AppendMenu(MF_STRING, MP_SHAREDIRSUB, GetResString(IDS_SHAREDIRSUB));
 	m_ShareDirsMenu.AppendMenu(MF_STRING | MF_SEPARATOR);
 	m_ShareDirsMenu.AppendMenu(MF_STRING, MP_UNSHAREDIR, GetResString(IDS_UNSHAREDIR));
 	m_ShareDirsMenu.AppendMenu(MF_STRING, MP_UNSHAREDIRSUB, GetResString(IDS_UNSHAREDIRSUB));
+	*/
+	m_ShareDirsMenu.AppendMenu(MF_STRING,MP_SHAREDIR,GetResString(IDS_SHAREDIR), _T("SHAREDIR"));
+	m_ShareDirsMenu.AppendMenu(MF_STRING,MP_SHAREDIRSUB,GetResString(IDS_SHAREDIRSUB), _T("SHAREDIR"));
+	m_ShareDirsMenu.AppendMenu(MF_STRING|MF_SEPARATOR);	
+	m_ShareDirsMenu.AppendMenu(MF_STRING,MP_UNSHAREDIR,GetResString(IDS_UNSHAREDIR), _T("NOTSHARED"));
+	m_ShareDirsMenu.AppendMenu(MF_STRING,MP_UNSHAREDIRSUB,GetResString(IDS_UNSHAREDIRSUB), _T("NOTSHARED"));
+	// <== more icons - Stulle
 }
 
 void CSharedDirsTreeCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
@@ -468,6 +586,12 @@ void CSharedDirsTreeCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	}
 
 	CDirectoryItem* pSelectedDir = GetSelectedFilter();
+
+	//Xman [MoNKi: -Downloaded History-]
+	if(pSelectedDir==pHistory)
+		return; //no context menu
+	//Xman end
+
 	if (pSelectedDir != NULL && pSelectedDir->m_eItemType != SDI_UNSHAREDDIRECTORY && pSelectedDir->m_eItemType != SDI_FILESYSTEMPARENT){
 		int iSelectedItems = m_pSharedFilesCtrl->GetItemCount();
 		int iCompleteFileSelected = -1;
@@ -534,8 +658,14 @@ void CSharedDirsTreeCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	else if(pSelectedDir != NULL && pSelectedDir->m_eItemType == SDI_UNSHAREDDIRECTORY){
 		m_ShareDirsMenu.EnableMenuItem(MP_UNSHAREDIR, FileSystemTreeIsShared(pSelectedDir->m_strFullPath) ? MF_ENABLED : MF_GRAYED);
 		m_ShareDirsMenu.EnableMenuItem(MP_UNSHAREDIRSUB, (FileSystemTreeIsShared(pSelectedDir->m_strFullPath) || FileSystemTreeHasSharedSubdirectory(pSelectedDir->m_strFullPath, false)) ? MF_ENABLED : MF_GRAYED);
+		// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+		/*
 		m_ShareDirsMenu.EnableMenuItem(MP_SHAREDIR, !FileSystemTreeIsShared(pSelectedDir->m_strFullPath) && thePrefs.IsShareableDirectory(pSelectedDir->m_strFullPath) ? MF_ENABLED : MF_GRAYED);
 		m_ShareDirsMenu.EnableMenuItem(MP_SHAREDIRSUB, FileSystemTreeHasSubdirectories(pSelectedDir->m_strFullPath) && thePrefs.IsShareableDirectory(pSelectedDir->m_strFullPath) ? MF_ENABLED : MF_GRAYED);
+		*/
+		m_ShareDirsMenu.EnableMenuItem(MP_SHAREDIR, !FileSystemTreeIsShared(pSelectedDir->m_strFullPath) ? MF_ENABLED : MF_GRAYED);
+		m_ShareDirsMenu.EnableMenuItem(MP_SHAREDIRSUB, FileSystemTreeHasSubdirectories(pSelectedDir->m_strFullPath) ? MF_ENABLED : MF_GRAYED);
+		// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 
 		GetPopupMenuPos(*this, point);
 		m_ShareDirsMenu.TrackPopupMenu(TPM_LEFTALIGN |TPM_RIGHTBUTTON,point.x,point.y,this);
@@ -675,11 +805,14 @@ BOOL CSharedDirsTreeCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 			case MP_PRIOVERYHIGH:
 			case MP_PRIOAUTO:
 			{
-					for (POSITION pos = selectedList.GetHeadPosition(); pos != NULL; selectedList.GetNext(pos))
+					POSITION pos = selectedList.GetHeadPosition();
+					while (pos != NULL)
 					{
-						if (!selectedList.GetAt(pos)->IsKindOf(RUNTIME_CLASS(CKnownFile)))
+						if (!selectedList.GetAt(pos)->IsKindOf(RUNTIME_CLASS(CKnownFile))){
+							selectedList.GetNext(pos); //bug fix
 							continue;
-						CKnownFile* file = (CKnownFile*)selectedList.GetAt(pos);
+						}
+						CKnownFile* file = (CKnownFile*)selectedList.GetNext(pos);
 						switch (wParam) {
 							case MP_PRIOVERYLOW:
 								file->SetAutoUpPriority(false);
@@ -708,6 +841,15 @@ BOOL CSharedDirsTreeCtrl::OnCommand(WPARAM wParam, LPARAM /*lParam*/)
 								break;	
 							case MP_PRIOAUTO:
 								file->SetAutoUpPriority(true);
+								//Xman advanced upload-priority
+								if (thePrefs.UseAdvancedAutoPtio())
+#ifdef _BETA
+									file->CalculateAndSetUploadPriority2(); 
+#else
+									file->CalculateAndSetUploadPriority(); 
+#endif
+								else
+								//Xman end
 								file->UpdateAutoUpPriority();
 								m_pSharedFilesCtrl->UpdateFile(file); 
 								break;
@@ -973,7 +1115,12 @@ void CSharedDirsTreeCtrl::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 }
 
 void CSharedDirsTreeCtrl::AddSharedDirectory(CString strDir, bool bSubDirectories){
+	// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+	/*
 	if (!FileSystemTreeIsShared(strDir) && thePrefs.IsShareableDirectory(strDir)){
+	*/
+	if (!FileSystemTreeIsShared(strDir)){
+	// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 		m_strliSharedDirs.AddTail(strDir);
 	}
 	if (bSubDirectories){
@@ -1093,6 +1240,12 @@ void CSharedDirsTreeCtrl::EditSharedDirectories(const CDirectoryItem* pDir, bool
 	theApp.emuledlg->sharedfileswnd->Reload();
 	if (GetSelectedFilter() != NULL && GetSelectedFilter()->m_eItemType == SDI_UNSHAREDDIRECTORY)
 		m_pSharedFilesCtrl->UpdateWindow(); // if in filesystem view, update the list to reflect the changes in the checkboxes
+
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	if(thePrefs.GetDirectoryWatcher())
+		theApp.ResetDirectoryWatcher();
+	// <== Automatic shared files updater [MoNKi] - Stulle
+
 	thePrefs.Save();
 }
 
@@ -1407,3 +1560,22 @@ void CSharedDirsTreeCtrl::ShowAllSharedFiles()
 	Select(GetRootItem(), TVGN_CARET);
 	EnsureVisible(GetRootItem());
 }
+
+// ==> XP Style Menu [Xanatos] - Stulle
+void CSharedDirsTreeCtrl::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct) 
+{
+	HMENU hMenu = AfxGetThreadState()->m_hTrackingMenu;
+	if(CMenu *pMenu = CMenu::FromHandle(hMenu))
+		pMenu->MeasureItem(lpMeasureItemStruct);
+	
+	CTreeCtrl::OnMeasureItem(nIDCtl, lpMeasureItemStruct);
+}
+
+LRESULT CSharedDirsTreeCtrl::OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu) 
+{
+	if (pMenu->IsKindOf(RUNTIME_CLASS(CTitleMenu)) )
+		return CTitleMenu::OnMenuChar(nChar, nFlags, pMenu);
+
+	return CTreeCtrl::OnMenuChar(nChar, nFlags, pMenu);
+}
+// <== XP Style Menu [Xanatos] - Stulle

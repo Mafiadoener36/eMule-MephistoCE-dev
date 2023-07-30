@@ -16,6 +16,9 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #pragma once
 #include "DeadSourceList.h"
+//Xman
+#include <atlcoll.h>	// Slugfiller: modid
+#include "IP2Country.h" //Xman extended stats
 
 class CClientReqSocket;
 class CUpDownClient;
@@ -32,10 +35,20 @@ typedef CTypedPtrList<CPtrList, CUpDownClient*> CUpDownClientPtrList;
 // this class / list is a bit overkill, but currently needed to avoid any exploit possibtility
 // it will keep track of certain clients attributes for 2 hours, while the CUpDownClient object might be deleted already
 // currently: IP, Port, UserHash
+
+//Xman Extened credit- table-arragement
+//make the Tracked-client-list independent 
+/*
 struct PORTANDHASH{
 	uint16 nPort;
 	void* pHash;
 };
+*/
+struct PORTANDHASH{
+	uint16 nPort;
+	uchar pHash[16];
+};
+//Xman end
 
 struct IPANDTICS{
 	uint32 dwIP;
@@ -78,7 +91,22 @@ public:
 						  CMap<uint32, uint32, uint32, uint32>& clientVersionEDonkey,
 						  CMap<uint32, uint32, uint32, uint32>& clientVersionEDonkeyHybrid,
 						  CMap<uint32, uint32, uint32, uint32>& clientVersionEMule,
+						  //Xman extended stats
+						  /*
 						  CMap<uint32, uint32, uint32, uint32>& clientVersionAMule);
+						  */
+						  CMap<uint32, uint32, uint32, uint32>& clientVersionAMule,
+						  CMap<POSITION, POSITION, uint32, uint32>& MODs,
+						  uint32 &totalMODs,
+						  CMap<Country_Struct*, Country_Struct*, uint32, uint32>& pCountries
+						  );
+						  //Xman end
+	//Xman
+	// Slugfiller: modid
+	void	GetModStatistics(CRBMap<uint32, CRBMap<CString, uint32>* > *clientMods);
+	void	ReleaseModStatistics(CRBMap<uint32, CRBMap<CString, uint32>* > *clientMods);
+	// Slugfiller: modid
+
 	uint32	GetClientCount()	{ return list.GetCount();}
 	void	DeleteAll();
 	bool	AttachToAlreadyKnown(CUpDownClient** client, CClientReqSocket* sender);
@@ -133,14 +161,32 @@ public:
 	void	Debug_SocketDeleted(CClientReqSocket* deleted) const;
 
     // ZZ:UploadSpeedSense -->
+	//Xman
+	/*
     bool GiveClientsForTraceRoute();
 	// ZZ:UploadSpeedSense <--
 
     void	ProcessA4AFClients() const; // ZZ:DownloadManager
+	*/
+	//Xman end
 	CDeadSourceList	m_globDeadSourceList;
 
+	// Maella -Extended clean-up II-
+	/*
 protected:
+	*/
+	void CleanUp(CPartFile* pDeletedFile);
+	// Maella end
+
+	//Xman -Reask sources after IP change- v4 
+	void TrigReaskForDownload(bool immediate);
+
+#ifdef PRINT_STATISTIC
+	void PrintStatistic();
+#endif
+
 	void	CleanUpClientList();
+protected: // Maella -Extended clean-up II-
 	void	ProcessConnectingClientsList();
 
 private:
@@ -156,4 +202,32 @@ private:
 	CList<IPANDTICS> listFirewallCheckRequests;
 	CList<IPANDTICS> listDirectCallbackRequests;
 	CList<CONNECTINGCLIENT> m_liConnectingClients;
+
+//EastShare Start - added by AndCycle, IP to Country
+public:
+	void ResetIP2Country();
+//EastShare End - added by AndCycle, IP to Country
+
+//Xman extended stats
+public:
+	CString GetMODType(POSITION pos_in)
+	{
+		if (pos_in != 0)
+			return liMODsTypes.GetAt(pos_in);
+		else
+			return _T("");
+	}
+
+protected:
+	CList<CString, CString&> liMODsTypes;
+//Xman end
+
+	// ==> Compat Client Stats [Stulle] - Stulle
+public:
+	void	GetCompatClientsStats(CRBMap<CString, uint32> *compatClients);
+	// <== Compat Client Stats [Stulle] - Stulle
+
+	void RecalculateReAskTimes(); // Timer for ReAsk File Sources [Stulle] - Stulle
+
+	void BanReducedClients(bool bCommunity, bool bThief); // Ban clients with reduced score immediatly on setting changed [Stulle] - Stulle
 };

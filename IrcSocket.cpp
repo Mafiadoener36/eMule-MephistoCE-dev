@@ -23,6 +23,10 @@
 #include "Statistics.h"
 #include "Log.h"
 #include "Exceptions.h"
+//Xman
+#include "BandWidthControl.h" // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+#include "emule.h"
+//Xman end
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -40,6 +44,15 @@ CIrcSocket::CIrcSocket(CIrcMain* pIrcMain)
 CIrcSocket::~CIrcSocket()
 {
 	RemoveAllLayers();
+	// ==> UPnP support [MoNKi] - leuk_he
+	CString client;
+	UINT port;
+
+	GetSockName(client, port);
+	theApp.m_UPnP_IGDControlPoint->DeletePortMapping((uint16)port,
+		CUPnP_IGDControlPoint::UNAT_TCP,
+		_T("IRC"));
+	// <== UPnP support [MoNKi] - leuk_he
 }
 
 BOOL CIrcSocket::Create(UINT uSocketPort, int uSocketType, long lEvent, LPCSTR lpszSocketAddress)
@@ -68,7 +81,25 @@ BOOL CIrcSocket::Create(UINT uSocketPort, int uSocketType, long lEvent, LPCSTR l
 		AddLayer(m_pProxyLayer);
 	}
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	return CAsyncSocketEx::Create(uSocketPort, uSocketType, lEvent, lpszSocketAddress);
+	*/
+	if(CAsyncSocketEx::Create(uSocketPort, uSocketType, lEvent, lpszSocketAddress)){
+		if(theApp.m_UPnP_IGDControlPoint->IsUpnpAcceptsPorts()){
+			CString client;
+			UINT port;
+
+			GetSockName(client, port);
+			theApp.m_UPnP_IGDControlPoint->AddPortMapping((uint16)port,
+				CUPnP_IGDControlPoint::UNAT_TCP,
+				_T("IRC"));
+		}
+		return true;
+	}
+	else
+		return false;
+	// <== UPnP support [MoNKi] - leuk_he
 }
 
 void CIrcSocket::Connect()
@@ -112,6 +143,11 @@ void CIrcSocket::OnReceive(int iErrorCode)
 			}
 			if (iLength > 0)
 			{
+				//Xman
+				// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+				theApp.pBandWidthControl->AddeMuleInTCPOverall(iLength);
+				//Maella end
+
 				cBuffer[iLength] = '\0';
 				theStats.AddDownDataOverheadOther(iLength);
 				m_pIrcMain->PreParseMessage(cBuffer);
@@ -165,6 +201,10 @@ int CIrcSocket::SendString(const CString& sMessage)
 	sMessageA += "\r\n";
 	int iSize = sMessageA.GetLength();
 	theStats.AddUpDataOverheadOther(iSize);
+	//Xman not too accurate but enough for the few IRC-strings
+	// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	theApp.pBandWidthControl->AddeMuleOutTCPOverall(iSize);
+	//Maella end
 	int iResult = Send(sMessageA, iSize);
 	ASSERT( iResult == iSize );
 	return iResult;

@@ -136,9 +136,6 @@
 #pragma warning(disable:6255) // _alloca indicates failure by raising a stack overflow exception.
 #endif
 
-#if _MSC_VER>=1600
-#pragma warning(disable:4987) //  nonstandard extension used: 'throw (...)'
-#endif
 #if _MSC_VER>=1400
 
 // _CRT_SECURE_NO_DEPRECATE - Disable all warnings for not using "_s" functions.
@@ -185,9 +182,18 @@
 #include <afxdtctl.h>		// MFC support for 'CDateTimeCtrl' and 'CMonthCalCtrl'
 #include <afxcmn.h>			// MFC support for Windows Common Controls
 #include <afxole.h>			// MFC OLE support
+
+//<<< eWombat [WINSOCK2]
+// stullemon test
+/*
 #include <winsock2.h>
 #define _WINSOCKAPI_
 #include <afxsock.h>		// MFC support for Windows Sockets
+*/
+// stullemon test end
+#include "afxsock.h"		// MFC-Socket-Erweiterungen
+//>>> eWombat [WINSOCK2]
+
 #include <afxdhtml.h>
 #include <afxmt.h>			// MFC Multithreaded Extensions (Syncronization Objects)
 #include <afxdlgs.h>		// MFC Standard dialogs
@@ -249,7 +255,7 @@
 
 // Enable warnings which were disabled for Windows/MFC/ATL headers
 #pragma warning(default:4505) // unreferenced local function has been removed
-#pragma warning(default:4127) // conditional expression is constant
+//#pragma warning(default:4127) // conditional expression is constant
 #if _MSC_VER<=1310
 #pragma warning(default:4548) // expression before comma has no effect; expected expression with side-effect
 #endif
@@ -267,6 +273,11 @@
 #include "types.h"
 
 #define ARRSIZE(x)	(sizeof(x)/sizeof(x[0]))
+
+//RM => OMG
+#pragma warning (disable:4996)
+//#pragma warning (disable:4238)
+//RM <= OMG
 
 #ifdef _DEBUG
 #define malloc(s)		  _malloc_dbg(s, _NORMAL_BLOCK, __FILE__, __LINE__)

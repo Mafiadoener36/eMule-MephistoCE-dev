@@ -21,7 +21,12 @@
 #include "OtherFunctions.h"
 #include "PartFile.h"
 #include "UpDownClient.h"
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 #include "TitleMenu.h"
+*/
+#include "MenuXP.h"
+// <== XP Style Menu [Xanatos] - Stulle
 #include "MenuCmds.h"
 #include "StringConversion.h"
 
@@ -260,6 +265,8 @@ void CFileDetailDialogName::OnLvnColumnClick(NMHDR *pNMHDR, LRESULT *pResult)
 	else
 		sortAscending = !m_listFileNames.GetSortAscending();
 
+	m_listFileNames.UpdateSortHistory(pNMListView->iSubItem + (sortAscending ? 0 : 10), 10); // SLUGFILLER: multiSort - forgot something?
+
 	m_listFileNames.SetSortArrow(pNMListView->iSubItem, sortAscending);
 	m_listFileNames.SortItems(&CompareListNameItems, pNMListView->iSubItem + (sortAscending ? 0 : 10));
 
@@ -307,9 +314,17 @@ void CFileDetailDialogName::OnNmRClickList(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	::GetCursorPos(&point);
 	CTitleMenu popupMenu;
 	popupMenu.CreatePopupMenu();
+	popupMenu.AddMenuTitle(GetResString(IDS_DL_FILENAME)); // XP Style Menu [Xanatos] - Stulle
+	// ==> more icons - Stulle
+	/*
 	popupMenu.AppendMenu(flag,MP_MESSAGE, GetResString(IDS_TAKEOVER));
 	popupMenu.AppendMenu(flag,MP_COPYSELECTED, GetResString(IDS_COPY));
 	popupMenu.AppendMenu(MF_STRING,MP_RESTORE, GetResString(IDS_SV_UPDATE));
+	*/
+	popupMenu.AppendMenu(flag,MP_MESSAGE, GetResString(IDS_TAKEOVER), _T("SAVE"));
+	popupMenu.AppendMenu(flag,MP_COPYSELECTED, GetResString(IDS_COPY), _T("COPY"));
+	popupMenu.AppendMenu(MF_STRING,MP_RESTORE, GetResString(IDS_SV_UPDATE), _T("UPDATE"));
+	// <== more icons - Stulle
 	popupMenu.SetDefaultItem(MP_MESSAGE);
 	popupMenu.TrackPopupMenu(TPM_LEFTALIGN |TPM_RIGHTBUTTON, point.x, point.y, this);
 	VERIFY( popupMenu.DestroyMenu() );
@@ -349,6 +364,7 @@ void CFileDetailDialogName::RenameFile()
 			return;
 		CPartFile* file = STATIC_DOWNCAST(CPartFile, (*m_paFiles)[0]);
 		file->SetFileName(strNewFileName, true);
+		file->SetFollowTheMajority(false); // Follow The Majority [AndCycle/Stulle] - Stulle
 		file->UpdateDisplayedInfo();
 		file->SavePartFile();
 	}

@@ -66,8 +66,13 @@ void CConnectionWizardDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_WIZ_LOWDOWN_RADIO, m_iTotalDownload);
 }
 
+//Xman Xtreme Mod:
+//I did some changes here, but didn't implement the possibility to set decimals
+//because the wizard is for newbies... the profis change their settings in preferences itself
 void CConnectionWizardDlg::OnBnClickedApply()
 {
+	//Xman no support for unlimited
+	/*
 	if (m_provider.GetSelectionMark() == 0){
 		// change the upload/download to unlimited and dont touch other stuff, keep the default values
 		thePrefs.maxGraphUploadRate = UNLIMITED;
@@ -80,8 +85,12 @@ void CConnectionWizardDlg::OnBnClickedApply()
 		CDialog::OnOK();
 		return;
 	}
+	*/
+	//Xman end
 
 	TCHAR buffer[510];
+	//Xman
+	/*
 	int upload, download;
 	if (GetDlgItem(IDC_WIZ_TRUEDOWNLOAD_BOX)->GetWindowTextLength())
 	{ 
@@ -98,11 +107,31 @@ void CConnectionWizardDlg::OnBnClickedApply()
 		GetDlgItem(IDC_WIZ_TRUEUPLOAD_BOX)->GetWindowText(buffer, 20);
 		upload = _tstoi(buffer);
 	}
+	*/
+	float upload, download;
+	if (GetDlgItem(IDC_WIZ_TRUEDOWNLOAD_BOX)->GetWindowTextLength())
+	{ 
+		GetDlgItem(IDC_WIZ_TRUEDOWNLOAD_BOX)->GetWindowText(buffer, 20);
+		download = (float)_tstof(buffer);
+	}
+	else
+	{
+		download = 0;
+ 	}
+
+	if (GetDlgItem(IDC_WIZ_TRUEUPLOAD_BOX)->GetWindowTextLength())
+	{ 
+		GetDlgItem(IDC_WIZ_TRUEUPLOAD_BOX)->GetWindowText(buffer, 20);
+		upload = (float)_tstof(buffer);
+	}
+	//Xman end
 	else
 	{
 		upload = 0;
 	}
 
+	//Xman changed
+	/*
 	if (IsDlgButtonChecked(IDC_KBITS) == 1)
 	{
 		upload = (((upload / 8) * 1000) + 512) / 1024;
@@ -113,12 +142,25 @@ void CConnectionWizardDlg::OnBnClickedApply()
 		upload = ((upload * 1000) + 512) / 1024;
 		download = ((download * 1000) + 512) / 1024;
 	}
+	*/
+	//Xman end
 
+	//Xman
+	/*
 	thePrefs.maxGraphDownloadRate = download;
 	thePrefs.maxGraphUploadRate = upload;
+	*/
+	// Check for Kbits/s or KBytes/s
+	if(IsDlgButtonChecked(IDC_KBITS) == BST_CHECKED){
+		upload /= 8.0f; 
+		download /= 8.0f;
+	}
+	//Xman end
 
 	if (upload > 0 && download > 0)
 	{
+		//Xman changed
+		/*
 		thePrefs.maxupload = (uint16)((upload * 4L) / 5);
 		if (upload < 4 && download > upload*3) {
 			thePrefs.maxdownload = thePrefs.maxupload * 3;
@@ -134,6 +176,26 @@ void CConnectionWizardDlg::OnBnClickedApply()
 
 		theApp.emuledlg->statisticswnd->SetARange(false, thePrefs.maxGraphUploadRate);
 		theApp.emuledlg->statisticswnd->SetARange(true, thePrefs.maxGraphDownloadRate);
+		*/
+		thePrefs.maxGraphDownloadRate = download;
+		thePrefs.maxGraphUploadRate = upload;
+		//Xman 6.0.1 better newbie settings:
+		thePrefs.SetMaxUpload(theApp.emuledlg->GetRecMaxUpload());
+		if(thePrefs.GetMaxUpload() >= 11.0f) //Xman changed to 11
+			thePrefs.SetMaxDownload(UNLIMITED);
+		else
+			thePrefs.SetMaxDownload(thePrefs.GetMaxDownload()); //check for limit
+
+		// ==> Global Source Limit [Max/Stulle] - Stulle
+		uint32 m_uGlobalHlStandard = (uint32)(upload*0.9f);
+		m_uGlobalHlStandard = (uint32)((m_uGlobalHlStandard*400 - (m_uGlobalHlStandard-10.0f)*100)*0.65f);
+		m_uGlobalHlStandard = max(1000,min(m_uGlobalHlStandard,MAX_GSL));
+		thePrefs.m_uGlobalHL = m_uGlobalHlStandard;
+		// <== Global Source Limit [Max/Stulle] - Stulle
+
+		theApp.emuledlg->statisticswnd->SetARange(false, (int)thePrefs.maxGraphUploadRate);
+		theApp.emuledlg->statisticswnd->SetARange(true, (int)thePrefs.maxGraphDownloadRate);
+		//Xman end
 
 		if (m_iOS == 1)
 			thePrefs.maxconnections = 50;
@@ -229,7 +291,16 @@ void CConnectionWizardDlg::OnBnClickedApply()
 			}
 		}
 	}
+	//Xman Xtreme Upload: set default values
+	if(thePrefs.GetMaxUpload() > 32.0f)
+		thePrefs.m_slotspeed=4.8f;
+	else if(thePrefs.GetMaxUpload() < 10.0f)
+		thePrefs.m_slotspeed=2.5f;
+	else
+		thePrefs.m_slotspeed=3.4f; 
+	thePrefs.CheckSlotSpeed(); // validate + update max allowed sources
 	theApp.emuledlg->preferenceswnd->m_wndConnection.LoadSettings();
+	theApp.emuledlg->Localize(); //Xman dirty hack to update systemmenu
 	CDialog::OnOK();
 }
 
@@ -287,16 +358,33 @@ BOOL CConnectionWizardDlg::OnInitDialog()
 	CheckRadioButton(IDC_WIZ_LOWDOWN_RADIO, IDC_WIZ_HIGHDOWN_RADIO, IDC_WIZ_LOWDOWN_RADIO);
 	CheckRadioButton(IDC_KBITS, IDC_KBYTES, IDC_KBITS);
 
+	//Xman changed
+	/*
 	SetDlgItemInt(IDC_WIZ_TRUEDOWNLOAD_BOX, 0, FALSE);
 	SetDlgItemInt(IDC_WIZ_TRUEUPLOAD_BOX, 0, FALSE);
+	*/
+	// Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	CString temp;
+	temp.Format(_T("%.1f"), (8.0f * thePrefs.GetMaxGraphDownloadRate())); // kBits/s
+	GetDlgItem(IDC_WIZ_TRUEDOWNLOAD_BOX)->SetWindowText(temp); 
+	temp.Format(_T("%.1f"), (8.0f * thePrefs.GetMaxGraphUploadRate())); // kBits/s
+	GetDlgItem(IDC_WIZ_TRUEUPLOAD_BOX)->SetWindowText(temp); 
+	// Maella end
+	//Xman end
 
 	m_provider.InsertColumn(0, GetResString(IDS_PW_CONNECTION), LVCFMT_LEFT, 150);
 	m_provider.InsertColumn(1, GetResString(IDS_WIZ_DOWN),		LVCFMT_LEFT,  85);
 	m_provider.InsertColumn(2, GetResString(IDS_WIZ_UP),		LVCFMT_LEFT,  85);
 	m_provider.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP);
 
+	//Xman no support for unlimited
+	/*
 	m_provider.InsertItem(0, GetResString(IDS_UNKNOWN));m_provider.SetItemText(0,1,_T(""));m_provider.SetItemText(0,2,_T(""));
 	m_provider.InsertItem(1, GetResString(IDS_WIZARD_CUSTOM));m_provider.SetItemText(1,1,GetResString(IDS_WIZARD_ENTERBELOW));m_provider.SetItemText(1,2,GetResString(IDS_WIZARD_ENTERBELOW));
+	*/
+	m_provider.InsertItem(0, GetResString(IDS_WIZARD_CUSTOM));m_provider.SetItemText(0,1,GetResString(IDS_WIZARD_ENTERBELOW));m_provider.SetItemText(0,2,GetResString(IDS_WIZARD_ENTERBELOW));
+	m_provider.InsertItem(1,_T("T-DSL 16000"));m_provider.SetItemText(1,1,_T("16000"));m_provider.SetItemText(1,2,_T("1024")); //Xman 
+	//Xman end
 	m_provider.InsertItem(2,_T("56-k Modem"));m_provider.SetItemText(2,1,_T("56"));m_provider.SetItemText(2,2,_T("56"));
 	m_provider.InsertItem(3,_T("ISDN"));m_provider.SetItemText(3,1,_T("64"));m_provider.SetItemText(3,2,_T("64"));
 	m_provider.InsertItem(4,_T("ISDN 2x"));m_provider.SetItemText(4,1,_T("128"));m_provider.SetItemText(4,2,_T("128"));
@@ -333,8 +421,14 @@ void CConnectionWizardDlg::OnNmClickProviders(NMHDR* /*pNMHDR*/, LRESULT* pResul
 	UINT up, down;
 	switch (m_provider.GetSelectionMark())
 	{
+		//Xman changed
+		/*
 		case  0: down=   0;up=   0; break;
 		case  1: down= ((thePrefs.maxGraphDownloadRate * 1024) + 500) / 1000 * 8; up= ((thePrefs.GetMaxGraphUploadRate(true) * 1024) + 500) / 1000 * 8; break;
+		*/
+		case  0: down= (UINT)thePrefs.GetMaxGraphDownloadRate()*8 ; up= (UINT)thePrefs.GetMaxGraphUploadRate()*8; break;
+		case  1: down=  16000;	up=  1024; break; //Xman 
+		//Xman end
 		case  2: down=   56;	up=   33; break;
 		case  3: down=   64;	up=   64; break;
 		case  4: down=  128;	up=  128; break;
@@ -353,7 +447,7 @@ void CConnectionWizardDlg::OnNmClickProviders(NMHDR* /*pNMHDR*/, LRESULT* pResul
 		case 17: down=44000;	up=44000; break;
 		default: return;
 	}
-	
+
 	SetDlgItemInt(IDC_WIZ_TRUEDOWNLOAD_BOX, down, FALSE);
 	SetDlgItemInt(IDC_WIZ_TRUEUPLOAD_BOX, up, FALSE);
 	CheckRadioButton(IDC_KBITS, IDC_KBYTES, IDC_KBITS);
@@ -377,7 +471,12 @@ void CConnectionWizardDlg::Localize()
 
 void CConnectionWizardDlg::SetCustomItemsActivation()
 {
+	//Xman no support for unlimited
+	/*
 	BOOL bActive = m_provider.GetSelectionMark() == 1;
+	*/
+	BOOL bActive = m_provider.GetSelectionMark() == 0;
+	//Xman end
 	GetDlgItem(IDC_WIZ_TRUEUPLOAD_BOX)->EnableWindow(bActive);
 	GetDlgItem(IDC_WIZ_TRUEDOWNLOAD_BOX)->EnableWindow(bActive);
 	GetDlgItem(IDC_KBITS)->EnableWindow(bActive);

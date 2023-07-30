@@ -37,6 +37,8 @@ public:
 	void	Localize();
 	void	ShowSelectedUserDetails();
 	void	ShowQueueClients();
+	//Xman faster Updating of Queuelist
+	void	UpdateAll();
 
 protected:
 	CImageList m_ImageList;
@@ -56,4 +58,6 @@ protected:
 	afx_msg void OnLvnGetDispInfo(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnNmDblClk(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnSysColorChange();
+
+	CImageList  m_overlayimages; // Mod Icons - Stulle
 };

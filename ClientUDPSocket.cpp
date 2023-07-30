@@ -40,6 +40,10 @@
 #include "./kademlia/kademlia/prefs.h"
 #include "./kademlia/utils/KadUDPKey.h"
 
+//Xman
+#include "BandWidthControl.h" // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+#include "FirewallOpener.h" // Improved ICS-Firewall support [MoNKi] - Max
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -75,10 +79,21 @@ void CClientUDPSocket::OnReceive(int nErrorCode)
 			DebugLogError(_T("Error: Client UDP socket, error on receive event: %s"), GetErrorMessage(nErrorCode, 1));
 	}
 
+	//Xman -Reask sources after IP change- v4 
+	theApp.last_traffic_reception=::GetTickCount(); //Threading Info: synchronized with the main thread
+	//Xman end
+
+
 	BYTE buffer[5000];
 	SOCKADDR_IN sockAddr = {0};
 	int iSockAddrLen = sizeof sockAddr;
 	int nRealLen = ReceiveFrom(buffer, sizeof buffer, (SOCKADDR*)&sockAddr, &iSockAddrLen);
+	//Xman
+	// - Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	if (nRealLen > 0)		
+		theApp.pBandWidthControl->AddeMuleInUDPOverall(nRealLen);
+	//Xman end
+
 	if (!(theApp.ipfilter->IsFiltered(sockAddr.sin_addr.S_un.S_addr) || theApp.clientlist->IsBannedClient(sockAddr.sin_addr.S_un.S_addr)))
 	{
 		BYTE* pBuffer;
@@ -149,6 +164,19 @@ void CClientUDPSocket::OnReceive(int nErrorCode)
 					case OP_KADEMLIAHEADER:
 					{
 						theStats.AddDownDataOverheadKad(nPacketLen);
+						//zz_fly :: Anti-Leecher
+						//note: Clients sending a KAD tag from 0.49a+ but pretending to be 0.48a
+						byte byOpcode = pBuffer[1];
+						if(byOpcode == KADEMLIA_FIREWALLED2_REQ)
+						{
+							CUpDownClient* client = theApp.clientlist->FindClientByIP(sockAddr.sin_addr.S_un.S_addr);
+							if(client != NULL && client->GetClientSoft() == SO_EMULE && client->GetVersion() != 0 && client->GetVersion() < MAKE_CLIENT_VERSION(0, 49, 0))
+							{
+								client->BanLeecher(_T("Detected Vagaa"),5); //Bad Leecher, Hard Ban
+								break;
+							}
+						}
+						//zz_fly :: Anti-Leecher end
 						if (nPacketLen >= 2)
 							Kademlia::CKademlia::ProcessPacket(pBuffer, nPacketLen, ntohl(sockAddr.sin_addr.S_un.S_addr), ntohs(sockAddr.sin_port)
 							, (Kademlia::CPrefs::GetUDPVerifyKey(sockAddr.sin_addr.S_un.S_addr) == nReceiverVerifyKey)
@@ -189,13 +217,13 @@ void CClientUDPSocket::OnReceive(int nErrorCode)
 				error->Delete();
 				strError = _T("General packet error");
 			}
-	#ifndef _DEBUG
+#ifndef _DEBUG
 			catch(...)
 			{
 				strError = _T("Unknown exception");
 				ASSERT(0);
 			}
-	#endif
+#endif
 			if (thePrefs.GetVerbose() && !strError.IsEmpty())
 			{
 				CString strClientInfo;
@@ -275,7 +303,7 @@ bool CClientUDPSocket::ProcessPacket(const BYTE* packet, UINT size, uint8 opcode
 			uchar reqfilehash[16];
 			data_in.ReadHash16(reqfilehash);
 			CKnownFile* reqfile = theApp.sharedfiles->GetFileByID(reqfilehash);
-			
+
 			bool bSenderMultipleIpUnknown = false;
 			CUpDownClient* sender = theApp.uploadqueue->GetWaitingClientByIP_UDP(ip, port, true, &bSenderMultipleIpUnknown);
 			if (!reqfile)
@@ -284,7 +312,6 @@ bool CClientUDPSocket::ProcessPacket(const BYTE* packet, UINT size, uint8 opcode
 					DebugRecv("OP_ReaskFilePing", NULL, reqfilehash, ip);
 					DebugSend("OP__FileNotFound", NULL);
 				}
-
 				Packet* response = new Packet(OP_FILENOTFOUND,0,OP_EMULEPROT);
 				theStats.AddUpDataOverheadFileRequest(response->size);
 				if (sender != NULL)
@@ -297,6 +324,29 @@ bool CClientUDPSocket::ProcessPacket(const BYTE* packet, UINT size, uint8 opcode
 			{
 				if (thePrefs.GetDebugClientUDPLevel() > 0)
 					DebugRecv("OP_ReaskFilePing", sender, reqfilehash);
+				//Xman uploading problem client
+				//we don't answer this client, to force a tcp connection, then we can add him to upload
+				//Xman 4.8.2 update: we don't answer every client with the flag... because there are buggy clients (shareaza) out 
+				//with send UDP forever although they are LowIDs
+				if(sender->m_bAddNextConnect && theApp.uploadqueue->AcceptNewClient(true))
+					break;
+				//Xman end
+
+				//Xman Xtreme Mod
+				//don't answer wrong filereaskpings, test if last action was OP_STARTUPLOADREQ.. must be on normal behavior
+				if(sender->GetLastAction()!=OP_STARTUPLOADREQ)
+				{
+					//AddDebugLogLine(false,_T("-->Filereaskping without OP_STARTUPLOADREQ, client: %s"), sender->DbgGetClientInfo());
+					break;
+				}
+
+				//check completed sources which want to download their "complete" file
+				if(sender->GetRequestFile()==reqfile && sender->HasFileComplete())
+				{
+					AddDebugLogLine(false, _T("->client want to download a file it has already complete: %s, %s"), reqfile->GetFileName(), sender->DbgGetClientInfo());
+					break; //no answer... a ban would also be not to bad
+				}
+				//Xman end
 
 				//Make sure we are still thinking about the same file
 				if (md4cmp(reqfilehash, sender->GetUploadFileID()) == 0)
@@ -311,7 +361,12 @@ bool CClientUDPSocket::ProcessPacket(const BYTE* packet, UINT size, uint8 opcode
 					//Update extended info. 
 					if (sender->GetUDPVersion() > 3)
 					{
+						//Xman better passive source finding
+						/*
 						sender->ProcessExtendedInfo(&data_in, reqfile);
+						*/
+						sender->ProcessExtendedInfo(&data_in, reqfile,true);
+						//Xman end
 					}
 					//Update our complete source counts.
 					else if (sender->GetUDPVersion() > 2)
@@ -330,7 +385,12 @@ bool CClientUDPSocket::ProcessPacket(const BYTE* packet, UINT size, uint8 opcode
 						if (reqfile->IsPartFile())
 							((CPartFile*)reqfile)->WritePartStatus(&data_out);
 						else
-							data_out.WriteUInt16(0);
+						{
+							//Xman PowerRelease
+							if (!reqfile->HideOvershares(&data_out, sender))
+								data_out.WriteUInt16(0);
+							//Xman end
+						}
 					}
 					data_out.WriteUInt16((uint16)(theApp.uploadqueue->GetWaitingPosition(sender)));
 					if (thePrefs.GetDebugClientUDPLevel() > 0)
@@ -513,19 +573,24 @@ SocketSentBytes CClientUDPSocket::SendControlData(uint32 maxNumberOfBytesToSend,
 			uchar* sendbuffer = new uchar[nLen];
 			memcpy(sendbuffer,cur_packet->packet->GetUDPHeader(),2);
 			memcpy(sendbuffer+2,cur_packet->packet->pBuffer,cur_packet->packet->size);
-			
+
 			if (cur_packet->bEncrypt && (theApp.GetPublicIP() > 0 || cur_packet->bKad)){
 				nLen = EncryptSendClient(&sendbuffer, nLen, cur_packet->pachTargetClientHashORKadID, cur_packet->bKad,  cur_packet->nReceiverVerifyKey, (cur_packet->bKad ? Kademlia::CPrefs::GetUDPVerifyKey(cur_packet->dwIP) : (uint16)0));
 				//DEBUG_ONLY(  AddDebugLogLine(DLP_VERYLOW, false, _T("Sent obfuscated UDP packet to clientIP: %s, Kad: %s, ReceiverKey: %u"), ipstr(cur_packet->dwIP), cur_packet->bKad ? _T("Yes") : _T("No"), cur_packet->nReceiverVerifyKey) );
 			}
 
-            if (!SendTo((char*)sendbuffer, nLen, cur_packet->dwIP, cur_packet->nPort)){
-                sentBytes += nLen; // ZZ:UploadBandWithThrottler (UDP)
+			if (!SendTo((char*)sendbuffer, nLen, cur_packet->dwIP, cur_packet->nPort)){
+				sentBytes += nLen; // ZZ:UploadBandWithThrottler (UDP)
+
+				//Xman
+				// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+				sentBytes +=(20+8); //Header
+				//Xman end
 
 				controlpacket_queue.RemoveHead();
 				delete cur_packet->packet;
 				delete cur_packet;
-            }
+			}
 			delete[] sendbuffer;
 		}
 		else
@@ -581,16 +646,19 @@ bool CClientUDPSocket::SendPacket(Packet* packet, uint32 dwIP, uint16 nPort, boo
 		md4cpy(newpending->pachTargetClientHashORKadID, pachTargetClientHashORKadID);
 	else
 		md4clr(newpending->pachTargetClientHashORKadID);
-// ZZ:UploadBandWithThrottler (UDP) -->
-    sendLocker.Lock();
+	// ZZ:UploadBandWithThrottler (UDP) -->
+	sendLocker.Lock();
 	controlpacket_queue.AddTail(newpending);
-    sendLocker.Unlock();
+	sendLocker.Unlock();
 
-    theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this);
+	theApp.uploadBandwidthThrottler->QueueForSendingControlPacket(this);
 	return true;
-// <-- ZZ:UploadBandWithThrottler (UDP)
+	// <-- ZZ:UploadBandWithThrottler (UDP)
 }
 
+// ==> UPnP support [MoNKi] - leuk_he
+// ==> Random Ports [MoNKi] - Stulle
+/*
 bool CClientUDPSocket::Create()
 {
 	bool ret = true;
@@ -609,16 +677,159 @@ bool CClientUDPSocket::Create()
 		}
 	}
 
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//ACAT UPnP
+	if (thePrefs.m_bUseACATUPnPCurrent && ret && thePrefs.GetUDPPort()){
+		if (thePrefs.GetUPnPNat()){
+			MyUPnP::UPNPNAT_MAPPING mapping;
+
+			mapping.internalPort = mapping.externalPort = thePrefs.GetUDPPort();
+			mapping.protocol = MyUPnP::UNAT_UDP;
+			mapping.description = "UDP Port";
+			if (theApp.AddUPnPNatPort(&mapping, thePrefs.GetUPnPNatTryRandom()))
+				thePrefs.SetUPnPUDPExternal(mapping.externalPort);
+		}
+		else{
+			thePrefs.SetUPnPUDPExternal(thePrefs.GetUDPPort());
+		}
+	}
+#endif //zz_fly :: dual upnp
+
 	if (ret)
 		m_port = thePrefs.GetUDPPort();
 
 	return ret;
 }
+*/
+bool CClientUDPSocket::Create()
+{
+	bool ret = true;
+	WORD rndPort;
+	int retries=0;
+	int maxRetries = 50;
 
+	static bool bNotFirstRun = false;
+
+	if (thePrefs.GetUDPPort(false, false, bNotFirstRun)){
+		if(thePrefs.GetUseRandomPorts()){
+			do{
+				retries++;
+				rndPort = thePrefs.GetUDPPort(bNotFirstRun);
+				// ==> Improved ICS-Firewall support [MoNKi] - Max
+				if((retries < (maxRetries / 2)) && ((thePrefs.GetICFSupport() && !theApp.m_pFirewallOpener->DoesRuleExist(rndPort, NAT_PROTOCOL_UDP))
+					|| !thePrefs.GetICFSupport()))
+				{
+					ret = CAsyncSocket::Create(rndPort,SOCK_DGRAM,FD_READ|FD_WRITE, thePrefs.GetBindAddrW())!=FALSE;
+				}
+				else if (retries >= (maxRetries / 2))
+				// <== Improved ICS-Firewall support [MoNKi] - Max
+					ret = CAsyncSocket::Create(rndPort,SOCK_DGRAM,FD_READ|FD_WRITE, thePrefs.GetBindAddrW())!=FALSE;
+			}while(!ret && retries<maxRetries);
+		}
+		else
+			ret = CAsyncSocket::Create(thePrefs.GetUDPPort(false, true),SOCK_DGRAM,FD_READ|FD_WRITE, thePrefs.GetBindAddrW())!=FALSE;
+
+		if(ret){
+			m_port=thePrefs.GetUDPPort();
+
+			// the default socket size seems to be not enough for this UDP socket
+			// because we tend to drop packets if several flow in at the same time
+			int val = 64 * 1024;
+			if (!SetSockOpt(SO_RCVBUF, &val, sizeof(val)))
+				DebugLogError(_T("Failed to increase socket size on UDP socket"));
+
+			// ==> Improved ICS-Firewall support [MoNKi] - Max
+			if(thePrefs.GetICFSupport()){
+				if (theApp.m_pFirewallOpener->OpenPort(thePrefs.GetUDPPort(), NAT_PROTOCOL_UDP, EMULE_DEFAULTRULENAME_UDP, thePrefs.IsOpenPortsOnStartupEnabled() || thePrefs.GetUseRandomPorts()))
+					theApp.QueueLogLine(false, GetResString(IDS_FO_TEMPUDP_S), thePrefs.GetUDPPort());
+				else
+					theApp.QueueLogLine(false, GetResString(IDS_FO_TEMPUDP_F), thePrefs.GetUDPPort());
+			}
+			// <== Improved ICS-Firewall support [MoNKi] - Max
+
+			if(theApp.m_UPnP_IGDControlPoint->IsUpnpAcceptsPorts())
+				theApp.m_UPnP_IGDControlPoint->AddPortMapping(m_port, CUPnP_IGDControlPoint::UNAT_UDP, _T("UDP Port"));
+		}
+	}
+
+	bNotFirstRun = true;
+	
+	if (ret)
+		m_port=thePrefs.GetUDPPort();
+
+	return ret;
+}
+// <== Random Ports [MoNKi] - Stulle
+// <== UPnP support [MoNKi] - leuk_he
 bool CClientUDPSocket::Rebind()
 {
+	// ==> Random Ports [MoNKi] - Stulle
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	if (thePrefs.udpport == m_port)
+#else
 	if (thePrefs.GetUDPPort() == m_port)
+#endif 	//zz_fly :: dual upnp
 		return false;
+	*/
+	if (!thePrefs.GetUseRandomPorts() && thePrefs.GetUDPPort(false, true)==m_port)
+		return false;
+	// <== Random Ports [MoNKi] - Stulle
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	if(theApp.m_UPnP_IGDControlPoint->IsUpnpAcceptsPorts()){
+		theApp.m_UPnP_IGDControlPoint->DeletePortMapping(m_port, CUPnP_IGDControlPoint::UNAT_UDP, _T("UDP Port"));
+	}
+	// <== UPnP support [MoNKi] - leuk_he
+
 	Close();
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP 	//zz_fly :: dual upnp
+	//ACAT UPnP
+	if(thePrefs.m_bUseACATUPnPCurrent && thePrefs.GetUPnPNat())
+	{
+		if(theApp.m_pUPnPNat->RemoveSpecifiedPort(thePrefs.m_iUPnPUDPExternal, MyUPnP::UNAT_UDP))
+			AddLogLine(false, _T("UPNP: removed UDP-port %u"), thePrefs.m_iUPnPUDPExternal);
+		else
+			AddLogLine(false, _T("UPNP: failed to remove UDP-port %u"), thePrefs.m_iUPnPUDPExternal);
+	}
+	thePrefs.m_iUPnPUDPExternal=0;
+#endif 	//zz_fly :: dual upnp
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	return Create();
 }
+// ==> UPnP support [MoNKi] - leuk_he
+/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+//ACAT UPnP :: Rebind UPnP on IP-change
+bool CClientUDPSocket::RebindUPnP(){ 
+	if(!thePrefs.m_bUseACATUPnPCurrent)
+		return false;
+
+	if(theApp.m_pUPnPNat->RemoveSpecifiedPort(thePrefs.m_iUPnPUDPExternal, MyUPnP::UNAT_UDP))
+	{
+		AddLogLine(false, _T("UPNP: removed UDP-port %u"), thePrefs.m_iUPnPUDPExternal);
+		thePrefs.m_iUPnPUDPExternal=0;
+		MyUPnP::UPNPNAT_MAPPING mapping;
+		mapping.internalPort = mapping.externalPort = thePrefs.GetUDPPort();
+		mapping.protocol = MyUPnP::UNAT_UDP;
+		mapping.description = "UDP Port";
+		if (theApp.AddUPnPNatPort(&mapping, thePrefs.GetUPnPNatTryRandom()))
+		{
+			thePrefs.SetUPnPUDPExternal(mapping.externalPort);
+			return true;
+		}
+		else
+			thePrefs.SetUPnPUDPExternal(thePrefs.GetUDPPort());
+	}
+	else
+		AddLogLine(false, _T("UPNP: failed to remove UDP-port %u"), thePrefs.m_iUPnPUDPExternal);
+	return false;
+} 
+#endif 	//zz_fly :: dual upnp
+*/
+// <== UPnP support [MoNKi] - leuk_he

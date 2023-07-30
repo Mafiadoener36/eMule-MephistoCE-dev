@@ -100,4 +100,12 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	afx_msg BOOL OnHelpInfo(HELPINFO* pHelpInfo);
+
+	// ==> Design Settings [eWombat/Stulle] - Max
+protected:
+	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+	CBrush m_brMyBrush;
+public:
+	void OnBackcolor();
+	// <== Design Settings [eWombat/Stulle] - Max
 };

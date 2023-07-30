@@ -38,7 +38,6 @@ public:
 	void SetSearchGraph(Kademlia::CLookupHistory* pLookupHistory, bool bMakeVisible);
 	void ShowLookupGraph(bool bShow);
 	void UpdateContactCount();
-	void SetBootstrapListMode();
 
 	// Searches
 	CKadSearchListCtrl* searchList;
@@ -55,8 +54,6 @@ protected:
 	CCustomAutoComplete*		m_pacONBSIPs;
 	HICON						icon_kadsea;
 	CDropDownButton*			m_pbtnWnd;
-
-	bool						m_bBootstrapListMode;
 
 	void		SetAllIcons();
 	void		UpdateButtonTitle(bool bLookupGraph);
@@ -77,4 +74,13 @@ protected:
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	afx_msg void OnNMDblclkSearchlist(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnListModifiedSearchlist(NMHDR *pNMHDR, LRESULT *pResult);
+
+	afx_msg void OnBnClickedNodesFileButton(); // Links for Server list and nodes file [Stulle] - Stulle
+
+	// ==> Design Settings [eWombat/Stulle] - Max
+	CBrush m_brMyBrush;
+	COLORREF crKadColor;
+public:
+	void OnBackcolor(); 
+	// <== Design Settings [eWombat/Stulle] - Max
 };

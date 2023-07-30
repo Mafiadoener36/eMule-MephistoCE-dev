@@ -23,6 +23,7 @@
 #include "Scheduler.h"
 #include "MenuCmds.h"
 #include "HelpIDs.h"
+#include "XMessageBox.h" // Advanced Updates [MorphXT/Stulle] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -43,6 +44,10 @@ BEGIN_MESSAGE_MAP(CPPgScheduler, CPropertyPage)
 	ON_NOTIFY(NM_DBLCLK, IDC_SCHEDACTION, OnNmDblClkActionlist)
 	ON_NOTIFY(NM_RCLICK, IDC_SCHEDACTION, OnNmRClickActionlist)
 	ON_WM_HELPINFO()
+	// ==> XP Style Menu [Xanatos] - Stulle
+	ON_WM_MEASUREITEM()
+	ON_WM_MENUCHAR()
+	// <== XP Style Menu [Xanatos] - Stulle
 END_MESSAGE_MAP()
 
 CPPgScheduler::CPPgScheduler()
@@ -259,6 +264,10 @@ CString CPPgScheduler::GetActionLabel(int index) {
 		case ACTION_CATSTOP		: return GetResString(IDS_SCHED_CATSTOP);
 		case ACTION_CATRESUME	: return GetResString(IDS_SCHED_CATRESUME);
 		case ACTION_CONS		: return GetResString(IDS_PW_MAXC);
+		// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+		case ACTION_UPDIPCONF	: return GetResString(IDS_SCHED_UPDATE_IPCONFIG);
+		case ACTION_UPDANTILEECH	: return GetResString(IDS_SCHED_UPDATE_ANTILEECH);
+		// <== Advanced Updates [MorphXT/Stulle] - Stulle
 	}
 	return NULL;
 }
@@ -284,6 +293,7 @@ void CPPgScheduler::OnNmDblClkActionlist(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 {
 	if (m_actions.GetSelectionMark()!=-1) {
 		int ac=m_actions.GetItemData(m_actions.GetSelectionMark());
+		if(ac<ACTION_UPDIPCONF) // Advanced Updates [MorphXT/Stulle] - Stulle
 		if (ac!=6 && ac!=7) OnCommand(MP_CAT_EDIT,0);
 	}
 
@@ -296,8 +306,14 @@ void CPPgScheduler::OnNmRClickActionlist(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	::GetCursorPos(&point);
 
 	CTitleMenu m_ActionMenu;
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu m_ActionSel;
 	CMenu m_CatActionSel;
+	*/
+	CTitleMenu m_ActionSel;
+	CTitleMenu m_CatActionSel;
+	// <== XP Style Menu [Xanatos] - Stulle
 
 	bool isCatAction=false;
 	if (m_actions.GetSelectionMark()!=-1) {
@@ -305,9 +321,21 @@ void CPPgScheduler::OnNmRClickActionlist(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 		if (ac==6 || ac==7) isCatAction=true;
 	}
 
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	bool isParameterless = false;
+	if (m_actions.GetSelectionMark()!=-1) {
+		int ac=m_actions.GetItemData(m_actions.GetSelectionMark());
+		if (ac==ACTION_UPDIPCONF || ac==ACTION_UPDANTILEECH) isParameterless=true;
+	}
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
 	m_ActionMenu.CreatePopupMenu();
 	m_ActionSel.CreatePopupMenu();
 	m_CatActionSel.CreatePopupMenu();
+	// ==> XP Style Menu [Xanatos] - Stulle
+	m_ActionSel.AddMenuTitle(NULL, false, false);
+	m_CatActionSel.AddMenuTitle(NULL, false, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 
 	UINT nFlag=MF_STRING;
 	if (m_actions.GetSelectionMark()==-1) nFlag=MF_STRING | MF_GRAYED;
@@ -319,21 +347,44 @@ void CPPgScheduler::OnNmRClickActionlist(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	m_ActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+ACTION_CONS,GetResString(IDS_PW_MAXC));
 	m_ActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+ACTION_CATSTOP,GetResString(IDS_SCHED_CATSTOP));
 	m_ActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+ACTION_CATRESUME,GetResString(IDS_SCHED_CATRESUME));
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	m_ActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+ACTION_UPDANTILEECH,GetResString(IDS_SCHED_UPDATE_ANTILEECH));
+	m_ActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+ACTION_UPDIPCONF,GetResString(IDS_SCHED_UPDATE_IPCONFIG));
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
 
 	m_ActionMenu.AddMenuTitle(GetResString(IDS_ACTION));
+	// ==> more icons - Stulle
+	/*
 	m_ActionMenu.AppendMenu(MF_POPUP,(UINT_PTR)m_ActionSel.m_hMenu,	GetResString(IDS_ADD));
+	*/
+	m_ActionMenu.AppendMenu(MF_POPUP,(UINT_PTR)m_ActionSel.m_hMenu,	GetResString(IDS_ADD), _T("SCHEDULERADD"));
+	// <== more icons - Stulle
 
+	if (!isParameterless) { // Advanced Updates [MorphXT/Stulle] - Stulle
 	if (isCatAction) {
 		if (thePrefs.GetCatCount()>1) m_CatActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+20,GetResString(IDS_ALLUNASSIGNED));
 		m_CatActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+21,GetResString(IDS_ALL));
 		for (int i=1;i<thePrefs.GetCatCount();i++)
 			m_CatActionSel.AppendMenu(MF_STRING,MP_SCHACTIONS+22+i,thePrefs.GetCategory(i)->strTitle);
+		// ==> more icons - Stulle
+		/*
 		m_ActionMenu.AppendMenu(MF_POPUP,(UINT_PTR)m_CatActionSel.m_hMenu,	GetResString(IDS_SELECTCAT));
 	} else
 		m_ActionMenu.AppendMenu(nFlag,MP_CAT_EDIT,	GetResString(IDS_EDIT));
+		*/
+		m_ActionMenu.AppendMenu(MF_POPUP,(UINT_PTR)m_CatActionSel.m_hMenu,	GetResString(IDS_SELECTCAT), _T("CATEDIT"));
+	} else
+		m_ActionMenu.AppendMenu(nFlag,MP_CAT_EDIT,	GetResString(IDS_EDIT), _T("SCHEDULEREDIT"));
+		// <== more icons - Stulle
+	} // Advanced Updates [MorphXT/Stulle] - Stulle
 
 
+	// ==> more icons - Stulle
+	/*
 	m_ActionMenu.AppendMenu(nFlag,MP_CAT_REMOVE,GetResString(IDS_REMOVE));
+	*/
+	m_ActionMenu.AppendMenu(nFlag,MP_CAT_REMOVE,GetResString(IDS_REMOVE), _T("SCHEDULERREMOVE"));
+	// <== more icons - Stulle
 
 	m_ActionMenu.TrackPopupMenu(TPM_LEFTALIGN |TPM_RIGHTBUTTON, point.x, point.y, this);
 	VERIFY( m_ActionSel.DestroyMenu() );
@@ -356,6 +407,22 @@ BOOL CPPgScheduler::OnCommand(WPARAM wParam, LPARAM lParam)
 		m_actions.SetSelectionMark(i);
 		if (action<6)
 			OnCommand(MP_CAT_EDIT,0);
+		// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+		if (action==ACTION_UPDIPCONF || action==ACTION_UPDANTILEECH) {
+			m_actions.SetItemText(i,1,_T("-"));
+			// Small warning message
+//			if (action == ACTION_UPDIPCONF || action == ACTION_UPDFAKES) {
+				XMessageBox (NULL,GetResString (IDS_SCHED_UPDATE_WARNING),
+							 GetResString (IDS_WARNING),MB_OK | MB_ICONINFORMATION,NULL);
+//			}
+			CTime myTime1 ;m_time.GetTime(myTime1);  // handling of one-time-events [Mighty Knife] - Stulle
+			CTime myTime2 ;m_timeTo.GetTime(myTime2);
+			if ( myTime1!= myTime2) // leuk_he: warn because will be executeed every minute! 
+				if(XMessageBox (NULL,GetResString(IDS_SCHED_WARNENDTIME),
+				   GetResString (IDS_WARNING),MB_OKCANCEL| MB_ICONINFORMATION,NULL)== IDOK)
+					 m_timeTo.SetTime(&myTime1); // On ok reset end time. 
+		}
+		// <== Advanced Updates [MorphXT/Stulle] - Stulle
 	}
 	else if (wParam>=MP_SCHACTIONS+20 && wParam<=MP_SCHACTIONS+80)
 	{
@@ -432,3 +499,22 @@ BOOL CPPgScheduler::OnHelpInfo(HELPINFO* /*pHelpInfo*/)
 	OnHelp();
 	return TRUE;
 }
+
+// ==> XP Style Menu [Xanatos] - Stulle
+void CPPgScheduler::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct) 
+{
+	HMENU hMenu = AfxGetThreadState()->m_hTrackingMenu;
+	if(CMenu *pMenu = CMenu::FromHandle(hMenu))
+		pMenu->MeasureItem(lpMeasureItemStruct);
+	
+	CPropertyPage::OnMeasureItem(nIDCtl, lpMeasureItemStruct);
+}
+
+LRESULT CPPgScheduler::OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu) 
+{
+	if (pMenu->IsKindOf(RUNTIME_CLASS(CTitleMenu)) )
+		return CTitleMenu::OnMenuChar(nChar, nFlags, pMenu);
+
+	return CPropertyPage::OnMenuChar(nChar, nFlags, pMenu);
+}
+// <== XP Style Menu [Xanatos] - Stulle

@@ -542,7 +542,12 @@ HTREEITEM CTreeOptionsCtrl::InsertGroup(LPCTSTR lpszItem, int nImage, HTREEITEM 
 
 HTREEITEM CTreeOptionsCtrl::InsertCheckBox(LPCTSTR lpszItem, HTREEITEM hParent, BOOL bCheck, HTREEITEM hAfter, DWORD dwItemData)
 {
+	// ==> Assert fix for radio - Stulle
+	/*
 	ASSERT((hParent == TVI_ROOT) || IsGroup(hParent) || IsCheckBox(hParent)); //The parent of a check box must be a group item or another check box
+	*/
+	ASSERT((hParent == TVI_ROOT) || IsGroup(hParent) || IsCheckBox(hParent) || IsRadioButton(hParent)); //The parent of a check box must be a group item or another check box
+	// <== Assert fix for radio - Stulle
 
 	HTREEITEM hItem = InsertItem(lpszItem, 0, 0, hParent, hAfter);
 	CTreeOptionsItemData* pItemData = new CTreeOptionsItemData;

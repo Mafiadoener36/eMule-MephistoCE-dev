@@ -25,6 +25,7 @@
 #include "Sockets.h"
 #include "Server.h"
 #include "ServerList.h"
+#include "DownloadQueue.h" // Enforce Ratio [Stulle] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -39,6 +40,7 @@ IMPLEMENT_DYNAMIC(CMuleStatusBarCtrl, CStatusBarCtrl)
 
 BEGIN_MESSAGE_MAP(CMuleStatusBarCtrl, CStatusBarCtrl)
 	ON_WM_LBUTTONDBLCLK()
+	ON_NOTIFY_RANGE(TTN_GETDISPINFO, 0,SBarChatMsg, OnToolTipNotify) // Enforce Ratio [Stulle] - Stulle
 END_MESSAGE_MAP()
 
 CMuleStatusBarCtrl::CMuleStatusBarCtrl()
@@ -78,10 +80,6 @@ void CMuleStatusBarCtrl::OnLButtonDblClk(UINT /*nFlags*/, CPoint point)
 		case SBarChatMsg:
 			theApp.emuledlg->SetActiveDialog(theApp.emuledlg->chatwnd);
 			break;
-
-        case SBarUSS:           
-            theApp.emuledlg->ShowPreferences(IDD_PPG_TWEAKS);               
-            break;
 	}
 }
 
@@ -117,6 +115,29 @@ CString CMuleStatusBarCtrl::GetPaneToolTipText(EStatusBarPane iPane) const
 			}
 		}
 		break;
+	// ==> Enforce Ratio [Stulle] - Stulle
+	case SBarUpDown:
+		{
+			if(!theApp.downloadqueue) // just in case!
+				break;
+			uint16 uLimitState = theApp.downloadqueue->GetLimitState();
+			strText.Format(GetResString(IDS_DL_SES_RATIO)+_T(": %s"),(uLimitState>=DLR_SESLIM)?GetResString(IDS_YES):GetResString(IDS_NO));
+			if(uLimitState<DLR_SOURCE && !(uLimitState&DLR_13RATIO || uLimitState&DLR_NAFC))
+				strText.AppendFormat(_T("\n\r\x2022 ")+GetResString(IDS_DL_LIMIT_DEF)+_T(": %s (%s)"),GetResString(IDS_YES),(thePrefs.GetMaxDownload()==0xFFFF)?GetResString(IDS_PW_UNLIMITED):CastItoXBytes(thePrefs.GetMaxDownload(),true,true,1));
+			else
+				strText.AppendFormat(_T("\n\r\x2022 ")+GetResString(IDS_DL_LIMIT_DEF)+_T(": %s"),GetResString(IDS_NO));
+			strText.AppendFormat(_T("\n\x2022 ")+GetResString(IDS_DL_UNL_NOUL)+_T(": %s"),(uLimitState&DLR_NOUL)?GetResString(IDS_YES):GetResString(IDS_NO));
+			strText.AppendFormat(_T("\n\x2022 ")+GetResString(IDS_DL_UNL_13RATIO)+_T(": %s"),(uLimitState&DLR_13RATIO)?GetResString(IDS_YES):GetResString(IDS_NO));
+			strText.AppendFormat(_T("\n\x2022 ")+GetResString(IDS_DL_NAFC_LIMIT)+_T(": %s"),(uLimitState&DLR_NAFC)?GetResString(IDS_YES):GetResString(IDS_NO));
+			strText.AppendFormat(_T("\n\x2022 ")+GetResString(IDS_DL_RATIO_SRC)+_T(": %s"),(uLimitState&DLR_SESLIM)?GetResString(IDS_YES):GetResString(IDS_NO));
+			strText.AppendFormat(_T("\n\x2022 ")+GetResString(IDS_DL_RATIO_ENF)+_T(": %s"),(uLimitState&DLR_ENFLIM)?GetResString(IDS_YES):GetResString(IDS_NO));
+			strText.AppendFormat(_T("\n\x2022 ")+GetResString(IDS_DL_RATIO_FRIEND)+_T(": %s"),(uLimitState&DLR_FRILIM)?GetResString(IDS_YES):GetResString(IDS_NO)); // Multiple friendslots [ZZ] - Mephisto
+
+			if(uLimitState >= DLR_SOURCE || uLimitState&DLR_NAFC)
+				strText.AppendFormat(_T("\n\r\x2022 ")+GetResString(IDS_DL_RATIO_LIMIT)+_T(":%i"),theApp.downloadqueue->GetLimitRatio());
+			break;
+		}
+	// <== Enforce Ratio [Stulle] - Stulle
 	}
 	return strText;
 }
@@ -136,7 +157,12 @@ int CMuleStatusBarCtrl::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 				pTI->uId = (UINT_PTR)iPane;
 				pTI->uFlags &= ~TTF_IDISHWND;
 				pTI->uFlags |= TTF_NOTBUTTON|TTF_ALWAYSTIP;
+				// ==> Enforce Ratio [Stulle] - Stulle
+				/*
 				pTI->lpszText = _tcsdup(strToolTipText); // gets freed by MFC
+				*/
+				pTI->lpszText = LPSTR_TEXTCALLBACK;
+				// <== Enforce Ratio [Stulle] - Stulle
 				GetRect(iPane, &pTI->rect);
 				iHit = iPane;
 			}
@@ -144,3 +170,26 @@ int CMuleStatusBarCtrl::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 	}
 	return iHit;
 }
+
+// ==> Enforce Ratio [Stulle] - Stulle
+static TCHAR pzToolTipText[512];
+void CMuleStatusBarCtrl::OnToolTipNotify( UINT /*id*/, NMHDR * pNotifyStruct, LRESULT * /*result*/ )
+{
+	TOOLTIPTEXTW* pTI = (TOOLTIPTEXTW*)pNotifyStruct;
+    _stprintf(pzToolTipText, GetPaneToolTipText( (EStatusBarPane)pNotifyStruct->idFrom ));
+	::SendMessage(pNotifyStruct->hwndFrom, TTM_SETMAXTIPWIDTH, 0, 300);
+	pTI->lpszText = pzToolTipText;
+}
+// <== Enforce Ratio [Stulle] - Stulle
+
+// ==> Design Settings [eWombat/Stulle] - Max
+void CMuleStatusBarCtrl::UpdateColor()
+{
+	COLORREF crTempColor_stb = thePrefs.GetStyleBackColor(window_styles, style_w_statusbar);
+
+	if(crTempColor_stb == CLR_DEFAULT)
+		crTempColor_stb = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+	SetBkColor(crTempColor_stb);
+};
+// <== Design Settings [eWombat/Stulle] - Max

@@ -82,12 +82,30 @@ enum EClientSoftware{
 	SO_XMULE			= 2,	// ET_COMPATIBLECLIENT
 	SO_AMULE			= 3,	// ET_COMPATIBLECLIENT
 	SO_SHAREAZA			= 4,	// ET_COMPATIBLECLIENT
+	// ==> Enhanced Client Recognition [Spike] - Stulle
+	SO_EMULEPLUS			= 5,
+	SO_HYDRANODE			= 6,
+	// <== Enhanced Client Recognition [Spike] - Stulle
 	SO_MLDONKEY			= 10,	// ET_COMPATIBLECLIENT
 	SO_LPHANT			= 20,	// ET_COMPATIBLECLIENT
+	// ==> Enhanced Client Recognition [Spike] - Stulle
+	SO_SHAREAZA2			= 28,
+	SO_TRUSTYFILES			= 30,
+	SO_SHAREAZA3			= 40,
+	// <== Enhanced Client Recognition [Spike] - Stulle
 	// other client types which are not identified with ET_COMPATIBLECLIENT
 	SO_EDONKEYHYBRID	= 50,
+	// ==> Enhanced Client Recognition [Spike] - Stulle
+	/*
 	SO_EDONKEY,
 	SO_OLDEMULE,
+	*/
+	SO_EDONKEY			= 51,
+	SO_MLDONKEY2		= 52,
+	SO_OLDEMULE			= 53,
+	SO_SHAREAZA4		= 68,
+	SO_MLDONKEY3		= 152,
+	// <== Enhanced Client Recognition [Spike] - Stulle
 	SO_URL,
 	SO_UNKNOWN
 };
@@ -111,7 +129,8 @@ enum ESourceFrom{
 	SF_KADEMLIA			= 1,
 	SF_SOURCE_EXCHANGE	= 2,
 	SF_PASSIVE			= 3,
-	SF_LINK				= 4
+	SF_LINK				= 4,
+	SF_SLS				= 5			//Xman SLS
 };
 
 enum EChatCaptchaState{
@@ -132,6 +151,15 @@ enum EConnectingState{
 	CCS_PRECONDITIONS
 };
 
+// ==> See chunk that we hide [SiRoB] - Stulle
+enum EChunkStatus{
+	SC_AVAILABLE		= 1,
+	SC_HIDDENBYSOTN		= 2,
+	SC_HIDDENBYHIDEOS	= 4/*,
+	SC_PARTIAL			= 8 //MORPH - Added By SiRoB, ICS merged into partstatus*/
+};
+// <== See chunk that we hide [SiRoB] - Stulle
+
 #ifdef _DEBUG
 	// use the 'Enums' only for debug builds, each enum costs 4 bytes (3 unused)
 #define _EClientSoftware	EClientSoftware
@@ -143,6 +171,7 @@ enum EConnectingState{
 #define _ESourceFrom		ESourceFrom
 #define _EChatCaptchaState  EChatCaptchaState
 #define _EConnectingState	EConnectingState
+#define _EModClient			EModClient // Mod Icons - Stulle
 #else
 #define _EClientSoftware	uint8
 #define _EChatState			uint8
@@ -153,4 +182,37 @@ enum EConnectingState{
 #define _ESourceFrom		uint8
 #define _EChatCaptchaState	uint8
 #define _EConnectingState	uint8
+#define _EModClient			uint8 // Mod Icons - Stulle
 #endif
+// ==> Mod Icons - Stulle
+enum EModClient{
+	MOD_NONE,
+	MOD_SCAR,
+	MOD_STULLE,
+	MOD_XTREME,
+	MOD_MORPH,
+	MOD_EASTSHARE,
+	MOD_EMF,
+	MOD_NEO,
+	MOD_MEPHISTO,
+	MOD_XRAY,
+	MOD_MAGIC
+};
+// <== Mod Icons - Stulle
+
+// ==> FunnyNick [SiRoB/Stulle] - Stulle
+enum FnTagSelection {
+	CS_NONE = 0,
+	CS_SHORT,
+	CS_FULL,
+	CS_CUST
+};
+// <== FunnyNick [SiRoB/Stulle] - Stulle
+
+// ==> Anti Uploader Ban [Stulle] - Stulle
+enum AntiUploaderBanCaseSelection {
+	CS_1 = 0,
+	CS_2,
+	CS_3
+};
+// <== Anti Uploader Ban [Stulle] - Stulle

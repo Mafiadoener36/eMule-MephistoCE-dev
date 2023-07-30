@@ -39,6 +39,7 @@ enum EFriendConnectReport{
 
 #define	FF_NAME		0x01
 #define	FF_KADID	0x02
+#define FF_FRIENDSLOT	0x03 // Multiple friendslots [ZZ] - Mephisto
 
 ///////////////////////////////////////////////////////////////////////////////
 // CFriendConnectionListener
@@ -64,7 +65,12 @@ public:
 
 	uchar	m_abyUserhash[16];
 	
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	uint32	m_dwLastSeen;
+	*/
+	time_t m_dwLastSeen;
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 	uint32	m_dwLastUsedIP;
 	uint16	m_nLastUsedPort;
 	uint32	m_dwLastChatted;

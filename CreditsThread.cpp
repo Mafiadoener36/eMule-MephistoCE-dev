@@ -371,7 +371,12 @@ void CCreditsThread::InitFonts()
 	lf.lfHeight = 16;
 	lf.lfWeight = 700;
 	//lf.lfItalic = TRUE;
+	// ==> Drop Win95 support [MorphXT] - Stulle
+	/*
 	lf.lfQuality = afxIsWin95() ? NONANTIALIASED_QUALITY : ANTIALIASED_QUALITY;
+	*/
+	lf.lfQuality = ANTIALIASED_QUALITY;
+	// <== Drop Win95 support [MorphXT] - Stulle
 	_tcscpy(lf.lfFaceName, _T("Arial"));
 	font2->CreateFontIndirect(&lf);
 	m_arFonts.Add(font2);
@@ -385,7 +390,12 @@ void CCreditsThread::InitFonts()
 	memset((void*)&lf, 0, sizeof(lf));
 	lf.lfHeight = 25;
 	lf.lfWeight = 900;
+	// ==> Drop Win95 support [MorphXT] - Stulle
+	/*
 	lf.lfQuality = afxIsWin95() ? NONANTIALIASED_QUALITY : ANTIALIASED_QUALITY;
+	*/
+	lf.lfQuality = ANTIALIASED_QUALITY;
+	// <== Drop Win95 support [MorphXT] - Stulle
 	_tcscpy(lf.lfFaceName, _T("Arial"));
 	font3->CreateFontIndirect(&lf);
 	m_arFonts.Add(font3);
@@ -433,10 +443,15 @@ void CCreditsThread::InitText()
 
 	m_arCredits.Add(_T("03:00:eMule"));
 	sTmp.Format(_T("02:01:Version %s"),theApp.m_strCurVersionLong);
+	// ==> ModID [itsonlyme/SiRoB] - Stulle
+	sTmp += _T(" [") + theApp.m_strModLongVersion + _T("]");
+	// <== ModID [itsonlyme/SiRoB] - Stulle
 	m_arCredits.Add(sTmp);
-	m_arCredits.Add(_T("01:06:Copyright (C) 2002-2015 Merkur"));
+	m_arCredits.Add(_T("01:06:Copyright (C) 2002-2009 Merkur"));
 	m_arCredits.Add(_T("S:50"));
 	m_arCredits.Add(_T("02:04:Developers"));
+	m_arCredits.Add(_T("S:5"));
+	m_arCredits.Add(_T("01:06:Unknown1"));
 	m_arCredits.Add(_T("S:5"));
 	m_arCredits.Add(_T("01:06:Ornis"));
 
@@ -481,8 +496,6 @@ void CCreditsThread::InitText()
 	m_arCredits.Add(_T("01:06:Barry"));
 	m_arCredits.Add(_T("S:5"));
 	m_arCredits.Add(_T("01:06:Dirus"));
-	m_arCredits.Add(_T("S:5"));
-	m_arCredits.Add(_T("01:06:Unknown1"));
 	
 
 	m_arCredits.Add(_T("S:50"));
@@ -568,7 +581,7 @@ void CCreditsThread::InitText()
 	m_arCredits.Add(_T("S:05"));
 	m_arCredits.Add(_T("01:06:Portugese: Filipe, Luís Claro"));
 	m_arCredits.Add(_T("S:05"));
-	m_arCredits.Add(_T("01:06:Portugese Brasilian: DarthMaul,Brasco,Ducho"));
+	m_arCredits.Add(_T("01:06:Portugese Brasilian: DarthMaul,Brasco"));
 	m_arCredits.Add(_T("S:05"));
 	m_arCredits.Add(_T("01:06:Romanian: Dragos"));
 	m_arCredits.Add(_T("S:05"));

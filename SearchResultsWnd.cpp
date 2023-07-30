@@ -48,6 +48,8 @@
 #include "MenuCmds.h"
 #include "DropDownButton.h"
 #include "ButtonsTabCtrl.h"
+#include "KnownFileList.h" //Xman [MoNKi: -Check already downloaded files-]
+#include "TransferDlg.h" // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -103,6 +105,10 @@ BEGIN_MESSAGE_MAP(CSearchResultsWnd, CResizableFormView)
 	ON_WM_SYSCOMMAND()
 	ON_MESSAGE(UM_DELAYED_EVALUATE, OnChangeFilter)
 	ON_NOTIFY(TBN_DROPDOWN, IDC_SEARCHLST_ICO, OnSearchListMenuBtnDropDown)
+	ON_NOTIFY(NM_CLICK, IDC_CATTAB2, OnNMClickCattab2) // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	ON_WM_SIZE()
+	// <== Design Settings [eWombat/Stulle] - Stulle
 END_MESSAGE_MAP()
 
 CSearchResultsWnd::CSearchResultsWnd(CWnd* /*pParent*/)
@@ -158,6 +164,8 @@ void CSearchResultsWnd::OnInitialUpdate()
 
 	m_ctlFilter.OnInit(&m_ctlSearchListHeader);
 
+	OnBackcolor(); // Design Settings [eWombat/Stulle] - Max
+
 	SetAllIcons();
 	Localize();
 	searchprogress.SetStep(1);
@@ -173,7 +181,12 @@ void CSearchResultsWnd::OnInitialUpdate()
 	AddAnchor(IDC_OPEN_PARAMS_WND, TOP_RIGHT);
 	AddAnchor(searchselect.m_hWnd, TOP_LEFT, TOP_RIGHT);
 	AddAnchor(IDC_STATIC_DLTOof, BOTTOM_LEFT);
+	// ==> Design Settings [eWombat/Stulle] - Max
+	/*
 	AddAnchor(*m_cattabs, BOTTOM_LEFT, BOTTOM_RIGHT);
+	*/
+	ResizeTab();
+	// <== Design Settings [eWombat/Stulle] - Max
 
 	ShowSearchSelector(false);
 
@@ -181,6 +194,13 @@ void CSearchResultsWnd::OnInitialUpdate()
 		GetDlgItem(IDC_STATIC_DLTOof)->SetFont(&theApp.m_fontSymbol);
 		GetDlgItem(IDC_STATIC_DLTOof)->SetWindowText(GetExStyle() & WS_EX_LAYOUTRTL ? _T("3") : _T("4")); // show a right-arrow
 	}
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#if _MSC_VER>=1600
+	m_ctlOpenParamsWnd.ModifyStyle(0,BS_OWNERDRAW,0);
+	m_Download.ModifyStyle(0,BS_OWNERDRAW,0);
+	m_ClearAll.ModifyStyle(0,BS_OWNERDRAW,0);
+#endif
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 }
 
 void CSearchResultsWnd::DoDataExchange(CDataExchange* pDX)
@@ -192,6 +212,12 @@ void CSearchResultsWnd::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CATTAB2, *m_cattabs);
 	DDX_Control(pDX, IDC_FILTER, m_ctlFilter);
 	DDX_Control(pDX, IDC_OPEN_PARAMS_WND, m_ctlOpenParamsWnd);
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#if _MSC_VER>=1600
+	DDX_Control(pDX, IDC_SDOWNLOAD, m_Download);
+	DDX_Control(pDX, IDC_CLEARALL, m_ClearAll);
+#endif
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
 	DDX_Control(pDX, IDC_SEARCHLST_ICO, *m_btnSearchListMenu);
 }
 
@@ -206,7 +232,7 @@ void CSearchResultsWnd::StartSearch(SSearchParams* pParams)
 			StartNewSearch(pParams);
 			break;
 
-		case SearchTypeContentDB:
+		case SearchTypeFileDonkey:
 			ShellOpenFile(CreateWebQuery(pParams));
 			delete pParams;
 			return;
@@ -524,18 +550,23 @@ CString	CSearchResultsWnd::CreateWebQuery(SSearchParams* pParams)
 	CString query;
 	switch (pParams->eType)
 	{
-	case SearchTypeContentDB:
-		query = _T("http://contentdb.emule-project.net/search.php?");
-		query += _T("s=") + EncodeURLQueryParam(pParams->strExpression);
+	case SearchTypeFileDonkey:
+		query = _T("http://www.filedonkey.com/search.html?");
+		query += _T("pattern=") + EncodeURLQueryParam(pParams->strExpression);
 		if (pParams->strFileType == ED2KFTSTR_AUDIO)
-			query += _T("&cat=2");
+			query += _T("&media=Audio");
 		else if (pParams->strFileType == ED2KFTSTR_VIDEO)
-			query += _T("&cat=3");
+			query += _T("&media=Video");
 		else if (pParams->strFileType == ED2KFTSTR_PROGRAM)
-			query += _T("&cat=1");
-		else
-			query += _T("&cat=all");
-		query += _T("&rel=1&search_option=simple&network=edonkey&go=Search");
+			query += _T("&media=Pro");
+		query += _T("&requestby=emule");
+
+		if (pParams->ullMinSize > 0)
+			query.AppendFormat(_T("&min_size=%I64u"),pParams->ullMinSize);
+		
+		if (pParams->ullMaxSize > 0)
+			query.AppendFormat(_T("&max_size=%I64u"),pParams->ullMaxSize);
+
 		break;
 	default:
 		return _T("");
@@ -552,6 +583,30 @@ void CSearchResultsWnd::DownloadSelected(bool bPaused)
 {
 	CWaitCursor curWait;
 	POSITION pos = searchlistctrl.GetFirstSelectedItemPosition();
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	// Category selection stuff...
+	if (!pos) return; // No point in asking for a category if there are no selected files to download.
+
+	int useCat = GetSelectedCat();
+	bool	bCreatedNewCat = false;
+	if (useCat==-1 && thePrefs.SelectCatForNewDL() && thePrefs.GetCatCount()>1)
+	{
+		CSelCategoryDlg* getCatDlg = new CSelCategoryDlg((CWnd*)theApp.emuledlg);
+		getCatDlg->DoModal();
+
+		// Returns 0 on 'Cancel', otherwise it returns the selected category
+		// or the index of a newly created category.  Users can opt to add the
+		// links into a new category.
+		useCat = getCatDlg->GetInput();
+		bCreatedNewCat = getCatDlg->CreatedNewCat();
+		bool	bCanceled = getCatDlg->WasCancelled(); //MORPH - Added by SiRoB, WasCanceled
+		delete getCatDlg;
+		if (bCanceled)
+			return;
+	}
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
 	while (pos != NULL)
 	{
 		int iIndex = searchlistctrl.GetNextSelectedItem(pos);
@@ -581,12 +636,50 @@ void CSearchResultsWnd::DownloadSelected(bool bPaused)
 			CSearchFile tempFile(parent);
 			tempFile.SetFileName(sel_file->GetFileName());
 			tempFile.SetStrTagValue(FT_FILENAME, sel_file->GetFileName());
-			theApp.downloadqueue->AddSearchToDownload(&tempFile, bPaused, GetSelectedCat());
+			// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+			/*
+			//Xman [MoNKi: -Check already downloaded files-]
+			if ( theApp.knownfiles->CheckAlreadyDownloadedFileQuestion(tempFile.GetFileHash(), tempFile.GetFileName()) )
+			{
+				theApp.downloadqueue->AddSearchToDownload(&tempFile, bPaused, GetSelectedCat());
+			}
+			//Xman end
+			*/
+			// m_cattabs is obsolete.
+			UINT fileCat = 0;
+			if (useCat==-1)
+			{
+				if (thePrefs.UseAutoCat())
+					fileCat = theApp.downloadqueue->GetAutoCat(CString(parent->GetFileName()), parent->GetFileSize());
+				if (!fileCat && thePrefs.UseActiveCatForLinks())
+					fileCat = theApp.emuledlg->transferwnd->GetActiveCategory();
+			}
+			else 
+			{
+                  fileCat = useCat;
+            }
+			if ( theApp.knownfiles->CheckAlreadyDownloadedFileQuestion(tempFile.GetFileHash(), tempFile.GetFileName()) )
+			{
+				if (thePrefs.SmallFileDLPush() && parent->GetFileSize() < (uint64)154624)
+					theApp.downloadqueue->AddSearchToDownload(&tempFile, bPaused, fileCat, 0);
+				else if (thePrefs.AutoSetResumeOrder())
+					theApp.downloadqueue->AddSearchToDownload(&tempFile, bPaused, fileCat, (uint16)(theApp.downloadqueue->GetMaxCatResumeOrder(fileCat)+1));
+				else
+					theApp.downloadqueue->AddSearchToDownload(&tempFile, bPaused, fileCat, (uint16)(theApp.downloadqueue->GetMaxCatResumeOrder(fileCat)));
+			}
+			// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 			// update parent and all childs
 			searchlistctrl.UpdateSources(parent);
 		}
 	}
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle	
+	// This bit of code will resume the number of files that the user specifies in preferences (Off by default)
+	if (thePrefs.StartDLInEmptyCats() > 0 && bCreatedNewCat && bPaused)
+		for (int i = 0; i < thePrefs.StartDLInEmptyCats(); i++)
+			if (!theApp.downloadqueue->StartNextFile(useCat)) break;
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 }
 
 void CSearchResultsWnd::OnSysColorChange()
@@ -1667,18 +1760,30 @@ void CSearchResultsWnd::UpdateCatTabs()
 	int oldsel=m_cattabs->GetCurSel();
 	m_cattabs->DeleteAllItems();
 	for (int ix=0;ix<thePrefs.GetCatCount();ix++) {
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 		CString label=(ix==0)?GetResString(IDS_ALL):thePrefs.GetCategory(ix)->strTitle;
 		label.Replace(_T("&"),_T("&&"));
 		m_cattabs->InsertItem(ix,label);
 	}
 	if (oldsel>=m_cattabs->GetItemCount() || oldsel==-1)
 		oldsel=0;
+	*/
+		CString label=thePrefs.GetCategory(ix)->strTitle;
+		label.Replace(_T("&"),_T("&&"));
+		m_cattabs->InsertItem(ix,label);
+	}
+	if (oldsel>=m_cattabs->GetItemCount())
+		oldsel=-1;
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 	m_cattabs->SetCurSel(oldsel);
 	int flag;
 	flag=(m_cattabs->GetItemCount()>1) ? SW_SHOW:SW_HIDE;
 	m_cattabs->ShowWindow(flag);
 	GetDlgItem(IDC_STATIC_DLTOof)->ShowWindow(flag);
+
+	ResizeTab(); // Design Settings [eWombat/Stulle] - Max
 }
 
 void CSearchResultsWnd::ShowSearchSelector(bool visible)
@@ -1838,6 +1943,7 @@ void CSearchResultsSelector::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	menu.AppendMenu(MF_STRING, MP_REMOVE, GetResString(IDS_FD_CLOSE));
 	menu.SetDefaultItem(MP_RESTORESEARCHPARAMS);
 	menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+	VERIFY( menu.DestroyMenu() ); // XP Style Menu [Xanatos] - Stulle
 }
 
 LRESULT CSearchResultsWnd::OnChangeFilter(WPARAM wParam, LPARAM lParam)
@@ -1886,11 +1992,19 @@ void CSearchResultsWnd::OnSearchListMenuBtnDropDown(NMHDR* /*pNMHDR*/, LRESULT* 
 {
 	CTitleMenu menu;
 	menu.CreatePopupMenu();
+	menu.AddMenuTitle(GetResString(IDS_SW_RESULT)); // XP Style Menu [Xanatos] - Stulle
 
 	menu.AppendMenu(MF_STRING | (searchselect.GetItemCount() > 0 ? MF_ENABLED : MF_GRAYED), MP_REMOVEALL, GetResString(IDS_REMOVEALLSEARCH));
 	menu.AppendMenu(MF_SEPARATOR);
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu menuFileSizeFormat;
 	menuFileSizeFormat.CreateMenu();
+	*/
+	CTitleMenu menuFileSizeFormat;
+	menuFileSizeFormat.CreateMenu();
+	menuFileSizeFormat.AddMenuTitle(GetResString(IDS_DL_SIZE), false, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	menuFileSizeFormat.AppendMenu(MF_STRING, MP_SHOW_FILESIZE_DFLT, GetResString(IDS_DEFAULT));
 	menuFileSizeFormat.AppendMenu(MF_STRING, MP_SHOW_FILESIZE_KBYTE, GetResString(IDS_KBYTES));
 	menuFileSizeFormat.AppendMenu(MF_STRING, MP_SHOW_FILESIZE_MBYTE, GetResString(IDS_MBYTES));
@@ -1900,6 +2014,11 @@ void CSearchResultsWnd::OnSearchListMenuBtnDropDown(NMHDR* /*pNMHDR*/, LRESULT* 
 	CRect rc;
 	m_btnSearchListMenu->GetWindowRect(&rc);
 	menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, rc.left, rc.bottom, this);
+
+	// ==> XP Style Menu [Xanatos] - Stulle
+	VERIFY( menuFileSizeFormat.DestroyMenu() );
+	VERIFY( menu.DestroyMenu() );
+	// <== XP Style Menu [Xanatos] - Stulle
 }
 
 BOOL CSearchResultsWnd::OnCommand(WPARAM wParam, LPARAM lParam)
@@ -1922,6 +2041,8 @@ BOOL CSearchResultsWnd::OnCommand(WPARAM wParam, LPARAM lParam)
 	return CResizableFormView::OnCommand(wParam, lParam);
 }
 
+// ==> Design Settings [eWombat/Stulle] - Max
+/*
 HBRUSH CSearchResultsWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
 	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
@@ -1929,3 +2050,124 @@ HBRUSH CSearchResultsWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 		return hbr;
 	return __super::OnCtlColor(pDC, pWnd, nCtlColor);
 }
+*/
+HBRUSH CSearchResultsWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
+	if (hbr)
+		return hbr;
+	hbr = __super::OnCtlColor(pDC, pWnd, nCtlColor);
+
+	switch(nCtlColor)
+	{
+	case CTLCOLOR_EDIT:
+		break;
+	default:
+		pDC->SetBkMode(TRANSPARENT);
+	case CTLCOLOR_DLG:
+		hbr = (HBRUSH) m_brMyBrush.GetSafeHandle();
+		break;
+	}
+
+	return hbr;
+}
+// <== Design Settings [eWombat/Stulle] - Max
+
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+void CSearchResultsWnd::OnNMClickCattab2(NMHDR* /*pNMHDR*/, LRESULT *pResult)
+{
+	POINT point;
+	::GetCursorPos(&point);
+
+	CPoint pt(point);
+	TCHITTESTINFO hitinfo;
+	CRect rect;
+	m_cattabs->GetWindowRect(&rect);
+	pt.Offset(0-rect.left,0-rect.top);
+	hitinfo.pt = pt;
+
+	// Find the destination tab...
+	int nTab = m_cattabs->HitTest( &hitinfo );
+	if( hitinfo.flags != TCHT_NOWHERE )
+		if(nTab==m_cattabs->GetCurSel())
+		{
+			m_cattabs->DeselectAll(false);
+		}
+	*pResult = 0;
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+// ==> Design Settings [eWombat/Stulle] - Max
+void CSearchResultsWnd::OnBackcolor() 
+{
+	COLORREF crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_search);
+
+	if(crTempColor == CLR_DEFAULT)
+		crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+	m_brMyBrush.DeleteObject();
+
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#if _MSC_VER<1600
+	if(crTempColor != CLR_DEFAULT)
+		m_brMyBrush.CreateSolidBrush(crTempColor);
+	else
+		m_brMyBrush.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+#else
+	if(crTempColor != CLR_DEFAULT)
+	{
+		m_brMyBrush.CreateSolidBrush(crTempColor);
+		m_ctlOpenParamsWnd.SetBackgroundColor(crTempColor);
+		m_Download.SetBackgroundColor(crTempColor);
+		m_ClearAll.SetBackgroundColor(crTempColor);
+	}
+	else
+	{
+		m_brMyBrush.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+		m_ctlOpenParamsWnd.SetBackgroundColor(COLORREF(-1));
+		m_Download.SetBackgroundColor(COLORREF(-1));
+		m_ClearAll.SetBackgroundColor(COLORREF(-1));
+	}
+#endif
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+	searchselect.m_clrBack = crTempColor;
+}
+
+void CSearchResultsWnd::OnSize(UINT nType, int cx, int cy)
+{
+	CResizableFormView::OnSize(nType, cx, cy);
+	ResizeTab();
+}
+
+void CSearchResultsWnd::ResizeTab()
+{
+	if (!::IsWindow(m_cattabs->m_hWnd))
+		return;
+
+	int size = 1;
+	for (int i = 0; i < m_cattabs->GetItemCount(); i++)
+	{
+		CRect rect;
+		m_cattabs->GetItemRect(i, &rect);
+		size += rect.Width()+3;
+	}
+
+	CRect TabRect,leftRect,rightRect;
+	m_cattabs->GetWindowRect(TabRect);
+	GetDlgItem(IDC_STATIC_DLTOof)->GetWindowRect(leftRect);
+	GetDlgItem(IDC_CLEARALL)->GetWindowRect(rightRect);
+	ScreenToClient(TabRect);
+	ScreenToClient(leftRect);
+	ScreenToClient(rightRect);
+
+	TabRect.left = leftRect.right+10;
+	int right = TabRect.left+size;
+	if(right > (rightRect.left-10))
+		right = rightRect.left-10;
+	TabRect.right = right;
+	TabRect.top = rightRect.top;
+	TabRect.bottom = rightRect.bottom;
+
+	m_cattabs->MoveWindow(TabRect,TRUE);
+}
+// <== Design Settings [eWombat/Stulle] - Max

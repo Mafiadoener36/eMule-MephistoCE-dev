@@ -16,7 +16,12 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #pragma once
 #include "MuleListCtrl.h"
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 #include "TitleMenu.h"
+*/
+#include "MenuXP.h"
+// <== XP Style Menu [Xanatos] - Stulle
 #include "ListCtrlItemWalk.h"
 
 class CSharedFileList;
@@ -58,7 +63,12 @@ public:
 	void	ReloadFileList();
 	void	AddFile(const CShareableFile* file);
 	void	RemoveFile(const CShareableFile* file, bool bDeletedFromDisk);
+	//Xman advanced upload-priority
+	/*
 	void	UpdateFile(const CShareableFile* file, bool bUpdateFileSummary = true);
+	*/
+	void	UpdateFile(const CShareableFile* file, bool bUpdateFileSummary = true, bool force = false);
+	//Xman end
 	void	Localize();
 	void	ShowFilesCount();
 	void	ShowComments(CShareableFile* file);
@@ -68,7 +78,24 @@ public:
 protected:
 	CTitleMenu		m_SharedFilesMenu;
 	CTitleMenu		m_CollectionsMenu;
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	CMenu			m_PrioMenu;
+	*/
+	CTitleMenu		m_PrioMenu;
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	CTitleMenu		m_HideOSMenu;
+	CTitleMenu		m_SelectiveChunkMenu;
+	CTitleMenu		m_ShareOnlyTheNeedMenu;
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	CTitleMenu       m_PowershareMenu;
+	CTitleMenu		m_PowerShareLimitMenu;
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	CTitleMenu		m_PsAmountLimitMenu;
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+	// <== XP Style Menu [Xanatos] - Stulle
 	bool			m_aSortBySecondValue[4];
 	CImageList		m_ImageList;
 	CDirectoryItem*	m_pDirectoryFilter;

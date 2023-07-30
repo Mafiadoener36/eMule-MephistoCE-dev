@@ -34,6 +34,7 @@
 #include "HelpIDs.h"
 #include "StringConversion.h"
 #include "Log.h"
+#include "DLP.h" //Xman dlp check own usernick if valid
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -56,6 +57,7 @@ BEGIN_MESSAGE_MAP(CPPgGeneral, CPropertyPage)
 	ON_BN_CLICKED(IDC_WEBSVEDIT , OnBnClickedEditWebservices)
 	ON_BN_CLICKED(IDC_ONLINESIG, OnSettingsChange)
 	ON_BN_CLICKED(IDC_CHECK4UPDATE, OnBnClickedCheck4Update)
+	ON_BN_CLICKED(IDC_CHECK4UPDATEMOD, OnSettingsChange) //Xman versions check
 	ON_BN_CLICKED(IDC_MINIMULE, OnSettingsChange)
 	ON_BN_CLICKED(IDC_PREVENTSTANDBY, OnSettingsChange)
 	ON_WM_HSCROLL()
@@ -139,6 +141,9 @@ void CPPgGeneral::LoadSettings(void)
 	CString strBuffer;
 	strBuffer.Format(_T("%i %s"),thePrefs.versioncheckdays,GetResString(IDS_DAYS2));
 	GetDlgItem(IDC_DAYS)->SetWindowText(strBuffer);
+
+	//Xman versions check
+	CheckDlgButton(IDC_CHECK4UPDATEMOD, thePrefs.UpdateNotifyMod());
 }
 
 BOOL CPPgGeneral::OnInitDialog()
@@ -193,8 +198,12 @@ BOOL CPPgGeneral::OnInitDialog()
 	
 	LoadSettings();
 	Localize();
+	//Xman versions check
+	/*
 	GetDlgItem(IDC_CHECKDAYS)->ShowWindow( IsDlgButtonChecked(IDC_CHECK4UPDATE) ? SW_SHOW : SW_HIDE );
 	GetDlgItem(IDC_DAYS)->ShowWindow( IsDlgButtonChecked(IDC_CHECK4UPDATE) ? SW_SHOW : SW_HIDE );
+	*/
+	//Xman end
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
@@ -228,6 +237,15 @@ BOOL CPPgGeneral::OnApply()
 		strNick = DEFAULT_NICK;
 		GetDlgItem(IDC_NICK)->SetWindowText(strNick);
 	}
+	//Xman DLP check the nick
+	CString strNicktocheck=strNick + _T(" [xxx]");
+	if(theApp.dlp->IsDLPavailable() && (theApp.dlp->DLPCheckUsername_Hard(strNicktocheck) || theApp.dlp->DLPCheckUsername_Soft(strNicktocheck)))
+	{
+		AfxMessageBox(_T("This nick is not allowed"));
+		strNick = DEFAULT_NICK;
+		GetDlgItem(IDC_NICK)->SetWindowText(strNick);
+	}
+	//Xman end
 	thePrefs.SetUserNick(strNick);
 
 	if (m_language.GetCurSel() != CB_ERR)
@@ -274,6 +292,9 @@ BOOL CPPgGeneral::OnApply()
 	thePrefs.splashscreen = IsDlgButtonChecked(IDC_SPLASHON)!=0;
 	thePrefs.bringtoforeground = IsDlgButtonChecked(IDC_BRINGTOFOREGROUND)!=0;
 	thePrefs.updatenotify = IsDlgButtonChecked(IDC_CHECK4UPDATE)!=0;
+	//Xman versions check
+	thePrefs.updatenotifymod= IsDlgButtonChecked(IDC_CHECK4UPDATEMOD)!=0;
+	//Xman end
 	thePrefs.onlineSig = IsDlgButtonChecked(IDC_ONLINESIG)!=0;
 	thePrefs.versioncheckdays = ((CSliderCtrl*)GetDlgItem(IDC_CHECKDAYS))->GetPos();
 	thePrefs.m_bEnableMiniMule = IsDlgButtonChecked(IDC_MINIMULE) != 0;
@@ -322,6 +343,12 @@ void CPPgGeneral::Localize(void)
 		GetDlgItem(IDC_STARTWIN)->SetWindowText(GetResString(IDS_STARTWITHWINDOWS));
 		GetDlgItem(IDC_MINIMULE)->SetWindowText(GetResString(IDS_ENABLEMINIMULE));
 		GetDlgItem(IDC_PREVENTSTANDBY)->SetWindowText(GetResString(IDS_PREVENTSTANDBY));
+		//Xman versions check
+		GetDlgItem(IDC_CHECK4UPDATEMOD)->SetWindowText(GetResString(IDS_CHECK4UPDATEMOD));
+		// ==> Removed Xtreme version check [Stulle] - Stulle
+		GetDlgItem(IDC_CHECK4UPDATEMOD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_CHECK4UPDATEMOD)->ShowWindow(SW_HIDE);
+		// <== Removed Xtreme version check [Stulle] - Stulle
 	}
 }
 
@@ -391,8 +418,12 @@ void CPPgGeneral::OnLangChange()
 void CPPgGeneral::OnBnClickedCheck4Update()
 {
 	SetModified();
+	//Xman versions check
+	//simple way: always enable
+	/*
 	GetDlgItem(IDC_CHECKDAYS)->ShowWindow( IsDlgButtonChecked(IDC_CHECK4UPDATE)?SW_SHOW:SW_HIDE );
 	GetDlgItem(IDC_DAYS)->ShowWindow( IsDlgButtonChecked(IDC_CHECK4UPDATE)?SW_SHOW:SW_HIDE );
+	*/
 }
 
 void CPPgGeneral::OnHelp()

@@ -48,7 +48,6 @@ there client on the eMule forum..
 #include "../utils/KadUDPKey.h"
 #include "../utils/KadClientSearcher.h"
 #include "../kademlia/tag.h"
-#include "../../kademliawnd.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -75,7 +74,6 @@ bool		CKademlia::m_bRunning = false;
 bool		CKademlia::m_bLANMode = false;
 CList<uint32, uint32> CKademlia::m_liStatsEstUsersProbes;
 _ContactList CKademlia::s_liBootstapList;
-_ContactList CKademlia::s_liTriedBootstapList;
 
 CKademlia::CKademlia()
 {}
@@ -187,9 +185,6 @@ void CKademlia::Stop()
 	while (!s_liBootstapList.IsEmpty())
 		delete s_liBootstapList.RemoveHead();
 
-	while (!s_liTriedBootstapList.IsEmpty())
-		delete s_liTriedBootstapList.RemoveHead();
-
 	// Make sure all zones are removed.
 	m_mapEvents.clear();
 }
@@ -210,22 +205,17 @@ void CKademlia::Process()
 	{
 		bUpdateUserFile = true;
 		m_tStatusUpdate = MIN2S(1) + tNow;
-#ifdef _BOOTSTRAPNODESDAT
-		// do some random lookup to fill out contact list with fresh (but for routing useless) nodes which we can
-	// use for our bootstrap nodes.dat
-	if (GetRoutingZone()->GetNumContacts() < 1500)
-	{
-		CUInt128 uRandom;
-		uRandom.SetValueRandom();
-		CSearchManager::FindNode(uRandom, false);	
-	}
-#endif
 	}
 	if( m_tNextFirewallCheck <= tNow)
 		RecheckFirewalled();
 	if (m_tNextUPnPCheck != 0 && m_tNextUPnPCheck <= tNow)
 	{
+		// ==> UPnP support [MoNKi] - leuk_he
+		/*
 		theApp.emuledlg->RefreshUPnP();
+		*/
+		theApp.RebindUPnP();
+		// <== UPnP support [MoNKi] - leuk_he
 		m_tNextUPnPCheck = 0; // will be reset on firewallcheck
 	}
 
@@ -323,27 +313,11 @@ void CKademlia::Process()
 	if(!IsConnected() && !s_liBootstapList.IsEmpty() 
 		&& (tNow - m_tBootstrap > 15 || (GetRoutingZone()->GetNumContacts() == 0 && tNow - m_tBootstrap >= 2)))
 	{
-		if (!s_liTriedBootstapList.IsEmpty())
-		{
-			CContact* pLastTriedContact = s_liTriedBootstapList.GetHead();
-			pLastTriedContact->SetBootstrapFailed();
-			theApp.emuledlg->kademliawnd->ContactRef(pLastTriedContact);
-		}
 		CContact* pContact = s_liBootstapList.RemoveHead();
 		m_tBootstrap = tNow;
 		DebugLog(_T("Trying to Bootstrap Kad from %s, Distance: %s, Version: %u, %u Contacts left"), ipstr(ntohl(pContact->GetIPAddress())), pContact->GetDistance().ToHexString(),  pContact->GetVersion(), s_liBootstapList.GetCount());
 		m_pInstance->m_pUDPListener->Bootstrap(pContact->GetIPAddress(), pContact->GetUDPPort(), pContact->GetVersion(), &pContact->GetClientID());
-		s_liTriedBootstapList.AddHead(pContact);
-	}
-	else if (!IsConnected() && s_liBootstapList.IsEmpty() && !s_liTriedBootstapList.IsEmpty()  
-		&& (tNow - m_tBootstrap > 15 || (GetRoutingZone()->GetNumContacts() == 0 && tNow - m_tBootstrap >= 2)))
-	{
-		// failed to bootstrap
-		AddLogLine(true, GetResString(IDS_BOOTSTRAPFAILED));
-		theApp.emuledlg->kademliawnd->StopUpdateContacts();
-		while (!s_liTriedBootstapList.IsEmpty())
-			delete s_liTriedBootstapList.RemoveHead();
-		theApp.emuledlg->kademliawnd->StartUpdateContacts();
+		delete pContact;
 	}
 
 	if (GetUDPListener() != NULL)

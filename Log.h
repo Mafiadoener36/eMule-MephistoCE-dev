@@ -20,6 +20,7 @@ enum EDebugLogPriority{
 #define	LOG_DEBUG		0x10
 #define	LOG_STATUSBAR	0x20
 #define	LOG_DONTNOTIFY	0x40
+#define LOG_LEECHER		0x80 //Xman Anti-Leecher-Log
 
 
 void Log(LPCTSTR pszLine, ...);
@@ -46,6 +47,8 @@ void AddDebugLogLine(EDebugLogPriority Priority, bool bAddToStatusBar, LPCTSTR p
 
 void AddLogTextV(UINT uFlags, EDebugLogPriority dlpPriority, LPCTSTR pszLine, va_list argp);
 
+//Xman Anti-Leecher-Log
+void AddLeecherLogLine(bool bAddToStatusBar, LPCTSTR pszLine, ...);
 
 ///////////////////////////////////////////////////////////////////////////////
 // CLogFile
@@ -83,6 +86,12 @@ protected:
 	UINT m_uMaxFileSize;
 	bool m_bInOpenCall;
 	ELogFileFormat m_eFileFormat;
+
+	// ==> Date File Name Log [AndCycle] - Stulle
+private:
+	CString m_strOriginFileName;
+	DWORD	m_dwNextRenameTick;
+	// <== Date File Name Log [AndCycle] - Stulle
 };
 
 extern CLogFile theLog;

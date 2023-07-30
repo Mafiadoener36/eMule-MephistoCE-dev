@@ -41,6 +41,7 @@ BEGIN_MESSAGE_MAP(CPPgServer, CPropertyPage)
 	ON_BN_CLICKED(IDC_SCORE, OnSettingsChange)
 	ON_BN_CLICKED(IDC_SMARTIDCHECK, OnSettingsChange)
 	ON_BN_CLICKED(IDC_SAFESERVERCONNECT, OnSettingsChange)
+	ON_BN_CLICKED(IDC_DONTREMOVESTATICSERVER, OnSettingsChange) //Xman // Mighty Knife: Static server handling (morph)
 	ON_BN_CLICKED(IDC_AUTOCONNECTSTATICONLY, OnSettingsChange)
 	ON_BN_CLICKED(IDC_MANUALSERVERHIGHPRIO, OnSettingsChange)
 	ON_BN_CLICKED(IDC_EDITADR, OnBnClickedEditadr)
@@ -84,6 +85,8 @@ void CPPgServer::LoadSettings(void)
 	CheckDlgButton(IDC_SAFESERVERCONNECT, thePrefs.m_bSafeServerConnect);
 	CheckDlgButton(IDC_AUTOCONNECTSTATICONLY, thePrefs.m_bAutoConnectToStaticServersOnly);
 	CheckDlgButton(IDC_MANUALSERVERHIGHPRIO, thePrefs.m_bManualAddedServersHighPriority);
+	//Xman // Mighty Knife: Static server handling (morph)
+	CheckDlgButton(IDC_DONTREMOVESTATICSERVER,thePrefs.GetDontRemoveStaticServers());
 }
 
 BOOL CPPgServer::OnApply()
@@ -106,6 +109,9 @@ BOOL CPPgServer::OnApply()
 	thePrefs.SetSafeServerConnectEnabled(IsDlgButtonChecked(IDC_SAFESERVERCONNECT)!=0);
 	thePrefs.m_bAutoConnectToStaticServersOnly = IsDlgButtonChecked(IDC_AUTOCONNECTSTATICONLY)!=0;
 	thePrefs.m_bManualAddedServersHighPriority = IsDlgButtonChecked(IDC_MANUALSERVERHIGHPRIO)!=0;
+
+	//Xman // Mighty Knife: Static server handling (morph)
+	thePrefs.SetDontRemoveStaticServers(IsDlgButtonChecked(IDC_DONTREMOVESTATICSERVER)!=0);
 
 	LoadSettings();
 
@@ -131,6 +137,9 @@ void CPPgServer::Localize(void)
 		GetDlgItem(IDC_MANUALSERVERHIGHPRIO)->SetWindowText(GetResString(IDS_MANUALSERVERHIGHPRIO));
 		GetDlgItem(IDC_EDITADR)->SetWindowText(GetResString(IDS_EDITLIST));
 		GetDlgItem(IDC_AUTOCONNECTSTATICONLY)->SetWindowText(GetResString(IDS_PW_AUTOCONNECTSTATICONLY));
+
+		//Xman // Mighty Knife: Static server handling (morph)
+		GetDlgItem(IDC_DONTREMOVESTATICSERVER)->SetWindowText(GetResString(IDS_DONTREMOVESTATICSERVER));
 	}
 }
 

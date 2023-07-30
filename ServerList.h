@@ -84,4 +84,9 @@ private:
 	CTypedPtrList<CPtrList, CServer*> list;
 	UINT		delservercount;
 	DWORD		m_nLastSaved;
+
+	//EastShare Start - added by AndCycle, IP to Country
+public:
+	void ResetIP2Country();
+	//EastShare End - added by AndCycle, IP to Country
 };

@@ -26,6 +26,8 @@
 #include "TransferDlg.h"
 #include "ServerWnd.h"
 #include "HelpIDs.h"
+//Xman
+#include "opcodes.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -43,7 +45,13 @@ BEGIN_MESSAGE_MAP(CPPgDisplay, CPropertyPage)
 	ON_BN_CLICKED(IDC_DBLCLICK, OnSettingsChange)
 	ON_EN_CHANGE(IDC_TOOLTIPDELAY, OnSettingsChange)
 	ON_WM_HSCROLL()
+	// ==> show overhead on title - Stulle
+	/*
 	ON_BN_CLICKED(IDC_SHOWRATEONTITLE, OnSettingsChange)
+	*/
+	ON_BN_CLICKED(IDC_SHOWRATEONTITLE, OnEnChangeSREnabled)
+	ON_BN_CLICKED(IDC_SHOWOVERHEADONTITLE, OnSettingsChange)
+	// <== show overhead on title - Stulle
 	ON_BN_CLICKED(IDC_DISABLEHIST , OnSettingsChange)
 	ON_BN_CLICKED(IDC_DISABLEKNOWNLIST, OnSettingsChange)
 	ON_BN_CLICKED(IDC_DISABLEQUEUELIST, OnSettingsChange)
@@ -91,6 +99,13 @@ void CPPgDisplay::LoadSettings(void)
 	else
 		CheckDlgButton(IDC_SHOWRATEONTITLE,0);
 
+	// ==> show overhead on title - Stulle
+	if(thePrefs.showOverheadInTitle)
+		CheckDlgButton(IDC_SHOWOVERHEADONTITLE,1);
+	else
+		CheckDlgButton(IDC_SHOWOVERHEADONTITLE,0);
+	// <== show overhead on title - Stulle
+
 	if(thePrefs.m_bDisableKnownClientList)
 		CheckDlgButton(IDC_DISABLEKNOWNLIST,1);
 	else
@@ -122,6 +137,8 @@ void CPPgDisplay::LoadSettings(void)
 #endif
 
 	SetDlgItemInt(IDC_TOOLTIPDELAY, thePrefs.m_iToolDelayTime, FALSE);
+
+	SetModified(FALSE); // show overhead on title - Stulle
 }
 
 BOOL CPPgDisplay::OnInitDialog()
@@ -143,6 +160,8 @@ BOOL CPPgDisplay::OnInitDialog()
 	LoadSettings();
 	Localize();
 
+	OnEnChangeSREnabled(); // show overhead on title - Stulle
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -151,6 +170,7 @@ BOOL CPPgDisplay::OnApply()
 {
 	TCHAR buffer[510];
 	
+	if(m_bModified){ // show overhead on title - Stulle
 	bool mintotray_old = thePrefs.mintotray;
 	thePrefs.mintotray = IsDlgButtonChecked(IDC_MINTRAY)!=0;
 	thePrefs.transferDoubleclick = IsDlgButtonChecked(IDC_DBLCLICK)!=0;
@@ -169,6 +189,13 @@ BOOL CPPgDisplay::OnApply()
 		thePrefs.showRatesInTitle = true;
 	else
 		thePrefs.showRatesInTitle = false;
+
+	// ==> show overhead on title - Stulle
+	if(IsDlgButtonChecked(IDC_SHOWOVERHEADONTITLE))
+		thePrefs.showOverheadInTitle= true;
+	else
+		thePrefs.showOverheadInTitle= false;
+	// <== show overhead on title - Stulle
 
 	thePrefs.ShowCatTabInfos(IsDlgButtonChecked(IDC_SHOWCATINFO) != 0);
 	if (!thePrefs.ShowCatTabInfos())
@@ -217,10 +244,31 @@ BOOL CPPgDisplay::OnApply()
 
 	if (mintotray_old != thePrefs.mintotray)
 		theApp.emuledlg->TrayMinimizeToTrayChange();
+	// ==> Show sources on title - Stulle
+	/*
 	if (!thePrefs.ShowRatesOnTitle())
+	*/
+	if (!thePrefs.ShowRatesOnTitle() && !thePrefs.ShowSrcOnTitle()) 
+	// <== Show sources on title - Stulle
+		// Xman // Maella -Support for tag ET_MOD_VERSION 0x55
+		/*
 		theApp.emuledlg->SetWindowText(_T("eMule v") + theApp.m_strCurVersionLong);
+		*/
+		// ==> ModID [itsonlyme/SiRoB] - Stulle
+		/*
+		theApp.emuledlg->SetWindowText(_T("eMule v") + theApp.m_strCurVersionLong + _T(" ") + MOD_VERSION); 
+		*/
+		{
+			_stprintf(buffer,_T("eMule v%s [%s]"),theApp.m_strCurVersionLong,theApp.m_strModLongVersion);
+			theApp.emuledlg->SetWindowText(buffer);
+		}
+		// <== ModID [itsonlyme/SiRoB] - Stulle
+		//Xman End
 
 	SetModified(FALSE);
+
+	} //show overhead on title - Stulle
+
 	return CPropertyPage::OnApply();
 }
 
@@ -236,6 +284,7 @@ void CPPgDisplay::Localize(void)
 		GetDlgItem(IDC_FLAT)->SetWindowText(GetResString(IDS_FLAT));
 		GetDlgItem(IDC_ROUND)->SetWindowText(GetResString(IDS_ROUND));
 		GetDlgItem(IDC_SHOWRATEONTITLE)->SetWindowText(GetResString(IDS_SHOWRATEONTITLE));
+		GetDlgItem(IDC_SHOWOVERHEADONTITLE)->SetWindowText(GetResString(IDS_SHOWOVERHEADONTITLE)); // show overhead on title - Stulle
 		GetDlgItem(IDC_DISABLEKNOWNLIST)->SetWindowText(GetResString(IDS_DISABLEKNOWNLIST));
 		GetDlgItem(IDC_DISABLEQUEUELIST)->SetWindowText(GetResString(IDS_DISABLEQUEUELIST));
 		GetDlgItem(IDC_STATIC_CPUMEM)->SetWindowText(GetResString(IDS_STATIC_CPUMEM));
@@ -378,3 +427,12 @@ void CPPgDisplay::DrawPreview()
 	int dep=((CSliderCtrl*)GetDlgItem(IDC_3DDEPTH))->GetPos();
 	m_3DPreview.SetSliderPos( dep);
 }
+
+// ==> show overhead on title - Stulle
+void CPPgDisplay::OnEnChangeSREnabled()
+{
+	GetDlgItem(IDC_SHOWOVERHEADONTITLE)->EnableWindow(IsDlgButtonChecked(IDC_SHOWRATEONTITLE));	
+
+	SetModified();
+}
+// <== show overhead on title - Stulle

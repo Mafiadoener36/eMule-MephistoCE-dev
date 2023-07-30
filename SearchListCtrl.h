@@ -16,7 +16,12 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #pragma once
 #include "MuleListCtrl.h"
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 #include "TitleMenu.h"
+*/
+#include "MenuXP.h"
+// <== XP Style Menu [Xanatos] - Stulle
 #include "ListCtrlItemWalk.h"
 
 #define AVBLYSHADECOUNT 13
@@ -44,6 +49,7 @@ public:
 	bool	m_bSortAscending;
 	uint32	m_nScrollPosition;
 	CArray<int, int>	m_aSelectedItems;
+	CList<int, int> m_liSortHistory; // SLUGFILLER: multiSort
 };
 
 class CSearchListCtrl : public CMuleListCtrl, public CListCtrlItemWalk

@@ -33,6 +33,8 @@
 #include "OtherFunctions.h"
 #include "Log.h"
 #include "StringConversion.h"
+//Xman
+#include "opcodes.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -47,6 +49,10 @@ BEGIN_MESSAGE_MAP(CStatisticsTree, CTreeCtrl)
 	ON_WM_RBUTTONDOWN()
 	ON_WM_CONTEXTMENU()
 	ON_NOTIFY_REFLECT(TVN_ITEMEXPANDED, OnItemExpanded)
+	// ==> XP Style Menu [Xanatos] - Stulle
+	ON_WM_MEASUREITEM()
+	ON_WM_MENUCHAR()
+	// <== XP Style Menu [Xanatos] - Stulle
 END_MESSAGE_MAP()
 
 CStatisticsTree::CStatisticsTree()
@@ -154,7 +160,12 @@ void CStatisticsTree::DoMenu(CPoint doWhere, UINT nFlags)
 	mnuContext.AppendMenu(MF_SEPARATOR);
 
 	mnuHTML.CreateMenu();
+	// ==> XP Style Menu [Xanatos] - Stulle
+	/*
 	mnuHTML.AddMenuTitle(NULL, true);
+	*/
+	mnuHTML.AddMenuTitle(NULL, true, false);
+	// <== XP Style Menu [Xanatos] - Stulle
 	mnuHTML.AppendMenu(MF_STRING, MP_STATTREE_HTMLCOPYSEL, GetResString(IDS_STATS_MNUTREECPYSEL), _T("COPY"));
 	mnuHTML.AppendMenu(MF_STRING, MP_STATTREE_HTMLCOPYVIS, GetResString(IDS_STATS_MNUTREECPYVIS), _T("COPYVISIBLE"));
 	mnuHTML.AppendMenu(MF_STRING, MP_STATTREE_HTMLCOPYALL, GetResString(IDS_STATS_MNUTREECPYALL), _T("COPYSELECTED"));
@@ -357,7 +368,17 @@ CString CStatisticsTree::GetHTML(bool onlyVisible, HTREEITEM theItem, int theIte
 
 	CString	strBuffer;
 	if (firstItem)
+		//Xman // Maella -Support for tag ET_MOD_VERSION 0x55
+		/*
 		strBuffer.Format(_T("<font face=\"Tahoma,Verdana,Courier New,Helvetica\" size=\"2\">\r\n<b>eMule v%s %s [%s]</b>\r\n<br /><br />\r\n"), theApp.m_strCurVersionLong, GetResString(IDS_SF_STATISTICS), thePrefs.GetUserNick());
+		*/
+		// ==> ModID [itsonlyme/SiRoB] - Stulle
+		/*
+		strBuffer.Format(_T("<font face=\"Tahoma,Verdana,Courier New,Helvetica\" size=\"2\">\r\n<b>eMule v%s %s [%s]</b>\r\n<br /><br />\r\n"), theApp.m_strCurVersionLong + _T(" ") + MOD_VERSION, GetResString(IDS_SF_STATISTICS), thePrefs.GetUserNick());
+		*/
+		strBuffer.Format(_T("<font face=\"Tahoma,Verdana,Courier New,Helvetica\" size=\"2\">\r\n<b>eMule v%s [%s] %s [%s]</b>\r\n<br /><br />\r\n"), theApp.m_strCurVersionLong, theApp.m_strModLongVersion, GetResString(IDS_SF_STATISTICS), thePrefs.GetUserNick());
+		// <== ModID [itsonlyme/SiRoB] - Stulle
+		//Xman end
 
 	while (hCurrent != NULL)
 	{
@@ -437,7 +458,17 @@ CString CStatisticsTree::GetText(bool onlyVisible, HTREEITEM theItem, int theIte
 
 	CString	strBuffer;
 	if (bPrintHeader)
+		//Xman // Maella -Support for tag ET_MOD_VERSION 0x55
+		/*
 		strBuffer.Format(_T("eMule v%s %s [%s]\r\n\r\n"), theApp.m_strCurVersionLong, GetResString(IDS_SF_STATISTICS) ,thePrefs.GetUserNick());
+		*/
+		// ==> ModID [itsonlyme/SiRoB] - Stulle
+		/*
+		strBuffer.Format(_T("eMule v%s %s [%s]\r\n\r\n"), theApp.m_strCurVersionLong + _T(" ") + MOD_VERSION, GetResString(IDS_SF_STATISTICS) ,thePrefs.GetUserNick()); //Xman // Maella -Support for tag ET_MOD_VERSION 0x55
+		*/
+		strBuffer.Format(_T("eMule v%s [%s] %s [%s]\r\n\r\n"), theApp.m_strCurVersionLong,theApp.m_strModLongVersion, GetResString(IDS_SF_STATISTICS) ,thePrefs.GetUserNick());
+		// <== ModID [itsonlyme/SiRoB] - Stulle
+		//Xman end
 
 	while (hCurrent != NULL)
 	{
@@ -776,3 +807,39 @@ int CStatisticsTree::ApplyExpandedMask(CString theMask, HTREEITEM theItem, int t
 	}
 	return theStringIndex;
 }
+
+//Xman extended stats (taken from emule plus)
+void CStatisticsTree::DeleteChildItems (HTREEITEM parentItem)
+{
+	if (ItemHasChildren(parentItem))
+	{
+		HTREEITEM hNextItem;
+		HTREEITEM hChildItem = GetChildItem(parentItem);
+		while (hChildItem != NULL)
+		{
+			hNextItem = GetNextItem(hChildItem, TVGN_NEXT);
+			DeleteItem(hChildItem);
+			hChildItem = hNextItem;
+		}
+	}
+}
+//Xman end
+
+// ==> XP Style Menu [Xanatos] - Stulle
+void CStatisticsTree::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct) 
+{
+	HMENU hMenu = AfxGetThreadState()->m_hTrackingMenu;
+	if(CMenu *pMenu = CMenu::FromHandle(hMenu))
+		pMenu->MeasureItem(lpMeasureItemStruct);
+	
+	CTreeCtrl::OnMeasureItem(nIDCtl, lpMeasureItemStruct);
+}
+
+LRESULT CStatisticsTree::OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu) 
+{
+	if (pMenu->IsKindOf(RUNTIME_CLASS(CTitleMenu)) )
+		return CTitleMenu::OnMenuChar(nChar, nFlags, pMenu);
+
+	return CTreeCtrl::OnMenuChar(nChar, nFlags, pMenu);
+}
+// <== XP Style Menu [Xanatos] - Stulle

@@ -213,7 +213,6 @@ UINT CSearchList::ProcessSearchAnswer(const uchar* in_packet, uint32 size,
 		CSearchFile* toadd = new CSearchFile(&packet, Sender ? Sender->GetUnicodeSupport()!=utf8strNone : false, nSearchID, 0, 0, pszDirectory);
 		if (toadd->IsLargeFile() && (Sender == NULL || !Sender->SupportsLargeFiles())){
 			DebugLogWarning(_T("Client offers large file (%s) but doesn't announced support for it - ignoring file"), toadd->GetFileName());
-			delete toadd;
 			continue;
 		}
 		if (Sender){
@@ -455,6 +454,24 @@ CSearchFile* CSearchList::DetachNextFile(uint32 nSearchID)
 
 bool CSearchList::AddToList(CSearchFile* toadd, bool bClientResponse, uint32 dwFromUDPServerIP)
 {
+	//Xman
+	// SLUGFILLER: searchCatch
+	CPartFile *file = theApp.downloadqueue->GetFileByID(toadd->GetFileHash());
+	if (file){
+		if (toadd->GetClientID() && toadd->GetClientPort()){
+			// pre-filter sources which would be dropped in CPartFile::AddSources
+			if (CPartFile::CanAddSource(toadd->GetClientID(), toadd->GetClientPort(), toadd->GetClientServerIP(), toadd->GetClientServerPort())){
+				CSafeMemFile sources(1+4+2);
+				sources.WriteUInt8(1);
+				sources.WriteUInt32(toadd->GetClientID());
+				sources.WriteUInt16(toadd->GetClientPort());
+				sources.SeekToBegin();
+				file->AddSources(&sources,toadd->GetClientServerIP(),toadd->GetClientServerPort(),false);
+			}
+		}
+	}
+	// SLUGFILLER: searchCatch
+
 	if (!bClientResponse && !m_strResultFileType.IsEmpty() && _tcscmp(m_strResultFileType, toadd->GetFileType()) != 0)
 	{
 		delete toadd;

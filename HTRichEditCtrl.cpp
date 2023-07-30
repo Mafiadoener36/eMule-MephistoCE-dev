@@ -83,9 +83,13 @@ void CHTRichEditCtrl::Init(LPCTSTR pszTitle, LPCTSTR pszSkinKey)
 
 	VERIFY( SendMessage(EM_SETUNDOLIMIT, 0, 0) == 0 );
 	int iMaxLogBuff = thePrefs.GetMaxLogBuff();
+	// ==> Drop Win95 support [MorphXT] - Stulle
+	/*
 	if (afxIsWin95())
 		LimitText(iMaxLogBuff > 0xFFFF ? 0xFFFF : iMaxLogBuff);
 	else
+	*/
+	// <== Drop Win95 support [MorphXT] - Stulle
 		LimitText(iMaxLogBuff ? iMaxLogBuff : 128*1024);
 	m_iLimitText = GetLimitText();
 
@@ -339,6 +343,8 @@ void CHTRichEditCtrl::ScrollToLastLine(bool bForceLastLineAtBottom)
 
 	// WM_VSCROLL does not work correctly under Win98 (or older version of comctl.dll)
 	SendMessage(WM_VSCROLL, SB_BOTTOM);
+	// ==> Drop Win95 support [MorphXT] - Stulle
+	/*
 	if (afxIsWin95())
 	{
 		// older version of comctl.dll seem to need this to properly update the display
@@ -346,12 +352,16 @@ void CHTRichEditCtrl::ScrollToLastLine(bool bForceLastLineAtBottom)
 		SendMessage(WM_VSCROLL, MAKELONG(SB_THUMBPOSITION, iPos));
 		SendMessage(WM_VSCROLL, SB_ENDSCROLL);
 	}
+	*/
+	// <== Drop Win95 support [MorphXT] - Stulle
 }
 
 void CHTRichEditCtrl::ScrollToFirstLine()
 {
 	// WM_VSCROLL does not work correctly under Win98 (or older version of comctl.dll)
 	SendMessage(WM_VSCROLL, SB_TOP);
+	// ==> Drop Win95 support [MorphXT] - Stulle
+	/*
 	if (afxIsWin95())
 	{
 		// older version of comctl.dll seem to need this to properly update the display
@@ -359,6 +369,8 @@ void CHTRichEditCtrl::ScrollToFirstLine()
 		SendMessage(WM_VSCROLL, MAKELONG(SB_THUMBPOSITION, iPos));
 		SendMessage(WM_VSCROLL, SB_ENDSCROLL);
 	}
+	*/
+	// <== Drop Win95 support [MorphXT] - Stulle
 }
 
 void CHTRichEditCtrl::AddString(int nPos, LPCTSTR pszString, bool bLink, COLORREF cr, COLORREF bk, DWORD mask)
@@ -586,11 +598,20 @@ void CHTRichEditCtrl::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	CTitleMenu menu;
 	menu.CreatePopupMenu();
 	menu.AddMenuTitle(GetResString(IDS_LOGENTRY));
+	// ==> more icons - Stulle
+	/*
 	menu.AppendMenu(MF_STRING | (lSelEnd > lSelStart ? MF_ENABLED : MF_GRAYED), MP_COPYSELECTED, GetResString(IDS_COPY));
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING | (iTextLen > 0 ? MF_ENABLED : MF_GRAYED), MP_SELECTALL, GetResString(IDS_SELECTALL));
 	menu.AppendMenu(MF_STRING | (iTextLen > 0 ? MF_ENABLED : MF_GRAYED), MP_REMOVEALL , GetResString(IDS_PW_RESET));
 	menu.AppendMenu(MF_STRING | (iTextLen > 0 ? MF_ENABLED : MF_GRAYED), MP_SAVELOG, GetResString(IDS_SAVELOG) + _T("..."));
+	*/
+	menu.AppendMenu(MF_STRING | (lSelEnd > lSelStart ? MF_ENABLED : MF_GRAYED), MP_COPYSELECTED, GetResString(IDS_COPY), _T("COPY"));
+	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING | (iTextLen > 0 ? MF_ENABLED : MF_GRAYED), MP_SELECTALL, GetResString(IDS_SELECTALL), _T("SEARCHFILETYPE_DOCUMENT"));
+	menu.AppendMenu(MF_STRING | (iTextLen > 0 ? MF_ENABLED : MF_GRAYED), MP_REMOVEALL , GetResString(IDS_PW_RESET), _T("INCOMPLETE"));
+	menu.AppendMenu(MF_STRING | (iTextLen > 0 ? MF_ENABLED : MF_GRAYED), MP_SAVELOG, GetResString(IDS_SAVELOG) + _T("..."), _T("SAVE"));
+	// <== more icons - Stulle
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING | (m_bAutoScroll ? MF_CHECKED : MF_UNCHECKED), MP_AUTOSCROLL, GetResString(IDS_AUTOSCROLL));
 

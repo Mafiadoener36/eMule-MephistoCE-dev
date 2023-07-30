@@ -18,7 +18,11 @@
 #include "ColorButton.h"
 
 struct Category_Struct;
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 class CCustomAutoComplete;
+*/
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 class CCatDialog : public CDialog
 {
@@ -34,7 +38,11 @@ protected:
 	DWORD newcolor;
 	CColorButton m_ctlColor;
 	CComboBox m_prio;
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	CCustomAutoComplete* m_pacRegExp;
+	*/
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 	void Localize();
 	void UpdateData();
@@ -46,5 +54,10 @@ protected:
 	afx_msg LONG OnSelChange(UINT lParam, LONG wParam);
 	afx_msg void OnBnClickedBrowse();
 	afx_msg void OnBnClickedOk();
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	afx_msg void OnDDBnClicked();
+	*/
+	CComboBox m_comboDlMode;
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 };

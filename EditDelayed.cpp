@@ -26,6 +26,8 @@
 #include "UserMsgs.h"
 #include "emule.h"
 #include "MenuCmds.h"
+#include "MenuXP.h" // XP Style Menu [Xanatos] - Stulle
+#include "OtherFunctions.h"  
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -219,8 +221,15 @@ void CEditDelayed::OnLButtonDown(UINT nFlags, CPoint point)
 		if (point.x <= ICON_LEFTSPACE)
 		{
 			// construct a popup menu out of the columnheader for the filter setting
+			// ==> XP Style Menu [Xanatos] - Stulle
+			/*
 			CMenu menu;
 			menu.CreatePopupMenu();
+			*/
+			CTitleMenu menu;
+			menu.CreatePopupMenu();
+			menu.AddMenuTitle(GetResString(IDS_FILTER));
+			// <== XP Style Menu [Xanatos] - Stulle
 
 			HDITEM hdi;
 			TCHAR szBuffer[256];
@@ -250,6 +259,7 @@ void CEditDelayed::OnLButtonDown(UINT nFlags, CPoint point)
 			CPoint pointMenu(2, editRect.bottom);
 			ClientToScreen(&pointMenu);
 			menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pointMenu.x, pointMenu.y, this);
+			VERIFY( menu.DestroyMenu() ); // XP Style Menu [Xanatos] - Stulle
 			return;
 		}
 	}

@@ -49,4 +49,9 @@ protected:
 	afx_msg void OnLvnColumnClick(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnNmDblClk(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnSysColorChange();
+
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+public:
+	bool	AddEmfriendsMetToList(const CString& strFile);
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]
 };

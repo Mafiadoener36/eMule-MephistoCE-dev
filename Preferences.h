@@ -16,6 +16,8 @@
 //Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #pragma once
 
+#include "Ini2.h" // Design Settings [eWombat/Stulle] - Stulle
+
 const CString strDefaultToolbar = _T("0099010203040506070899091011");
 
 enum EViewSharedFilesAccess{
@@ -50,6 +52,14 @@ enum EDefaultDirectory{
 enum EToolbarLabelType;
 enum ELogFileFormat;
 
+//Xman process prio
+// [TPT] - Select process priority 
+/*
+#define PROCESSPRIORITYNUMBER 6
+static const PriorityClasses[] = { REALTIME_PRIORITY_CLASS, HIGH_PRIORITY_CLASS, ABOVE_NORMAL_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS, IDLE_PRIORITY_CLASS };
+*/
+// [TPT] - Select process priority 
+
 // DO NOT EDIT VALUES like making a uint16 to uint32, or insert any value. ONLY append new vars
 #pragma pack(1)
 struct Preferences_Ext_Struct{
@@ -70,6 +80,8 @@ struct ProxySettings{
 	bool		UseProxy;
 };
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 struct Category_Struct{
 	CString	strIncomingPath;
 	CString	strTitle;
@@ -84,7 +96,216 @@ struct Category_Struct{
 	bool	ac_regexpeval;
 	bool	downloadInAlphabeticalOrder; // ZZ:DownloadManager
 };
+*/
+// View Filter Struct
+#pragma pack(1)
+struct CategoryViewFilter_Struct{
+	//		General View Filters
+	UINT	nFromCats;  // 0 == All; 1 == Unassigned; 2 == This Cat Only
+	bool	bSuspendFilters;
+	//		File Type View Filters
+	bool	bVideo;
+	bool	bAudio;
+	bool	bArchives;
+	bool	bImages;
+	//		File State View Filters
+	bool	bWaiting;
+	bool	bTransferring;
+	bool	bPaused;
+	bool	bStopped;
+	bool	bComplete;
+	bool	bHashing;
+	bool	bErrorUnknown;
+	bool	bCompleting;
+	bool	bSeenComplet;
+	//		File Size View Filters
+	uint64	nFSizeMin;
+	uint64	nFSizeMax;
+	uint64	nRSizeMin;
+	uint64	nRSizeMax;
+	//		Time Remaining Filters
+	uint32	nTimeRemainingMin;
+	uint32	nTimeRemainingMax;
+	//		Source Count Filters
+	UINT	nSourceCountMin;
+	UINT	nSourceCountMax;
+	UINT	nAvailSourceCountMin;
+	UINT	nAvailSourceCountMax;
+	//		Advanced Filter Mask
+	CString	sAdvancedFilterMask;
+};
+#pragma pack()
 
+// Criteria Selection Struct
+#pragma pack(1)
+struct CategorySelectionCriteria_Struct{
+	bool	bFileSize;
+	bool	bAdvancedFilterMask;
+};
+#pragma pack()
+
+#pragma pack(1)
+struct Category_Struct{
+	CString	strIncomingPath;
+	CString	strTitle;
+	CString	strComment;
+	DWORD	color;
+	UINT	prio;
+	bool	bResumeFileOnlyInSameCat;
+	// View Filter Struct
+	CategoryViewFilter_Struct viewfilters;
+	CategorySelectionCriteria_Struct selectioncriteria;
+	UINT	m_iDlMode; // 0 = NONE, 1 = alphabetical, 2 = LP
+};
+#pragma pack()
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+// ==> Design Settings [eWombat/Stulle] - Stulle
+#define STYLE_VERSION 3
+struct StylesStruct 
+{
+	short nOnOff;
+	DWORD nFlags;
+	COLORREF nFontColor;
+	COLORREF nBackColor;
+};
+
+#define STYLE_BOLD		0x00000001
+#define STYLE_UNDERLINE	0x00000002
+#define STYLE_ITALIC	0x00000004
+#define STYLE_FONTMASK	0x00000007
+#define STYLE_USED		0x80000000
+
+// master styles
+enum eMasterStyles
+{
+	client_styles = 0,
+	download_styles,
+	share_styles,
+	server_styles,
+	background_styles,
+	window_styles,
+	feedback_styles, // Feedback personalization [Stulle] - Stulle
+	master_count
+};
+
+// client styles
+enum eClientStyles
+{
+	style_c_default = 0,
+	style_c_friend,
+	style_c_powershare,
+	style_c_powerrelease,
+	style_c_downloading,
+	style_c_uploading,
+	style_c_leecher,
+	style_c_lowid,
+	style_c_credits,
+	style_c_count
+};
+
+// download styles
+enum eDownloadStyles
+{
+	style_d_default = 0,
+	style_d_downloading,
+	style_d_complete,
+	style_d_completing,
+	style_d_hashing,
+	style_d_paused,
+	style_d_stopped,
+	style_d_errunk,
+	style_d_count
+};
+
+// share styles
+enum eShareStyles
+{
+	style_s_default = 0,
+	style_s_incomplete,
+	style_s_powershare,
+	style_s_auto,
+	style_s_verylow,
+	style_s_low,
+	style_s_normal,
+	style_s_high,
+	style_s_release,
+	style_s_powerrelease,
+	style_s_shareable,
+	style_s_count
+};
+
+// server styles
+enum eServerStyles
+{
+	style_se_default = 0,
+	style_se_connected,
+	style_se_static,
+	style_se_filtered,
+	style_se_dead,
+	style_se_unreliable,
+	style_se_count
+};
+
+// background styles
+enum eBackgroundStyles
+{
+	style_b_default = 0,
+	style_b_clientlist,
+	style_b_dlclientlist,
+	style_b_queuelist,
+	style_b_uploadlist,
+	style_b_downloadlist,
+	style_b_sharedlist,
+	style_b_serverwnd,
+	style_b_count
+};
+
+// window styles
+enum eWindowStyles
+{
+	style_w_default = 0,
+	style_w_kademlia,
+	style_w_server,
+	style_w_transfer,
+	style_w_search,
+	style_w_shared,
+	style_w_messages,
+	style_w_irc,
+	style_w_statistic,
+	style_w_statusbar,
+	style_w_toolbar,
+	style_w_count
+};
+
+// ==> Feedback personalization [Stulle] - Stulle
+// feedback styles
+enum eFeedBackStyles
+{
+	style_f_default = 0,
+	style_f_label,
+	style_f_names,
+	style_f_fileinfo,
+	style_f_filestate,
+	style_f_transferred,
+	style_f_requests,
+	style_f_sources,
+	style_f_clientsonqueue,
+	style_f_compeltesrc,
+	style_f_count
+};
+// <== Feedback personalization [Stulle] - Stulle
+// <== Design Settings [eWombat/Stulle] - Stulle
+
+// ==> Multiple Part Transfer [Stulle] - Mephisto
+enum eChunkModes
+{
+	CHUNK_SCORE = 0,
+	CHUNK_XMAN,
+	CHUNK_FINISH,
+	CHUNK_FULL
+};
+// <== Multiple Part Transfer [Stulle] - Mephisto
 
 class CPreferences
 {
@@ -93,8 +314,12 @@ public:
 	// ZZ:UploadSpeedSense -->
 	static	uint16	minupload;
 	// ZZ:UploadSpeedSense <--
+	//Xman
+	/*
 	static	uint16	maxupload;
 	static	uint16	maxdownload;
+	*/
+	//Xman end
 	static	LPCSTR	m_pszBindAddrA;
 	static	CStringA m_strBindAddrA;
 	static	LPCWSTR	m_pszBindAddrW;
@@ -104,7 +329,6 @@ public:
 	static	uint16	nServerUDPPort;
 	static	UINT	maxconnections;
 	static	UINT	maxhalfconnections;
-	static	bool	m_bOverlappedSockets;
 	static	bool	m_bConditionalTCPAccept;
 	static	bool	reconnect;
 	static	bool	m_bUseServerPriorities;
@@ -134,12 +358,28 @@ public:
 	static	bool	m_bFillGraphs;
 	static	uchar	userhash[16];
 	static	WINDOWPLACEMENT EmuleWindowPlacement;
+	//Xman
+	/*
 	static	int		maxGraphDownloadRate;
 	static	int		maxGraphUploadRate;
 	static	uint32	maxGraphUploadRateEstimated;
+	*/
+	//Xman end
 	static	bool	beepOnError;
 	static	bool	confirmExit;
+
+	//Xman Xtreme Upload: this graph isn't shown at xtreme
+	//Maella Bandwidth control
+	/*
 	static	DWORD	m_adwStatsColors[15];
+	*/
+	// ==> Source Graph - Stulle
+	/*
+	static	DWORD	m_adwStatsColors[14];
+	//Xman end
+	*/
+	static	DWORD	m_adwStatsColors[15];
+	// <== Source Graph - Stulle
 	static	bool	bHasCustomTaskIconColor;
 	static  bool	m_bIconflashOnNewMessage;
 
@@ -391,6 +631,8 @@ public:
 	static	bool	m_bLogFilteredIPs;
 	static	bool	m_bLogFileSaving;
     static  bool    m_bLogA4AF; // ZZ:DownloadManager
+	static	bool	m_bLogDrop; //Xman Xtreme Downloadmanager
+	static	bool	m_bLogpartmismatch; //Xman Log part/size-mismatch
 	static	bool	m_bLogUlDlEvents;
 	static	bool	m_bUseDebugDevice;
 	static	int		m_iDebugServerTCPLevel;
@@ -429,8 +671,11 @@ public:
 	static	bool	watchclipboard;
 	static	bool	filterserverbyip;
 	static	bool	m_bFirstStart;
-	static	bool	m_bBetaNaggingDone;
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	static	bool	m_bCreditSystem;
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 
 	static	bool	log2disk;
 	static	bool	debug2disk;
@@ -450,7 +695,15 @@ public:
 	static	UINT	m_uFileBufferTimeLimit;
 
 	static	UINT	maxmsgsessions;
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	static	uint32	versioncheckLastAutomatic;
+	*/
+	static	time_t	versioncheckLastAutomatic;
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	//Xman versions check
+	static	uint32	mversioncheckLastAutomatic;
+	//Xman end
 	static	CString	messageFilter;
 	static	CString	commentFilter;
 	static	CString	filenameCleanups;
@@ -538,7 +791,11 @@ public:
 	static  bool	m_bDynUpUseMillisecondPingTolerance;
 	// ZZ:UploadSpeedSense <--
 
+	//Xman
+	/*
     static bool     m_bA4AFSaveCpu; // ZZ:DownloadManager
+	*/
+	//Xman end
 
     static bool     m_bHighresTimer;
 
@@ -585,6 +842,8 @@ public:
 	static uint8	m_byCryptTCPPaddingLength;
 	static uint32   m_dwKadUDPKey;
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	// UPnP
 	static bool		m_bSkipWANIPSetup;
 	static bool		m_bSkipWANPPPSetup;
@@ -594,6 +853,32 @@ public:
 	static bool		m_bIsMinilibImplDisabled;
 	static int		m_nLastWorkingImpl;
 
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	static bool		m_bUseACATUPnPCurrent;
+	static bool		m_bUseACATUPnPNextStart;
+
+	//ACAT UPnP
+	static	bool m_bUPnPNat; // UPnP On/Off
+	static	bool m_bUPnPTryRandom; //UPnP use random ports
+	static	uint16 m_iUPnPTCPExternal; // TCP External Port
+	static	uint16 m_iUPnPUDPExternal; // UDP External Port
+	static	bool GetUPnPNat()    { return m_bUPnPNat; }
+	static	void SetUPnPNat(bool on)    { m_bUPnPNat = on; }
+	static	void SetUPnPTCPExternal(uint16 port) { m_iUPnPTCPExternal = port; }
+	static	void SetUPnPUDPExternal(uint16 port) { m_iUPnPUDPExternal = port; }
+	static	bool GetUPnPNatTryRandom() { return m_bUPnPTryRandom; }
+	static	void SetUPnPNatTryRandom(bool on) { m_bUPnPTryRandom = on; }
+#endif //zz_fly :: dual upnp
+
+	//zz_fly :: Rebind UPnP on IP-change
+	static  bool m_bUPnPRebindOnIPChange;
+	static  bool GetUPnPNatRebind() { return m_bUPnPRebindOnIPChange; }
+	static	void SetUPnPNatRebind(bool on) { m_bUPnPRebindOnIPChange = on; }
+	//zz_fy :: end
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	// Spam
 	static bool		m_bEnableSearchResultFilter;
 
@@ -602,6 +887,369 @@ public:
 	static bool		m_bStoreSearches;
 
 
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	static bool bMiniMuleAutoClose;
+	static int  iMiniMuleTransparency ;
+	static bool bCheckComctl32 ;
+	static bool bCheckShell32;
+	static bool bIgnoreInstances;
+	static CString sNotifierMailEncryptCertName;
+	static CString sMediaInfo_MediaInfoDllPath ;
+	static bool bMediaInfo_RIFF ;
+	static bool bMediaInfo_ID3LIB; 
+#ifdef HAVE_QEDIT_H
+	static bool m_bMediaInfo_MediaDet;
+#endif//HAVE_QEDIT_H
+	static bool m_bMediaInfo_RM;
+#ifdef HAVE_WMSDK_H
+	static bool m_bMediaInfo_WM;
+#endif//HAVE_WMSDK_H
+	static CString sInternetSecurityZone;
+	// <== Advanced Options [Official/MorphXT] - Stulle
+
+	// ==> Global Source Limit [Max/Stulle] - Stulle
+    static  UINT	m_uGlobalHL;
+	static	bool	m_bGlobalHL;
+	static	bool	m_bGlobalHlAll;
+    static  bool	m_bGlobalHlDefault;
+	// <== Global Source Limit [Max/Stulle] - Stulle
+
+	// ==> push small files [sivka] - Stulle
+    static  bool	enablePushSmallFile;
+    static	uint32	m_iPushSmallFiles;
+	static	uint16	m_iPushSmallBoost;
+	// <== push small files [sivka] - Stulle
+    static  bool enablePushRareFile; // push rare file - Stulle
+
+	static bool	showSrcInTitle; // Show sources on title - Stulle
+	static bool	showOverheadInTitle; // show overhead on title - Stulle
+	static bool ShowGlobalHL; // show global HL - Stulle
+	static bool ShowFileHLconst; // show HL per file constantly - Stulle
+	static bool m_bShowInMSN7; //Show in MSN7 [TPT] - Stulle
+    static bool m_bClientQueueProgressBar; // Client queue progress bar [Commander] - Stulle
+	static bool m_bShowClientPercentage; // Show Client Percentage optional [Stulle] - Stulle
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max
+	static bool m_bSysInfo;
+	static bool m_bSysInfoGlobal;
+	// <== CPU/MEM usage [$ick$/Stulle] - Max
+	static bool m_bShowSpeedMeter; // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	// ==> Static Tray Icon [MorphXT] - MyTh88
+	static bool m_bStaticIcon; 
+	// <== Static Tray Icon [MorphXT] - MyTh88
+
+	static uint8 creditSystemMode; // CreditSystems [EastShare/ MorphXT] - Stulle
+
+	static bool	m_bSaveUploadQueueWaitTime; // SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+
+	// ==> File Settings [sivka/Stulle] - Stulle
+	static	uint16	m_MaxSourcesPerFileTemp;
+	static	bool	m_EnableAutoDropNNSTemp;
+	static	DWORD	m_AutoNNS_TimerTemp;
+	static	uint16  m_MaxRemoveNNSLimitTemp;
+	static	bool	m_EnableAutoDropFQSTemp;
+	static	DWORD	m_AutoFQS_TimerTemp;
+	static	uint16  m_MaxRemoveFQSLimitTemp;
+	static	bool	m_EnableAutoDropQRSTemp;
+	static	DWORD	m_AutoHQRS_TimerTemp;
+	static	uint16  m_MaxRemoveQRSTemp;
+	static	uint16  m_MaxRemoveQRSLimitTemp;
+	static	bool	m_bHQRXmanTemp;
+	static	bool	m_bGlobalHlTemp; // Global Source Limit (customize for files) - Stulle
+	static	bool	m_EnableAutoDropNNSDefault;
+	static	DWORD	m_AutoNNS_TimerDefault;
+	static	uint16  m_MaxRemoveNNSLimitDefault;
+	static	bool	m_EnableAutoDropFQSDefault;
+	static	DWORD	m_AutoFQS_TimerDefault;
+	static	uint16  m_MaxRemoveFQSLimitDefault;
+	static	bool	m_EnableAutoDropQRSDefault;
+	static	DWORD	m_AutoHQRS_TimerDefault;
+	static	uint16  m_MaxRemoveQRSDefault;
+	static	uint16  m_MaxRemoveQRSLimitDefault;
+	static	bool	m_bHQRXmanDefault;
+	static	bool	m_MaxSourcesPerFileTakeOver;
+	static	bool	m_EnableAutoDropNNSTakeOver;
+	static	bool	m_AutoNNS_TimerTakeOver;
+	static	bool	m_MaxRemoveNNSLimitTakeOver;
+	static	bool	m_EnableAutoDropFQSTakeOver;
+	static	bool	m_AutoFQS_TimerTakeOver;
+	static	bool	m_MaxRemoveFQSLimitTakeOver;
+	static	bool	m_EnableAutoDropQRSTakeOver;
+	static	bool	m_AutoHQRS_TimerTakeOver;
+	static	bool	m_MaxRemoveQRSTakeOver;
+	static	bool	m_MaxRemoveQRSLimitTakeOver;
+	static	bool	m_bHQRXmanTakeOver;
+	static	bool	m_bGlobalHlTakeOver; // Global Source Limit (customize for files) - Stulle
+	static	bool	m_TakeOverFileSettings;
+	// <== File Settings [sivka/Stulle] - Stulle
+
+	// ==> Source Graph - Stulle
+	static bool	m_bSrcGraph;
+	static uint16  m_iStatsHLMin;
+	static uint16  m_iStatsHLMax;
+	static uint16  m_iStatsHLDif;
+	// <== Source Graph - Stulle
+
+	// ==> FunnyNick [SiRoB/Stulle] - Stulle
+	static uint8	FnTagMode;
+	static TCHAR	m_sFnCustomTag [256];
+	static bool		m_bFnTagAtEnd;
+	// <== FunnyNick [SiRoB/Stulle] - Stulle
+
+	static bool		m_bACC; // ACC [Max/WiZaRd] - Max
+
+	static uint32	m_uScarVerCheckLastAutomatic; // ScarAngel Version Check - Stulle
+
+	// ==> Quick start [TPT] - Max
+	static	bool	m_bQuickStart;
+	static	uint16  m_iQuickStartMaxTime;
+	static	UINT    m_iQuickStartMaxConn;
+	static	uint16  m_iQuickStartMaxConnPerFive;
+	static	UINT    m_iQuickStartMaxConnBack;
+	static	uint16  m_iQuickStartMaxConnPerFiveBack;
+	static	bool	m_bQuickStartAfterIPChange;
+	// <== Quick start [TPT] - Max
+
+	// ==> TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+	static	bool	m_bAutoBackup;
+	static	bool	m_bAutoBackup2;
+	// <== TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+
+	// ==> TBH: minimule - Max
+	static  int		speedmetermin;
+	static  int		speedmetermax;
+	static  bool	m_bMiniMule;
+	static  uint32	m_iMiniMuleUpdate;
+	static  bool	m_bMiniMuleLives;
+	static  uint8	m_iMiniMuleTransparency;
+	static	bool	m_bMMCompl;
+	static	bool	m_bMMOpen;
+	// <== TBH: minimule - Max
+
+	// ==> Simple cleanup [MorphXT] - Stulle
+	static int      m_SimpleCleanupOptions;
+	static CString  m_SimpleCleanupSearch;
+	static CString  m_SimpleCleanupReplace;
+	static CString  m_SimpleCleanupSearchChars;
+	static CString  m_SimpleCleanupReplaceChars;
+	// <== Simple cleanup [MorphXT] - Stulle
+
+	static	bool	startupsound; // Startupsound [Commander] - mav744
+
+	static uint8	m_uCompressLevel; // Adjust Compress Level [Stulle] - Stulle
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	static bool		m_bValidSrcsOnly;
+	static bool		m_bShowCatNames;
+	static bool		m_bActiveCatDefault;
+	static bool		m_bSelCatOnAdd;
+	static bool		m_bAutoSetResumeOrder;
+	static bool		m_bSmallFileDLPush;
+	static uint8	m_iStartDLInEmptyCats;
+	static bool		m_bRespectMaxSources;
+	static bool		m_bUseAutoCat;
+	static uint8	dlMode;
+	static bool		m_bAddRemovedInc;
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+	static bool		m_bSpreadbarSetStatus; // Spread bars [Slugfiller/MorphXT] - Stulle
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	static int	hideOS;
+	static bool	selectiveShare;
+	static int	ShareOnlyTheNeed;
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	static int	m_iPowershareMode;
+	static int	PowerShareLimit;
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	static	uint8	m_uReleaseBonus; // Release Bonus [sivka] - Stulle
+	static	bool	m_bReleaseScoreAssurance; // Release Score Assurance [Stulle] - Stulle
+
+	static	int		GetPsAmountLimit() {return PsAmountLimit;} // Limit PS by amount of data uploaded [Stulle] - Stulle
+
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	// client styles
+	static DWORD		nClientStyleFlags[style_c_count]; 
+	static COLORREF		nClientStyleFontColor[style_c_count];
+	static COLORREF		nClientStyleBackColor[style_c_count];
+	static short		nClientStyleOnOff[style_c_count];
+
+	// download styles
+	static DWORD		nDownloadStyleFlags[style_d_count]; 
+	static COLORREF		nDownloadStyleFontColor[style_d_count];
+	static COLORREF		nDownloadStyleBackColor[style_d_count];
+	static short		nDownloadStyleOnOff[style_d_count];
+
+	// share styles
+	static DWORD		nShareStyleFlags[style_s_count]; 
+	static COLORREF		nShareStyleFontColor[style_s_count];
+	static COLORREF		nShareStyleBackColor[style_s_count];
+	static short		nShareStyleOnOff[style_s_count];
+
+	// server styles
+	static DWORD		nServerStyleFlags[style_se_count]; 
+	static COLORREF		nServerStyleFontColor[style_se_count];
+	static COLORREF		nServerStyleBackColor[style_se_count];
+	static short		nServerStyleOnOff[style_se_count];
+
+	// background styles
+	static DWORD		nBackgroundStyleFlags[style_b_count]; 
+	static COLORREF		nBackgroundStyleFontColor[style_b_count];
+	static COLORREF		nBackgroundStyleBackColor[style_b_count];
+	static short		nBackgroundStyleOnOff[style_b_count];
+
+	// window styles
+	static DWORD		nWindowStyleFlags[style_w_count]; 
+	static COLORREF		nWindowStyleFontColor[style_w_count];
+	static COLORREF		nWindowStyleBackColor[style_w_count];
+	static short		nWindowStyleOnOff[style_w_count];
+
+	// ==> Feedback personalization [Stulle] - Stulle
+	// feedback styles
+	static DWORD		nFeedBackStyleFlags[style_f_count]; 
+	static COLORREF		nFeedBackStyleFontColor[style_f_count];
+	static COLORREF		nFeedBackStyleBackColor[style_f_count];
+	static short		nFeedBackStyleOnOff[style_f_count];
+	// <== Feedback personalization [Stulle] - Stulle
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
+	// ==> Enforce Ratio [Stulle] - Stulle
+	static bool		m_bEnforceRatio;
+	static uint8	m_uRatioValue;
+	// <== Enforce Ratio [Stulle] - Stulle
+
+	// ==> Improved ICS-Firewall support [MoNKi]-Max
+	static bool		m_bICFSupport;
+	static bool		m_bICFSupportFirstTime;
+	static bool		m_bICFSupportStatusChanged;
+	static bool		m_bICFSupportServerUDP;
+	// <== Improved ICS-Firewall support [MoNKi]-Max
+
+	// ==> Invisible Mode [TPT/MoNKi] - Stulle
+	static bool		m_bInvisibleMode;		
+	static UINT		m_iInvisibleModeHotKeyModifier;
+	static char		m_cInvisibleModeHotKey;
+	static bool		m_bInvisibleModeStart;
+	// <== Invisible Mode [TPT/MoNKi] - Stulle
+
+	//==> UPnP support [MoNKi] - leuk_he
+	static bool		m_bUPnPNat;
+	static bool		m_bUPnPNatWeb;
+	static bool		m_bUPnPVerboseLog;
+	static uint16	m_iUPnPPort;
+	static bool		m_bUPnPLimitToFirstConnection;
+	static bool		m_bUPnPClearOnClose;
+	static int    m_iDetectuPnP; //leuk_he autodetect in startup wizard
+	static DWORD	 m_dwUpnpBindAddr;
+	static bool      m_bBindAddrIsDhcp;
+	static bool     m_bUPnPForceUpdate;
+	//<== UPnP support [MoNKi] - leuk_he
+
+	// ==> Random Ports [MoNKi] - Stulle
+	static bool		m_bRndPorts;
+	static uint16	m_iMinRndPort;
+	static uint16	m_iMaxRndPort;
+	static bool		m_bRndPortsResetOnRestart;
+	static uint16	m_iRndPortsSafeResetOnRestartTime;
+	static uint16	m_iCurrentTCPRndPort;
+	static uint16	m_iCurrentUDPRndPort;
+	// <== Random Ports [MoNKi] - Stulle
+
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	static bool		m_bDirectoryWatcher;
+	static bool		m_bSingleSharedDirWatcher;
+	static uint32	m_uTimeBetweenReloads;
+	// <== Automatic shared files updater [MoNKi] - Stulle
+
+	// ==> Anti Uploader Ban [Stulle] - Stulle
+	static uint16 m_uAntiUploaderBanLimit;
+	static uint8 AntiUploaderBanCaseMode;
+	// <== Anti Uploader Ban [Stulle] - Stulle
+
+	// ==> Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+	static	bool	m_bEmuMLDonkey;
+	static	bool	m_bEmueDonkey;
+	static	bool	m_bEmueDonkeyHybrid;
+	static	bool	m_bEmuShareaza;
+	static  bool    m_bEmuLphant;
+	static	bool	m_bLogEmulator;
+	// <== Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+
+	// ==> Spread Credits Slot [Stulle] - Stulle
+	static bool	SpreadCreditsSlot;
+	static uint16 SpreadCreditsSlotCounter;
+	// <== Spread Credits Slot [Stulle] - Stulle
+
+	// ==> Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+	static bool		m_bPayBackFirst;
+	static uint8	m_iPayBackFirstLimit;
+	static bool		m_bPayBackFirst2;
+	static uint16	m_iPayBackFirstLimit2;
+	// <== Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+
+	static bool		m_bIgnoreThird; // Do not reserve 1/3 of your uploadlimit for emule [Stulle] - Stulle
+
+	static bool		m_bDisableUlThres; // Disable accepting only clients who asked within last 30min [Stulle] - Stulle
+
+	static bool		m_bFollowTheMajority; // Follow The Majority [AndCycle/Stulle] - Stulle
+
+	static int		m_iFairPlay; // Fair Play [AndCycle/Stulle] - Stulle
+
+	static bool		m_bMaxSlotSpeed; // Alwasy maximize slot speed [Stulle] - Stulle
+
+	static uint32	m_uReAskTimeDif; // Timer for ReAsk File Sources [Stulle] - Stulle
+
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	static bool			m_bAutoUpdateAntiLeech;
+	static CString		m_strAntiLeechURL;
+	static uint32		m_uIPFilterVersionNum;
+	static SYSTEMTIME	m_IP2CountryVersion;
+	static bool			AutoUpdateIP2Country;
+	static CString		UpdateURLIP2Country;
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
+	static bool		m_bFineCS; // Modified FineCS [CiccioBastardo/Stulle] - Stulle
+
+	static bool		m_bTrayComplete; // Completed in Tray [Stulle] - Stulle
+
+	static bool		m_bColorFeedback; // Feedback personalization [Stulle] - Stulle
+
+	static bool		m_bSplitWindow; // Advanced Transfer Window Layout [Stulle] - Stulle
+
+	static bool		m_bDateFileNameLog; // Date File Name Log [AndCycle] - Stulle
+
+	static bool		m_bIonixWebsrv; // Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	static int		m_iServiceStartupMode;
+	static int		m_iServiceOptLvl;
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// ==> Adjustable NT Service Strings [Stulle] - Stulle
+	static CString	m_strServiceName;
+	static CString	m_strServiceDispName;
+	static CString	m_strServiceDescr;
+	static bool		m_bServiceStringsLoaded;
+	// <== Adjustable NT Service Strings [Stulle] - Stulle
+
+	static bool		m_bCloseEasteregg; // Diabolic Easteregg [Stulle] - Mephisto
+
+	// ==> Mephisto Upload - Mephisto
+	static uint8	m_uMinSlots;
+	static uint8	m_uNoNewSlotTimer;
+	static uint8	m_uFullLoops;
+	static uint8	m_uMonitorLoops;
+	static uint8	m_uNotReachedBW;
+	static uint8	m_uNoTrickleTimer;
+	static uint16	m_uMoveDownKB;
+	// <== Mephisto Upload - Mephisto
+
+	// ==> Multiple Part Transfer [Stulle] - Mephisto
+	static uint8	m_uChunksMode;
+	static uint8	m_uChunksToFinish;
+	static uint8	m_uChunksToUpload;
+	// <== Multiple Part Transfer [Stulle] - Mephisto
+	static uint16	m_uMaxUpMinutes; // Adjust max upload time [Stulle] - Mephisto
 
 	enum Table
 	{
@@ -615,7 +1263,8 @@ public:
 		tableFilenames,
 		tableIrcMain,
 		tableIrcChannels,
-		tableDownloadClients
+		tableDownloadClients,
+		tableHistory		//Xman [MoNKi: -Downloaded History-]
 	};
 
 	friend class CPreferencesWnd;
@@ -633,6 +1282,10 @@ public:
 	friend class CPPgScheduler;
 	friend class CPPgDebug;
 
+	friend class CPPgScar; // ScarAngel Preferences window - Stulle
+	friend class CSivkaFileSettings; // File Settings [sivka/Stulle] - Stulle
+	friend class CPPgWebServer; // Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
 	CPreferences();
 	~CPreferences();
 
@@ -648,9 +1301,14 @@ public:
 	static	void	SetMuleDirectory(EDefaultDirectory eDirectory, CString strNewDir);
 	static	void	ChangeUserDirMode(int nNewMode);
 
+	// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+	/*
 	static	bool	IsTempFile(const CString& rstrDirectory, const CString& rstrName);
 	static	bool	IsShareableDirectory(const CString& rstrDirectory);
 	static	bool	IsInstallationDirectory(const CString& rstrDir);
+	*/
+	static	bool	IsConfigFile(const CString& rstrDirectory, const CString& rstrName);
+	// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 
 	static	bool	Save();
 	static	void	SaveCats();
@@ -664,14 +1322,30 @@ public:
 
 	static	LPCSTR	GetBindAddrA()						{return m_pszBindAddrA; }
 	static	LPCWSTR	GetBindAddrW()						{return m_pszBindAddrW; }
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//ACAT UPnP
+	static	uint16	GetPort();
+	static	uint16	GetUDPPort();
+#else //zz_fly :: dual upnp
 	static	uint16	GetPort()							{return port;}
 	static	uint16	GetUDPPort()						{return udpport;}
+#endif //zz_fly :: dual upnp
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	static	uint16	GetServerUDPPort()					{return nServerUDPPort;}
 	static	uchar*	GetUserHash()						{return userhash;}
 	// ZZ:UploadSpeedSense -->
 	static	uint16	GetMinUpload()						{return minupload;}
 	// ZZ:UploadSpeedSense <--
+	//Xman
+	/*
 	static	uint16	GetMaxUpload()						{return maxupload;}
+	*/
+	//Xman end
 	static	bool	IsICHEnabled()						{return ICH;}
 	static	bool	GetAutoUpdateServerList()			{return m_bAutoUpdateServerList;}
 	static	bool	UpdateNotify()						{return updatenotify;}
@@ -694,6 +1368,263 @@ public:
 	static	void	SaveCompletedDownloadsStat();
 	static	bool	LoadStats(int loadBackUp = 0);
 	static	void	ResetCumulativeStatistics();
+
+	//--------------------------------------------------------------------------------------
+	//Xman Xtreme Mod:
+
+	//Xman Xtreme Upload
+	static float	m_slotspeed;
+	static bool		m_openmoreslots;
+	static bool		m_bandwidthnotreachedslots;
+	static void CheckSlotSpeed();
+	static int		m_sendbuffersize;
+	static int		GetSendbuffersize()	{return m_sendbuffersize;}
+	static void		SetSendbuffersize(int in) {m_sendbuffersize=in;}
+	static int		m_internetdownreactiontime;
+
+	//Xman process prio
+	// [TPT] - Select process priority 
+	const DWORD GetMainProcessPriority() const { return m_MainProcessPriority; }
+	void SetMainProcessPriority(DWORD in) {m_MainProcessPriority=in; }
+	static	uint32	m_MainProcessPriority;
+	// [TPT] - Select process priority 	
+
+
+	//Xman Anti-Leecher
+	static bool m_antileecher;
+	static bool m_antileechername;
+	static bool	m_antighost;
+	static bool	m_antileecherbadhello;
+	static bool	m_antileechersnafu;
+	static bool	m_antileechermod;
+	static bool	m_antileecherthief;
+	static bool	m_antileecherspammer;
+	static bool	m_antileecherxsexploiter;
+	static bool m_antileecheremcrypt;
+	static bool m_antileecheruserhash;
+	static bool	m_antileechercommunity_action;
+	static bool	m_antileecherghost_action;
+	static bool	m_antileecherthief_action;
+	static bool GetAntiLeecher() {return m_antileecher;}
+	static bool GetAntiLeecherName() {return m_antileecher && m_antileechername;}
+	static bool GetAntiGhost() {return m_antileecher && m_antighost;}
+	static bool GetAntiLeecherBadHello() {return m_antileecher && m_antileecherbadhello;}
+	static bool GetAntiLeecherSnafu() {return m_antileecher && m_antileechersnafu;}
+	static bool GetAntiLeecherMod() {return m_antileecher && m_antileechermod;}
+	static bool GetAntiLeecherThief() {return m_antileecher && m_antileecherthief;}
+	static bool GetAntiLeecherspammer() {return m_antileecher && m_antileecherspammer;}
+	static bool GetAntiLeecherXSExploiter() {return m_antileecher && m_antileecherxsexploiter;}
+	static bool GetAntiLeecheremcrypt() {return m_antileecher && m_antileecheremcrypt;}
+	static bool GeTAntiLeecheruserhash(){return m_antileecher && m_antileecheruserhash;}
+	static bool GetAntiLeecherCommunity_Action() {return m_antileechercommunity_action;}
+	static bool GetAntiLeecherGhost_Action() {return m_antileecherghost_action;}
+	static bool GetAntiLeecherThief_Action() {return m_antileecherthief_action;}
+	static void SetAntiLeecher(bool in)  {m_antileecher=in;}
+	static void SetAntiLeecherName(bool in) {m_antileechername=in;}
+	static void SetAntiGhost(bool in) {m_antighost=in;}
+	static void SetAntiLeecherBadHello(bool in) {m_antileecherbadhello=in;}
+	static void SetAntiLeecherSnafu(bool in) {m_antileechersnafu=in;}
+	static void SetAntiLeecherMod(bool in) {m_antileechermod=in;}
+	static void SetAntiLeecherThief(bool in) {m_antileecherthief=in;}
+	static void SetAntiLeecherSpammer(bool in) {m_antileecherspammer=in;}
+	static void SetAntiLeecherXSExploiter(bool in) {m_antileecherxsexploiter=in;}
+	static void SetAntiLeecheremcrypt(bool in) {m_antileecheremcrypt=in;}
+	static void SetAntiLeecheruserhash(bool in) {m_antileecheruserhash=in;}
+	static void SetAntiLeecherCommunity_Action(bool in) {m_antileechercommunity_action=in;}
+	static void SetAntiLeecherGhost_Action(bool in) {m_antileecherghost_action=in;}
+	static void SetAntiLeecherThief_Action(bool in) {m_antileecherthief_action=in;}
+	//X-Ray :: Fincan Hash Detection :: Start
+	static bool m_antileecherFincan;
+	static bool GetAntiLeecherFincan() {return m_antileecher && m_antileecherFincan;}
+	static CString m_antileecherFincanURL;
+	//X-Ray :: Fincan Hash Detection :: End
+	//Xman end
+
+	//Xman narrow font at transferwindow
+	static bool m_bUseNarrowFont;
+	static bool UseNarrowFont() {return m_bUseNarrowFont;}
+	static void SetNarrowFont(bool in) {m_bUseNarrowFont=in;}
+	//Xman end
+
+	//Xman 1:3 Ratio
+	static bool m_13ratio;
+	static bool Is13Ratio() {return m_13ratio;}
+	static void Set13Ratio(bool in) {m_13ratio=in;}
+	//Xman end
+
+	// ==> Superior Client Handling [Stulle] - Stulle
+	/*
+	//Xman always one release-slot
+	static bool m_onerealeseslot;
+	static bool UseReleasseSlot() {return m_onerealeseslot;}
+	static void SetUseReleaseSlot(bool in) {m_onerealeseslot=in;}
+	//Xman end
+	*/
+	// <== Superior Client Handling [Stulle] - Stulle
+
+	//Xman advanced upload-priority
+	static	bool m_AdvancedAutoPrio;
+	static bool UseAdvancedAutoPtio() {return m_AdvancedAutoPrio;}
+	static void SetAdvancedAutoPrio(bool in) {m_AdvancedAutoPrio=in;}
+	//Xman end
+
+	//Xman chunk chooser
+	static uint8 m_chunkchooser;
+	static uint8 GetChunkChooseMethod()	{return m_chunkchooser;}
+
+	//Xman disable compression
+	static bool m_bUseCompression;
+
+
+	//Xman auto update IPFilter
+	static bool	m_bautoupdateipfilter;
+	static bool AutoUpdateIPFilter() {return m_bautoupdateipfilter;}
+	static void SetAutoUpdateIPFilter(bool in) {m_bautoupdateipfilter=in;}
+	static CString m_strautoupdateipfilter_url;
+	static CString GetAutoUpdateIPFilter_URL() {return m_strautoupdateipfilter_url;}
+	static void SetAutoUpdateIPFilter_URL(CString in) {m_strautoupdateipfilter_url=in;}
+	static SYSTEMTIME		m_IPfilterVersion;
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	/*
+	static uint32 m_last_ipfilter_check;
+	*/
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+	//Xman end
+
+	//Xman count block/success send
+	static bool m_showblockratio;
+	static bool ShowBlockRatio() {return m_showblockratio;}
+	static void SetShowBlockRatio(bool in) {m_showblockratio=in;}
+
+	static bool m_dropblockingsockets;
+	static bool DropBlockingSockets() {return m_dropblockingsockets;}
+	static void SetDropBlockingSockets(bool in) {m_dropblockingsockets=in;}
+	//Xman end
+
+	//Xman Funny-Nick (Stulle/Morph)
+	static bool	m_bFunnyNick;
+	static bool DisplayFunnyNick() 	{return m_bFunnyNick;}
+	static void SetDisplayFunnyNick(bool in) {m_bFunnyNick=in;}
+	//Xman end
+
+	//Xman remove unused AICH-hashes
+	static bool m_rememberAICH;
+	static bool GetRememberAICH() {return m_rememberAICH;}
+	static void SetRememberAICH(bool in) {m_rememberAICH=in;}
+	//Xman end
+
+	//Xman smooth-accurate-graph
+	static bool usesmoothgraph;
+
+	static bool retryconnectionattempts; //Xman 
+
+	// Maella 
+	static float	maxupload;                    // [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	static float	maxdownload;
+	static float	maxGraphDownloadRate;
+	static float	maxGraphUploadRate;
+
+	static uint8	zoomFactor;                   // -Graph: display zoom-
+
+	static uint16	MTU;                          // -MTU Configuration-
+	static bool		usedoublesendsize;
+	static bool		retrieveMTUFromSocket; // netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+
+	static bool	NAFCFullControl;	          // -Network Adapter Feedback Control-
+	static uint32 forceNAFCadapter;	
+	static uint8	datarateSamples;              // -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+
+	static bool    enableMultiQueue;             // -One-queue-per-file- (idea bloodymad)
+	//static bool    enableReleaseMultiQueue;
+	// Maella end
+
+	// Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	static float	GetMaxUpload()  {return maxupload;}
+	static void	SetMaxUpload(float in)	{maxupload = in;}
+
+	static float	GetMaxDownload() ; // rate limited
+	static void	SetMaxDownload(float in) {maxdownload = in;}
+
+	static float	GetMaxGraphUploadRate()  {return maxGraphUploadRate;}
+	static void	SetMaxGraphUploadRate(float in) {maxGraphUploadRate=in;}
+
+	static float	GetMaxGraphDownloadRate()  {return maxGraphDownloadRate;}
+	static void	SetMaxGraphDownloadRate(float in) {maxGraphDownloadRate=in;}
+	// Maella end
+
+	// Maella -Graph: display zoom-
+	static uint8	GetZoomFactor()  { return zoomFactor; }
+	static void	SetZoomFactor(uint8 zoom) { zoomFactor = zoom; }
+	// Maella end
+
+	// Maella -MTU Configuration-
+	static uint16	GetMTU()  { return MTU; }
+	static void	SetMTU(uint16 MTUin) { MTU = MTUin; }
+	// Maella end
+
+	// Maella -Network Adapter Feedback Control-
+	static bool	GetNAFCFullControl()  { return NAFCFullControl; }
+	//static void	SetNAFCFullControl(bool flag) { NAFCFullControl = flag; }
+	static void	SetNAFCFullControl(bool flag);
+	static uint32 GetForcedNAFCAdapter() { return forceNAFCadapter;}
+	// Maella end
+
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	static uint8 GetDatarateSamples()  { return datarateSamples; }
+	static void  SetDatarateSamples(uint8 samples) { datarateSamples = samples; }
+	// Maella end
+
+	// Maella -One-queue-per-file- (idea bloodymad)
+	static bool GetEnableMultiQueue()  { return enableMultiQueue; }
+	static void SetEnableMultiQueue(bool state) { enableMultiQueue = state; }
+	//static bool GetEnableReleaseMultiQueue()  { return enableReleaseMultiQueue; }
+	//static void SetEnableReleaseMultiQueue(bool state) { enableReleaseMultiQueue = state; }
+	// Maella end
+
+	// Mighty Knife: Static server handling
+	static bool		m_bDontRemoveStaticServers;
+	static	bool    GetDontRemoveStaticServers ()			  { return m_bDontRemoveStaticServers; }
+	static	void	SetDontRemoveStaticServers (bool _b)	  { m_bDontRemoveStaticServers = _b; }
+	// [end] Mighty Knife
+
+	//Xman [MoNKi: -Downloaded History-]
+	static bool		m_bHistoryShowShared;
+	static bool		GetShowSharedInHistory()		{ return m_bHistoryShowShared; }
+	static void		SetShowSharedInHistory(bool on)	{ m_bHistoryShowShared = on; }
+	//Xman end
+
+	//Xman GlobalMaxHarlimit for fairness
+	static uint32	m_uMaxGlobalSources;
+	static bool		m_bAcceptsourcelimit;
+
+	//Xman show additional graph lines
+	static bool		m_bShowAdditionalGraph;
+
+	//Xman versions check
+	static bool		updatenotifymod;
+	static bool		UpdateNotifyMod()	{return updatenotifymod;}
+
+	//Xman don't overwrite bak files if last sessions crashed
+	static bool		m_this_session_aborted_in_an_unnormal_way;
+	static bool		m_last_session_aborted_in_an_unnormal_way;
+	static bool		eMuleChrashedLastSession()		{ return m_last_session_aborted_in_an_unnormal_way;}
+
+	static bool		m_bShowCountryFlagInKad; //zz_fly :: show country flag in KAD
+	static bool		m_bKnown2Buffer; //zz_fly :: known2 buffer
+	//zz_fly :: known2 split :: start
+	static bool		m_bKnown2Split;
+	static bool		m_bKnown2Split_next;
+	static bool		IsKnown2SplitEnabled()	{return m_bKnown2Split && GetRememberAICH() && IsRememberingDownloadedFiles();} //this feature only available when user want to remember unused AichHashSet.
+	//zz_fly :: known2 split :: end
+	static uint64		m_uAutoPreviewLimit; //zz_fly :: do not auto preview big archive
+
+	//MORPH START - Added by WiZaRd, Fix broken HTTP downloads
+	static	CString	m_strBrokenURLs;
+	static	CString	GetBrokenURLs()						{return m_strBrokenURLs;}
+	static	void	SetBrokenURLs(const CString& str)	{m_strBrokenURLs = str;}
+	//MORPH END   - Added by WiZaRd, Fix broken HTTP downloads
+	//Xman end
+	//-----------------------------------------------------------------------------
 
 	static	void	Add2DownCompletedFiles()			{cumDownCompletedFiles++;}
 	static	void	SetConnMaxAvgDownRate(float in)		{cumConnMaxAvgDownRate = in;}
@@ -926,6 +1857,8 @@ public:
 	static	bool	FilterLANIPs()						{return filterLANIPs;}
 	static	bool	GetAllowLocalHostIP()				{return m_bAllocLocalHostIP;}
 	static	bool	IsOnlineSignatureEnabled()			{return onlineSig;}
+	//Xman
+	/*
 	static	int		GetMaxGraphUploadRate(bool bEstimateIfUnlimited);
 	static	int		GetMaxGraphDownloadRate()			{return maxGraphDownloadRate;}
 	static	void	SetMaxGraphUploadRate(int in);
@@ -933,9 +1866,11 @@ public:
 
 	static	uint16	GetMaxDownload();
 	static	uint64	GetMaxDownloadInBytesPerSec(bool dynamic = false);
+	*/
+	static	uint64	GetMaxDownloadInBytesPerSec();
+	//Xman end
 	static	UINT	GetMaxConnections()					{return maxconnections;}
 	static	UINT	GetMaxHalfConnections()				{return maxhalfconnections;}
-	static	bool	GetUseOverlappedSockets()			{return m_bOverlappedSockets; }
 	static	UINT	GetMaxSourcePerFileDefault()		{return maxsourceperfile;}
 	static	UINT	GetDeadServerRetries()				{return m_uDeadServerRetries;}
 	static	DWORD	GetServerKeepAliveTimeout()			{return m_dwServerKeepAliveTimeout;}
@@ -1053,7 +1988,12 @@ public:
 	static	void	SetPreviewPrio(bool in)				{m_bpreviewprio=in;}
 	static	bool	GetUpdateQueueList()				{return m_bupdatequeuelist;}
 	static	bool	GetManualAddedServersHighPriority()	{return m_bManualAddedServersHighPriority;}
+	// ==> Multiple Part Transfer [Stulle] - Mephisto
+	/*
 	static	bool	TransferFullChunks()				{return m_btransferfullchunks;}
+	*/
+	static	bool	TransferFullChunks()				{return m_uChunksMode != CHUNK_SCORE;}
+	// <== Multiple Part Transfer [Stulle] - Mephisto
 	static	void	SetTransferFullChunks( bool m_bintransferfullchunks )				{m_btransferfullchunks = m_bintransferfullchunks;}
 	static	int		StartNextFile()						{return m_istartnextfile;}
 	static	bool	ShowOverhead()						{return m_bshowoverhead;}
@@ -1064,8 +2004,12 @@ public:
 	static	bool	IsKnownClientListDisabled()			{return m_bDisableKnownClientList;}
 	static	bool	IsQueueListDisabled()				{return m_bDisableQueueList;}
 	static	bool	IsFirstStart()						{return m_bFirstStart;}
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	static	bool	UseCreditSystem()					{return m_bCreditSystem;}
 	static	void	SetCreditSystem(bool m_bInCreditSystem) {m_bCreditSystem = m_bInCreditSystem;}
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 
 	static	const CString& GetTxtEditor()				{return m_strTxtEditor;}
 	static	const CString& GetVideoPlayer()				{return m_strVideoPlayer;}
@@ -1126,8 +2070,12 @@ public:
 	static  bool	IsWin7TaskbarGoodiesEnabled()				{return m_bShowWin7TaskbarGoodies;}
 	static  void    SetWin7TaskbarGoodiesEnabled(bool flag)	{m_bShowWin7TaskbarGoodies = flag;}
 
+	//Xman
+	/*
 	static	void	SetMaxUpload(UINT in);
 	static	void	SetMaxDownload(UINT in);
+	*/
+	//Xman end
 
 	static	WINDOWPLACEMENT GetEmuleWindowPlacement()	{return EmuleWindowPlacement;}
 	static	void	SetWindowLayout(WINDOWPLACEMENT in) {EmuleWindowPlacement=in;}
@@ -1136,6 +2084,10 @@ public:
 	static	UINT	GetUpdateDays()						{return versioncheckdays;}
 	static	uint32	GetLastVC()							{return versioncheckLastAutomatic;}
 	static	void	UpdateLastVC();
+	//Xman versions check
+	static	uint32	GetLastMVC()				{return mversioncheckLastAutomatic;}
+	static	void	UpdateLastMVC();
+	//Xman end
 	static	int		GetIPFilterLevel()					{return filterlevel;}
 	static	const CString& GetMessageFilter()			{return messageFilter;}
 	static	const CString& GetCommentFilter()			{return commentFilter;}
@@ -1153,10 +2105,14 @@ public:
 	static	bool	MoveCat(UINT from, UINT to);
 	static	void	RemoveCat(int index);
 	static	int		GetCatCount()						{return catMap.GetCount();}
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	static  bool	SetCatFilter(int index, int filter);
 	static  int		GetCatFilter(int index);
 	static	bool	GetCatFilterNeg(int index);
 	static	void	SetCatFilterNeg(int index, bool val);
+	*/
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 	static	Category_Struct* GetCategory(int index)		{if (index>=0 && index<catMap.GetCount()) return catMap.GetAt(index); else return NULL;}
 	static	const CString &GetCatPath(int index)		{return catMap.GetAt(index)->strIncomingPath;}
 	static	DWORD	GetCatColor(int index, int nDefault = COLOR_BTNTEXT);
@@ -1175,7 +2131,13 @@ public:
 	static	ELogFileFormat GetLogFileFormat()			{return m_iLogFileFormat;}
 
 	// WebServer
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	/*
 	static	uint16	GetWSPort()							{return m_nWebPort;}
+	*/
+	// may be required before init! 
+	static	uint16	GetWSPort();
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
 	static	bool	GetWSUseUPnP()						{return m_bWebUseUPnP && GetWSIsEnabled();}
 	static	void	SetWSPort(uint16 uPort)				{m_nWebPort=uPort;}
 	static	const CString& GetWSPass()					{return m_strWebPassword;}
@@ -1272,7 +2234,12 @@ public:
 	static	void	SetSearchMethod(int iMethod)		{m_iSearchMethod = iMethod;}
 
 	// ZZ:UploadSpeedSense -->
+	//Xman
+	/*
 	static	bool	IsDynUpEnabled();
+	*/
+	static	bool	IsDynUpEnabled()					{ return m_bDynUpEnabled; }
+	//Xman end
 	static	void	SetDynUpEnabled(bool newValue)		{m_bDynUpEnabled = newValue;}
 	static	int		GetDynUpPingTolerance()				{return m_iDynUpPingTolerance;}
 	static	int		GetDynUpGoingUpDivider()			{return m_iDynUpGoingUpDivider;}
@@ -1283,7 +2250,11 @@ public:
 	static  void	SetDynUpPingToleranceMilliseconds(int in){m_iDynUpPingToleranceMilliseconds = in;}
 	// ZZ:UploadSpeedSense <--
 
+	//Xman
+	/*
     static bool     GetA4AFSaveCpu()                    {return m_bA4AFSaveCpu;} // ZZ:DownloadManager
+	*/
+	//Xman end
 
     static bool     GetHighresTimer()                   {return m_bHighresTimer;}
 
@@ -1318,6 +2289,8 @@ public:
 	static	bool	GetLogFilteredIPs()					{return m_bVerbose && m_bLogFilteredIPs;}
 	static	bool	GetLogFileSaving()					{return m_bVerbose && m_bLogFileSaving;}
     static	bool	GetLogA4AF()    					{return m_bVerbose && m_bLogA4AF;} // ZZ:DownloadManager
+	static	bool	GetLogDrop()						{return m_bVerbose && m_bLogDrop;} //Xman Xtreme Downloadmanager
+	static	bool	GetLogPartmismatch()				{return m_bVerbose && m_bLogpartmismatch;} //Xman Log part/size-mismatch
 	static	bool	GetLogUlDlEvents()					{return m_bVerbose && m_bLogUlDlEvents;}
 	static	bool	GetLogKadSecurityEvents()			{return m_bVerbose && true;}
 	static	bool	GetUseDebugDevice()					{return m_bUseDebugDevice;}
@@ -1365,7 +2338,10 @@ public:
 	static bool		IsServerCryptLayerTCPRequested()	{return IsClientCryptLayerRequested();}
 	static uint32	GetKadUDPKey()						{return m_dwKadUDPKey;}
 	static uint8	GetCryptTCPPaddingLength()			{return m_byCryptTCPPaddingLength;}
+	static void		SetCryptTCPPaddingLength(int in)	{m_byCryptTCPPaddingLength = (uint8)((in>=10 && in<=254) ? in : 128);} //zz_fly :: hardlimit on CryptTCPPaddingLength
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	// UPnP
 	static bool		GetSkipWANIPSetup()					{return m_bSkipWANIPSetup;}
 	static bool		GetSkipWANPPPSetup()				{return m_bSkipWANPPPSetup;}
@@ -1377,6 +2353,8 @@ public:
 	static bool		IsMinilibUPnPImplDisabled()			{return m_bIsMinilibImplDisabled;}
 	static int		GetLastWorkingUPnPImpl()			{return m_nLastWorkingImpl;}
 	static void		SetLastWorkingUPnPImpl(int val)		{m_nLastWorkingImpl = val;}
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 
 	// Spamfilter
 	static bool		IsSearchSpamFilterEnabled()			{return m_bEnableSearchResultFilter;}
@@ -1386,11 +2364,405 @@ public:
 	static uint16	GetRandomTCPPort();
 	static uint16	GetRandomUDPPort();
 
-	// Beta related
-#ifdef _BETA
-	static bool		ShouldBetaNag()						{return !m_bBetaNaggingDone;}
-	static void		SetDidBetaNagging()					{m_bBetaNaggingDone = true;}
-#endif
+	// ==> Global Source Limit [Max/Stulle] - Stulle
+	static UINT		GetGlobalHL()				{return m_uGlobalHL;} 
+	static bool		IsUseGlobalHL()				{return m_bGlobalHL;} 
+	static bool		GetGlobalHlAll()			{return m_bGlobalHlAll;}
+	// <== Global Source Limit [Max/Stulle] - Stulle
+
+	// ==> push small files [sivka] - Stulle
+	static bool		GetEnablePushSmallFile()	{return enablePushSmallFile;}
+	static uint32	GetPushSmallFileSize()		{return m_iPushSmallFiles;}
+	static uint16	GetPushSmallFileBoost()		{return m_iPushSmallBoost;}
+	// <== push small files [sivka] - Stulle
+    static bool		GetEnablePushRareFile()		{return enablePushRareFile;} // push rare file - Stulle
+
+	static	bool	ShowSrcOnTitle()		{ return showSrcInTitle;} // Show sources on title - Stulle
+	static	bool	ShowOverheadOnTitle()	{ return showOverheadInTitle;} // show overhead on title - Stulle
+	static	bool	GetShowGlobalHL()		{ return ShowGlobalHL; } // show global HL - Stulle
+	static	bool	GetShowFileHLconst()	{ return ShowFileHLconst; } // show HL per file constantly - Stulle
+	static	bool	GetShowMSN7()			{ return m_bShowInMSN7;} // Show in MSN7 [TPT] - Stulle
+	static	bool	ShowClientQueueProgressBar()	{ return m_bClientQueueProgressBar;} // Client queue progress bar [Commander] - Stulle
+	static	bool	GetShowClientPercentage()	{ return m_bShowClientPercentage;}  // Show Client Percentage optional [Stulle] - Stulle
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max
+	static	bool	GetSysInfo()			{ return m_bSysInfo; }
+	static	bool	GetSysInfoGlobal()		{ return m_bSysInfoGlobal; }
+	// <== CPU/MEM usage [$ick$/Stulle] - Max
+	static	bool	GetShowSpeedMeter()		{ return m_bShowSpeedMeter; } // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	// ==> Static Tray Icon [MorphXT] - MyTh88
+	static bool		GetStaticIcon()				{return m_bStaticIcon;}
+	// <== Static Tray Icon [MorphXT] - MyTh88
+
+	static	uint8	GetCreditSystem()		{return creditSystemMode;} // CreditSystems [EastShare/ MorphXT] - Stulle
+
+	static	bool	SaveUploadQueueWaitTime()			{return m_bSaveUploadQueueWaitTime;} // SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+
+	// ==> File Settings [sivka/Stulle] - Stulle
+	static uint16	GetMaxSourcesPerFileTemp(){return m_MaxSourcesPerFileTemp;}
+	static bool		GetEnableAutoDropNNSTemp(){return m_EnableAutoDropNNSTemp;}
+	static DWORD	GetAutoNNS_TimerTemp(){return m_AutoNNS_TimerTemp;}
+	static uint16	GetMaxRemoveNNSLimitTemp(){return m_MaxRemoveNNSLimitTemp;}
+	static bool		GetEnableAutoDropFQSTemp(){return m_EnableAutoDropFQSTemp;}
+	static DWORD	GetAutoFQS_TimerTemp(){return m_AutoFQS_TimerTemp;}
+	static uint16	GetMaxRemoveFQSLimitTemp(){return m_MaxRemoveFQSLimitTemp;}
+	static bool		GetEnableAutoDropQRSTemp(){return m_EnableAutoDropQRSTemp;}
+	static DWORD	GetAutoHQRS_TimerTemp(){return m_AutoHQRS_TimerTemp;}
+	static uint16	GetMaxRemoveQRSTemp(){return m_MaxRemoveQRSTemp;}
+	static uint16	GetMaxRemoveQRSLimitTemp(){return m_MaxRemoveQRSLimitTemp;}
+	static bool		GetHQRXmanTemp(){return m_bHQRXmanTemp;}
+	static bool		GetGlobalHlTemp(){return m_bGlobalHlTemp;} // Global Source Limit (customize for files) - Stulle
+	static void		SetMaxSourcesPerFileTemp(uint16 in){m_MaxSourcesPerFileTemp=in;}
+	static void		SetEnableAutoDropNNSTemp(bool in){m_EnableAutoDropNNSTemp=in;}
+	static void		SetAutoNNS_TimerTemp(DWORD in){m_AutoNNS_TimerTemp=in;}
+	static void		SetMaxRemoveNNSLimitTemp(uint16 in){m_MaxRemoveNNSLimitTemp=in;}
+	static void		SetEnableAutoDropFQSTemp(bool in){m_EnableAutoDropFQSTemp=in;}
+	static void		SetAutoFQS_TimerTemp(DWORD in){m_AutoFQS_TimerTemp=in;}
+	static void		SetMaxRemoveFQSLimitTemp(uint16 in){m_MaxRemoveFQSLimitTemp=in;}
+	static void		SetEnableAutoDropQRSTemp(bool in){m_EnableAutoDropQRSTemp=in;}
+	static void		SetAutoHQRS_TimerTemp(DWORD in){m_AutoHQRS_TimerTemp=in;}
+	static void		SetMaxRemoveQRSTemp(uint16 in){m_MaxRemoveQRSTemp=in;}
+	static void		SetMaxRemoveQRSLimitTemp(uint16 in){m_MaxRemoveQRSLimitTemp=in;}
+	static void		SetHQRXmanTemp(bool in){m_bHQRXmanTemp=in;}
+	static void		SetGlobalHlTemp(bool in){m_bGlobalHlTemp=in;} // Global Source Limit (customize for files) - Stulle
+	static void		SetTakeOverFileSettings(bool in) {m_TakeOverFileSettings=in;}
+	static bool		GetEnableAutoDropNNSDefault(){return m_EnableAutoDropNNSDefault;}
+	static DWORD	GetAutoNNS_TimerDefault(){return m_AutoNNS_TimerDefault;}
+	static uint16	GetMaxRemoveNNSLimitDefault(){return m_MaxRemoveNNSLimitDefault;}
+	static bool		GetEnableAutoDropFQSDefault(){return m_EnableAutoDropFQSDefault;}
+	static DWORD	GetAutoFQS_TimerDefault(){return m_AutoFQS_TimerDefault;}
+	static uint16	GetMaxRemoveFQSLimitDefault(){return m_MaxRemoveFQSLimitDefault;}
+	static bool		GetEnableAutoDropQRSDefault(){return m_EnableAutoDropQRSDefault;}
+	static DWORD	GetAutoHQRS_TimerDefault(){return m_AutoHQRS_TimerDefault;}
+	static uint16	GetMaxRemoveQRSDefault(){return m_MaxRemoveQRSDefault;}
+	static uint16	GetMaxRemoveQRSLimitDefault(){return m_MaxRemoveQRSLimitDefault;}
+	static bool		GetHQRXmanDefault(){return m_bHQRXmanDefault;}
+	static bool		GetGlobalHlDefault(){return m_bGlobalHlDefault;} // Global Source Limit (customize for files) - Stulle
+	static bool		GetMaxSourcesPerFileTakeOver(){return m_MaxSourcesPerFileTakeOver;}
+	static bool		GetEnableAutoDropNNSTakeOver(){return m_EnableAutoDropNNSTakeOver;}
+	static bool		GetAutoNNS_TimerTakeOver(){return m_AutoNNS_TimerTakeOver;}
+	static bool		GetMaxRemoveNNSLimitTakeOver(){return m_MaxRemoveNNSLimitTakeOver;}
+	static bool		GetEnableAutoDropFQSTakeOver(){return m_EnableAutoDropFQSTakeOver;}
+	static bool		GetAutoFQS_TimerTakeOver(){return m_AutoFQS_TimerTakeOver;}
+	static bool		GetMaxRemoveFQSLimitTakeOver(){return m_MaxRemoveFQSLimitTakeOver;}
+	static bool		GetEnableAutoDropQRSTakeOver(){return m_EnableAutoDropQRSTakeOver;}
+	static bool		GetAutoHQRS_TimerTakeOver(){return m_AutoHQRS_TimerTakeOver;}
+	static bool		GetMaxRemoveQRSTakeOver(){return m_MaxRemoveQRSTakeOver;}
+	static bool		GetMaxRemoveQRSLimitTakeOver(){return m_MaxRemoveQRSLimitTakeOver;}
+	static bool		GetHQRXmanTakeOver(){return m_bHQRXmanTakeOver;}
+	static bool		GetGlobalHlTakeOver(){return m_bGlobalHlTakeOver;} // Global Source Limit (customize for files) - Stulle
+	static bool		GetTakeOverFileSettings() {return m_TakeOverFileSettings;}
+	// <== File Settings [sivka/Stulle] - Stulle
+
+	// ==> Source Graph - Stulle
+	static	bool GetSrcGraph()			{ return m_bSrcGraph; }
+	static uint16  GetStatsHLMin()		{ return m_iStatsHLMin; }
+	static uint16  GetStatsHLMax()		{ return m_iStatsHLMax; }
+	static uint16  GetStatsHLDif()		{ return m_iStatsHLDif; }
+	// <== Source Graph - Stulle
+
+	// ==> FunnyNick [SiRoB/Stulle] - Stulle
+	static	uint8	GetFnTag()			{return FnTagMode;}
+	static	CString GetFnCustomTag ()	{ return m_sFnCustomTag; }
+	static	bool	GetFnTagAtEnd()		{return m_bFnTagAtEnd;}
+	// <== FunnyNick [SiRoB/Stulle] - Stulle
+
+	static	bool	GetACC()			{ return m_bACC; } // ACC [Max/WiZaRd] - Max
+
+	// ==> ScarAngel Version Check - Stulle
+	static	uint32	GetLastSVC()				{return m_uScarVerCheckLastAutomatic;}
+	static	void	UpdateLastSVC();
+	// <== ScarAngel Version Check - Stulle
+
+	// ==> Quick start [TPT] - Max
+	static	bool	GetQuickStart()						{return m_bQuickStart;}
+	static	void	SetMaxCon(int in)					{maxconnections=in;} 
+	static	UINT	GetMaxCon()							{ return maxconnections;}
+	static	uint16	GetQuickStartMaxTime()				{ return m_iQuickStartMaxTime; }
+	static	UINT	GetQuickStartMaxConn()				{ return m_iQuickStartMaxConn; }
+	static	uint16	GetQuickStartMaxConnPerFive()		{ return m_iQuickStartMaxConnPerFive; }
+	static	UINT	GetQuickStartMaxConnBack()			{ return m_iQuickStartMaxConnBack; }
+	static	uint16	GetQuickStartMaxConnPerFiveBack()	{ return m_iQuickStartMaxConnPerFiveBack; }
+	static	bool	GetQuickStartAfterIPChange()		{ return m_bQuickStartAfterIPChange;}
+	// <== Quick start [TPT] - Max
+
+	// ==> TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+	static	bool	GetAutoBackup()				{ return m_bAutoBackup; }
+	static	bool	GetAutoBackup2()			{ return m_bAutoBackup2; }
+	// <== TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+
+	// ==> TBH: minimule - Max
+	static	int		GetSpeedMeterMin()		{return speedmetermin;}
+	static	int		GetSpeedMeterMax()		{return speedmetermax;}
+	static	void	SetSpeedMeterMin(int in)	{speedmetermin = in;}
+	static	void	SetSpeedMeterMax(int in)    {speedmetermax = in;}
+	static	bool	IsMiniMuleEnabled() {return m_bMiniMule;}
+	static	void	SetMiniMuleEnabled(bool in) {m_bMiniMule = in;}
+	static	uint32	GetMiniMuleUpdate()	{return m_iMiniMuleUpdate;}
+	static	void	SetMiniMuleUpdate(uint32 in)  {m_iMiniMuleUpdate = in;}
+	static	void	SetMiniMuleLives(bool in) {m_bMiniMuleLives = in;}
+	static	bool	GetMiniMuleLives()	{return m_bMiniMuleLives;}
+	static	void	SetMiniMuleTransparency(uint8 in) {m_iMiniMuleTransparency = in;}
+	static	uint8	GetMiniMuleTransparency() {return m_iMiniMuleTransparency;}
+	static	bool	GetMMCompl()			{ return m_bMMCompl; }
+	static	bool	GetMMOpen()				{ return m_bMMOpen; }
+	// <== TBH: minimule - Max
+
+	// ==> Simple cleanup [MorphXT] - Stulle
+	static	void	SetSimpleCleanupOptions (int _i)	      { m_SimpleCleanupOptions = _i; }
+	static	int 	GetSimpleCleanupOptions ()			      { return m_SimpleCleanupOptions; }
+	static	void	SetSimpleCleanupSearch (CString _s)	      { m_SimpleCleanupSearch = _s; }
+	static	CString	GetSimpleCleanupSearch ()			      { return m_SimpleCleanupSearch; }
+	static	void	SetSimpleCleanupReplace (CString _s)	  { m_SimpleCleanupReplace = _s; }
+	static	CString	GetSimpleCleanupReplace ()				  { return m_SimpleCleanupReplace; }
+	static	void	SetSimpleCleanupSearchChars (CString _s)  { m_SimpleCleanupSearchChars = _s; }
+	static	CString	GetSimpleCleanupSearchChars ()			  { return m_SimpleCleanupSearchChars; }
+	static	void	SetSimpleCleanupReplaceChars (CString _s) { m_SimpleCleanupReplaceChars = _s; }
+	static	CString	GetSimpleCleanupReplaceChars ()			  { return m_SimpleCleanupReplaceChars; }
+	// <== Simple cleanup [MorphXT] - Stulle
+
+	static  bool	UseStartupSound()			{return startupsound;} // Startupsound [Commander] - mav744
+
+	static	uint8	GetCompressLevel()			{return m_uCompressLevel;} // Adjust Compress Level [Stulle] - Stulle
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	static	bool	ShowValidSrcsOnly()		{ return m_bValidSrcsOnly; }
+	static	bool	ShowCatNameInDownList()	{ return m_bShowCatNames; }
+	static	bool	SelectCatForNewDL()		{ return m_bSelCatOnAdd; }
+	static	bool	UseActiveCatForLinks()	{ return m_bActiveCatDefault; }
+	static	bool	AutoSetResumeOrder()	{ return m_bAutoSetResumeOrder; }
+	static	bool	SmallFileDLPush()		{ return m_bSmallFileDLPush; }
+	static	uint8	StartDLInEmptyCats()	{ return m_iStartDLInEmptyCats; } // 0 = disabled, otherwise num to resume
+	static	bool	UseAutoCat()			{ return m_bUseAutoCat; }
+	static	uint8	GetDlMode()				{ return dlMode;}
+	static	bool	UseAddRemoveInc()		{ return m_bAddRemovedInc; }
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+	static	bool	GetSpreadbarSetStatus()	{return m_bSpreadbarSetStatus;} // Spread bars [Slugfiller/MorphXT] - Stulle
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	static	int		GetHideOvershares()		{return hideOS;}
+	static	bool	IsSelectiveShareEnabled()	{return selectiveShare;}
+	static	int		GetShareOnlyTheNeed()	{return ShareOnlyTheNeed;}
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	static	int		GetPowerShareMode()	{return m_iPowershareMode;}
+	static	int		GetPowerShareLimit() {return PowerShareLimit;}
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	static	uint8	GetReleaseBonus()			{return m_uReleaseBonus;} // Release Bonus [sivka] - Stulle
+	static	bool	GetReleaseScoreAssurance()	{return m_bReleaseScoreAssurance;} // Release Score Assurance [Stulle] - Stulle
+
+	static int	PsAmountLimit; // Limit PS by amount of data uploaded [Stulle] - Stulle
+
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	static void		InitStyles();
+	static bool		GetStyle(int nMaster, int nStyle, StylesStruct *style=NULL);
+	static bool		SetStyle(int nMaster, int nStyle, StylesStruct *style=NULL);
+	static DWORD	GetStyleFlags(int nMaster, int nStyle);
+	static void		SetStyleFlags(int nMaster, int nStyle, DWORD dwNew);
+	static COLORREF	GetStyleFontColor(int nMaster, int nStyle);
+	static void		SetStyleFontColor(int nMaster, int nStyle, COLORREF crNew);
+	static COLORREF	GetStyleBackColor(int nMaster, int nStyle);
+	static void		SetStyleBackColor(int nMaster, int nStyle, COLORREF crNew);
+	static short	GetStyleOnOff(int nMaster, int nStyle);
+	static void		SetStyleOnOff(int nMaster, int nStyle, short sNew);
+	static void		SaveStylePrefs(CIni &ini);
+	static void		LoadStylePrefs(CIni &ini);
+	static void		LoadStylePrefsV2(CIni &ini);
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
+	// ==> Enforce Ratio [Stulle] - Stulle
+	static	bool	GetEnforceRatio()	{ return m_bEnforceRatio; }
+	static	uint8	GetRatioValue()		{ return m_uRatioValue; }
+	// <== Enforce Ratio [Stulle] - Stulle
+
+	// ==> Improved ICS-Firewall support [MoNKi]-Max
+	static	bool	GetICFSupport() { return m_bICFSupport; }
+	static	void	SetICFSupport(bool on) { m_bICFSupport = on; }
+	static	bool	GetICFSupportFirstTime() { return m_bICFSupportFirstTime; }
+	static	void	SetICFSupportFirstTime(bool on) { m_bICFSupportFirstTime = on; }
+	static	bool	GetICFSupportServerUDP() { return m_bICFSupportServerUDP; }
+	static	void	SetICFSupportServerUDP(bool on) { m_bICFSupportServerUDP = on; }
+	// <== Improved ICS-Firewall support [MoNKi]-Max
+
+	// ==> Invisible Mode [TPT/MoNKi] - Stulle
+    static	bool GetInvisibleMode() { return m_bInvisibleMode; }
+	static	UINT GetInvisibleModeHKKeyModifier() { return m_iInvisibleModeHotKeyModifier; }
+	static	char GetInvisibleModeHKKey() { return m_cInvisibleModeHotKey; }
+	static	void SetInvisibleMode(bool on, UINT keymodifier, char key);
+	static	bool GetInvisibleModeStart() { return m_bInvisibleModeStart; }
+	// <== Invisible Mode [TPT/MoNKi] - Stulle
+
+	// ==> UPnP support [MoNKi] - leuk_he  upnp bindaddr
+	static DWORD	 GetUpnpBindAddr()				{return m_dwUpnpBindAddr; }
+	static void      SetUpnpBindAddr(DWORD bindip); 
+	static void      SetUpnpBindDhcp(bool BindAddrIsDhcp) {m_bBindAddrIsDhcp=BindAddrIsDhcp;};
+	static bool      GetUpnpBindDhcp() {return m_bBindAddrIsDhcp;};
+	static	bool	IsUPnPEnabled()						{ return m_bUPnPNat; }
+	// Note: setting upnp to disbale/enable is in theApp.m_UPnP_IGDControlPoint->SetUPnPNat to actually stop and start upnp. 
+	static	bool	GetUPnPNatWeb()						{ return m_bUPnPNatWeb; }
+	static	void	SetUPnPNatWeb(bool on)				{ m_bUPnPNatWeb = on; }
+	static	void	SetUPnPVerboseLog(bool on)			{ m_bUPnPVerboseLog = on; }
+	static	bool	GetUPnPVerboseLog()					{ return m_bUPnPVerboseLog; }
+	static	void	SetUPnPPort(uint16 port)			{ m_iUPnPPort = port; }
+	static	uint16	GetUPnPPort()						{ return m_iUPnPPort; }
+	static	void	SetUPnPClearOnClose(bool on)		{ m_bUPnPClearOnClose = on; }
+	static	bool	GetUPnPClearOnClose()				{ return m_bUPnPClearOnClose; }
+	static	bool	SetUPnPLimitToFirstConnection(bool on)	{ m_bUPnPLimitToFirstConnection = on; }
+	static	bool	GetUPnPLimitToFirstConnection()		{ return m_bUPnPLimitToFirstConnection; }
+	static	int  	GetUpnpDetect()					{ return m_iDetectuPnP; } //leuk_he autodetect upnp in wizard
+	static void     SetUpnpDetect(int on);
+	#define UPNP_DO_AUTODETECT 2
+	#define UPNP_DETECTED 0
+	#define UPNP_NOT_DETECTED -1 
+	#define UPNP_NO_DETECTEDTION -2 
+	#define UPNP_NOT_NEEDED -10
+	// <== UPnP support [MoNKi] - leuk_he
+
+	// ==> Random Ports [MoNKi] - Stulle
+	static	uint16	GetPort(bool newPort = false, bool original = false, bool reset = false);
+	static	uint16	GetUDPPort(bool newPort = false, bool original = false, bool reset = false);
+	static	bool	GetUseRandomPorts()				{ return m_bRndPorts; }
+	static	void	SetUseRandomPorts(bool on)		{ m_bRndPorts = on; }
+	static	uint16	GetMinRandomPort()				{ return m_iMinRndPort; }
+	static	void	SetMinRandomPort(uint16 min)	{ m_iMinRndPort = min; }
+	static	uint16	GetMaxRandomPort()				{ return m_iMaxRndPort; }
+	static	void	SetMaxRandomPort(uint16 max)	{ m_iMaxRndPort = max; }
+	static	bool	GetRandomPortsResetOnRestart()	{ return m_bRndPortsResetOnRestart; }
+	static	void	SetRandomPortsResetOnRestart(bool on)	{ m_bRndPortsResetOnRestart = on; }
+	static	uint16	GetRandomPortsSafeResetOnRestartTime(){ return m_iRndPortsSafeResetOnRestartTime; }
+	static	void	SetRandomPortsSafeResetOnRestartTime(uint16 time){ m_iRndPortsSafeResetOnRestartTime = time; }
+	// <== Random Ports [MoNKi] - Stulle
+
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	static	bool	GetDirectoryWatcher()				{ return m_bDirectoryWatcher; }
+	static	void	SetDirectoryWatcher(bool on)		{ m_bDirectoryWatcher = on; }
+	static	bool	GetSingleSharedDirWatcher()			{ return m_bSingleSharedDirWatcher; }
+	static	void	SetSingleSharedDirWatcher(bool in)	{ m_bSingleSharedDirWatcher = in; }
+	static	uint32	GetTimeBetweenReloads()				{ return m_uTimeBetweenReloads; }
+	static	void	SetTimeBetweenReloads(uint32 in)	{ m_uTimeBetweenReloads = in; }
+	// <== Automatic shared files updater [MoNKi] - Stulle
+
+	// ==> Control download priority [tommy_gun/iONiX] - MyTh88
+	static	uint8	m_uiBowlfishMode;
+	static	uint8	GetBowlfishMode()					{return m_uiBowlfishMode;}
+
+	static	bool	GetBowlfishPrioPercent()			{return (m_uiBowlfishMode == 1);}
+	static	void	SetBowlfishPrioPercent()			{m_uiBowlfishMode = 1;}
+
+	static	bool	GetBowlfishPrioSize()				{return (m_uiBowlfishMode == 2);}
+	static	void	SetBowlfishPrioSize()				{m_uiBowlfishMode = 2;}
+
+	static	uint8	m_nBowlfishPrioPercentValue;
+	static	uint8	GetBowlfishPrioPercentValue()		{return m_nBowlfishPrioPercentValue;}
+	static	void	SetBowlfishPrioPercentValue(uint8 value)	{m_nBowlfishPrioPercentValue = value;}
+
+	static	uint16	m_nBowlfishPrioSizeValue;
+	static	uint16	GetBowlfishPrioSizeValue()			{return m_nBowlfishPrioSizeValue;}
+	static	void	SetBowlfishPrioSizeValue(uint16 value)	{m_nBowlfishPrioSizeValue = value;}
+
+	static	uint8	m_nBowlfishPrioNewValue;
+	static	uint8	GetBowlfishPrioNewValue()			{return m_nBowlfishPrioNewValue;}
+	static	void	SetBowlfishPrioNewValue(uint8 value)	{m_nBowlfishPrioNewValue = value;}
+	// <== Control download priority [tommy_gun/iONiX] - MyTh88
+
+	// ==> Anti Uploader Ban [Stulle] - Stulle
+	static	uint16	GetAntiUploaderBanLimit()	{return m_uAntiUploaderBanLimit;}
+	static	uint8	GetAntiUploaderBanCase()	{return AntiUploaderBanCaseMode;}
+	// <== Anti Uploader Ban [Stulle] - Stulle
+
+	// ==> Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+	static	bool	IsEmuMLDonkey()			    {return m_bEmuMLDonkey;}
+	static	bool	IsEmueDonkey()			    {return m_bEmueDonkey;}
+	static	bool	IsEmueDonkeyHybrid()		{return m_bEmueDonkeyHybrid;}
+	static	bool	IsEmuShareaza()				{return m_bEmuShareaza;}
+	static  bool    IsEmuLphant()				{return m_bEmuLphant;}
+	static	bool	IsEmuLog()					{return m_bLogEmulator;}
+	// <== Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+
+	// ==> Spread Credits Slot [Stulle] - Stulle
+	static	bool	GetSpreadCreditsSlot()			{return SpreadCreditsSlot;}
+	static  void    SetSpreadCreditsSlotCounter		(uint16 in) { SpreadCreditsSlotCounter = in; }
+	static	uint16	GetSpreadCreditsSlotCounter()	{return SpreadCreditsSlotCounter;}
+	// <== Spread Credits Slot [Stulle] - Stulle
+
+	// ==> Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+	static	bool	IsPayBackFirst()		{return m_bPayBackFirst;}
+	static	uint8	GetPayBackFirstLimit()	{return m_iPayBackFirstLimit;}
+	static	bool	IsPayBackFirst2()		{return m_bPayBackFirst2;}
+	static	uint16	GetPayBackFirstLimit2()	{return m_iPayBackFirstLimit2;}
+	// <== Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+
+	static	bool	GetIgnoreThird()		{return m_bIgnoreThird;} // Do not reserve 1/3 of your uploadlimit for emule [Stulle] - Stulle
+
+	static	bool	GetDisableUlThres()		{return m_bDisableUlThres;} // Disable accepting only clients who asked within last 30min [Stulle] - Stulle
+
+	static	bool	IsFollowTheMajorityEnabled() { return m_bFollowTheMajority;} // Follow The Majority [AndCycle/Stulle] - Stulle
+
+	static	int		GetFairPlay()			{ return m_iFairPlay; } //Fair Play [AndCycle/Stulle] - Stulle
+
+	static	bool	GetMaxSlotSpeed()		{ return m_bMaxSlotSpeed; } // Alwasy maximize slot speed [Stulle] - Stulle
+
+	static uint32	GetReAskTimeDif()		{return m_uReAskTimeDif;} // Timer for ReAsk File Sources [Stulle] - Stulle
+
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	static bool			IsAutoUpdateAntiLeech()			{return m_bAutoUpdateAntiLeech;}
+	static CString		GetAntiLeechURL()				{return m_strAntiLeechURL;}
+	static LPSYSTEMTIME	GetIPfilterVersion()			{return &m_IPfilterVersion;}
+	static uint32		GetIPFilterVersionNum()			{return m_uIPFilterVersionNum;}
+	static LPSYSTEMTIME	GetIP2CountryVersion()			{return &m_IP2CountryVersion;}
+	static bool			IsAutoUPdateIP2CountryEnabled()	{return AutoUpdateIP2Country;}
+	static CString		GetUpdateURLIP2Country()		{return UpdateURLIP2Country;}
+	static bool			IsIPFilterViaDynDNS(CString strURL = NULL);
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
+	static void		SetBindAddr(CStringW bindip); // Advanced Options [Official/MorphXT] - Stulle
+
+	static bool		FineCS()			{return m_bFineCS;} // Modified FineCS [CiccioBastardo/Stulle] - Stulle
+
+	static bool		GetTrayComplete()		{ return m_bTrayComplete; } // Completed in Tray [Stulle] - Stulle
+
+	static bool		GetColorFeedback()		{ return m_bColorFeedback; } // Feedback personalization [Stulle] - Stulle
+
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+	static	bool	GetSplitWindow()		{ return m_bSplitWindow; }
+	static	void	SetSplitWindow(bool in)	{ m_bSplitWindow = in; }
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
+
+	static	bool	DateFileNameLog()		{ return m_bDateFileNameLog;} // Date File Name Log [AndCycle] - Stulle
+
+	static	bool	UseIonixWebsrv()		{ return m_bIonixWebsrv; } // Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	static int      GetServiceStartupMode();
+	static int		GetServiceOptLvl()		{ return m_iServiceOptLvl; }
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// ==> Adjustable NT Service Strings [Stulle] - Stulle
+	static	CString	GetServiceName();
+	static	void	SetServiceName(CString in)		{ m_strServiceName = in; }
+	static	CString	GetServiceDispName()			{ return m_strServiceDispName; }
+	static	void	SetServiceDispName(CString in)	{ m_strServiceDispName = in; }
+	static	CString	GetServiceDescr()				{ return m_strServiceDescr; }
+	static	void	SetServiceDescr(CString in)		{ m_strServiceDescr = in; }
+	// <== Adjustable NT Service Strings [Stulle] - Stulle
+
+	// ==> Mephisto Upload - Mephisto
+	static uint8	GetMinSlots()			{return m_uMinSlots;}
+	static uint8	GetNoNewSlotTimer()		{return m_uNoNewSlotTimer;}
+	static uint8	GetFullLoops()			{return m_uFullLoops;}
+	static uint8	GetMonitorLoops()		{return m_uMonitorLoops;}
+	static uint8	GetNotReachedBW()		{return m_uNotReachedBW;}
+	static uint8	GetNoTrickleTimer()		{return m_uNoTrickleTimer;}
+	static uint16	GetMoveDownKB()			{return m_uMoveDownKB;}
+	// <== Mephisto Upload - Mephisto
+
+	// ==> Multiple Part Transfer [Stulle] - Mephisto
+	static uint8	GetChunksMode()			{return m_uChunksMode;}
+	static uint8	GetChunksToFinish()		{return m_uChunksToFinish;}
+	static uint8	GetChunksToUpload()		{return m_uChunksToUpload;}
+	// <== Multiple Part Transfer [Stulle] - Mephisto
+	static uint16	GetMaxUpMinutes()		{return m_uMaxUpMinutes;} // Adjust max upload time [Stulle] - Mephisto
+
 protected:
 	static	CString m_strFileCommentsFilePath;
 	static	Preferences_Ext_Struct* prefsExt;

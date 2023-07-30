@@ -152,12 +152,34 @@ BOOL CPPgSecurity::OnInitDialog()
 	else
 		GetDlgItem(IDC_DD)->ShowWindow(SW_HIDE);
 
+	//Xman auto update IPFilter
+	CString url;
+	GetDlgItemText(IDC_UPDATEURL,url);
+	//in case we don't use Auto-completion we have to take the prefs-value
+	if (url.IsEmpty())
+		SetDlgItemText(IDC_UPDATEURL, thePrefs.GetAutoUpdateIPFilter_URL());
+	else
+	{
+		//in case we use the auto-completion we must update the prefs-value 
+		thePrefs.SetAutoUpdateIPFilter_URL(url);
+	}
+	//Xman end
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 BOOL CPPgSecurity::OnApply()
 {
+	//Xman auto update IPFilter
+	CString url;
+	GetDlgItemText(IDC_UPDATEURL,url);
+	if(url.GetLength()>=_MAX_PATH)
+		AfxMessageBox(_T("typed url is too long"));
+	else
+		thePrefs.SetAutoUpdateIPFilter_URL(url);
+	//Xman end
+
 	bool bIPFilterSettingsChanged = false;
 
 	TCHAR buffer[510];
@@ -248,11 +270,23 @@ void CPPgSecurity::OnLoadIPFFromURL()
 	bool bHaveNewFilterFile = false;
 	CString url;
 	GetDlgItemText(IDC_UPDATEURL,url);
+	//Xman auto update IPFilter
+	SYSTEMTIME SysTime;
+	memset(&SysTime, 0, sizeof(SYSTEMTIME)); //just to avoid the warning
+	//Xman end
 	if (!url.IsEmpty())
 	{
 		// add entered URL to LRU list even if it's not yet known whether we can download from this URL (it's just more convenient this way)
 		if (m_pacIPFilterURL && m_pacIPFilterURL->IsBound())
 			m_pacIPFilterURL->AddItem(url, 0);
+
+		// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+		if(thePrefs.IsIPFilterViaDynDNS(url))
+		{
+			theApp.emuledlg->CheckIPFilter();
+			return;
+		}
+		// <== Advanced Updates [MorphXT/Stulle] - Stulle
 
 		CString strTempFilePath;
 		_tmakepathlimit(strTempFilePath.GetBuffer(MAX_PATH), NULL, thePrefs.GetMuleDirectory(EMULE_CONFIGDIR), DFLT_IPFILTER_FILENAME, _T("tmp"));
@@ -262,6 +296,12 @@ void CPPgSecurity::OnLoadIPFFromURL()
 		dlgDownload.m_strTitle = GetResString(IDS_DWL_IPFILTERFILE);
 		dlgDownload.m_sURLToDownload = url;
 		dlgDownload.m_sFileToDownloadInto = strTempFilePath;
+		
+		//Xman auto update IPFilter
+		memset(&SysTime, 0, sizeof(SYSTEMTIME));
+		dlgDownload.m_pLastModifiedTime = &SysTime; //Xman remark: m_pLastModifiedTime is a pointer which points to the SysTime-struct
+		//Xman end
+
 		if (dlgDownload.DoModal() != IDOK)
 		{
 			(void)_tremove(strTempFilePath);
@@ -454,6 +494,15 @@ void CPPgSecurity::OnLoadIPFFromURL()
 		}
 	}
 
+	//Xman auto update IPFilter
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	/*
+	struct tm tmTemp;
+	thePrefs.m_last_ipfilter_check = safe_mktime(CTime::GetCurrentTime().GetLocalTm(&tmTemp));
+	*/
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+	//Xman end
+
 	if (url.IsEmpty() || bHaveNewFilterFile)
 		OnReloadIPFilter();
 
@@ -467,6 +516,10 @@ void CPPgSecurity::OnLoadIPFFromURL()
 		strError.Format(_T("%s\r\n\r\n%s"), GetResString(IDS_DWLIPFILTERFAILED), strLoaded);
 		AfxMessageBox(strError, MB_ICONERROR);
 	}
+	//Xman auto update IPFilter
+	else if(bHaveNewFilterFile)
+		memcpy(&thePrefs.m_IPfilterVersion, &SysTime, sizeof SysTime); 
+	//Xman end
 }
 
 void CPPgSecurity::OnDestroy()

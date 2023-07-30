@@ -138,11 +138,7 @@ CRoutingZone::~CRoutingZone()
 	{
 		// Hide contacts in the GUI
 		theApp.emuledlg->kademliawnd->StopUpdateContacts();
-#ifndef _BOOTSTRAPNODESDAT
 		WriteFile();
-#else
-		DbgWriteBootstrapFile();
-#endif
 	}
 	// If this zone is a leaf, delete our contact bin.
 	if (IsLeaf())
@@ -323,7 +319,6 @@ void CRoutingZone::ReadBootstrapNodesDat(CFileDataIO& file){
 						// look were to put this contact into the proper position
 						bool bInserted = false;
 						CContact* pContact = new CContact(uID, uIP, uUDPPort, uTCPPort, uMe, uContactVersion, 0, false);
-						pContact->SetBootstrapContact();
 						for (POSITION pos = CKademlia::s_liBootstapList.GetHeadPosition(); pos != NULL; CKademlia::s_liBootstapList.GetNext(pos)){
 							if (CKademlia::s_liBootstapList.GetAt(pos)->GetDistance() > uDistance){
 								CKademlia::s_liBootstapList.InsertBefore(pos, pContact);
@@ -342,18 +337,6 @@ void CRoutingZone::ReadBootstrapNodesDat(CFileDataIO& file){
 			}
 			uNumContacts--;
 		}
-
-		theApp.emuledlg->kademliawnd->StopUpdateContacts();
-		theApp.emuledlg->kademliawnd->SetBootstrapListMode();
-		POSITION pos = CKademlia::s_liBootstapList.GetHeadPosition();
-		while (pos != NULL)
-		{
-			CContact* pContact = CKademlia::s_liBootstapList.GetNext(pos);
-			pContact->SetGuiRefs(true);
-			theApp.emuledlg->kademliawnd->ContactAdd(pContact);
-		}
-		theApp.emuledlg->kademliawnd->StartUpdateContacts();
-
 		AddLogLine( false, GetResString(IDS_KADCONTACTSREAD), CKademlia::s_liBootstapList.GetCount());
 		DebugLog(_T("Loaded Bootstrap nodes.dat, selected %u out of %u valid contacts"), CKademlia::s_liBootstapList.GetCount(), uValidContacts);
 	}
@@ -410,7 +393,7 @@ void CRoutingZone::WriteFile()
 	}
 }
 
-#ifdef _BOOTSTRAPNODESDAT
+#ifdef _DEBUG
 void CRoutingZone::DbgWriteBootstrapFile()
 {
 	DebugLogWarning(_T("Writing special bootstrap nodes.dat - not intended for normal use"));
@@ -473,7 +456,6 @@ void CRoutingZone::DbgWriteBootstrapFile() {}
 #endif
 
 
-#ifndef _BOOTSTRAPNODESDAT
 bool CRoutingZone::CanSplit() const
 {
 	// Max levels allowed.
@@ -485,23 +467,6 @@ bool CRoutingZone::CanSplit() const
 		return true;
 	return false;
 }
-#else
-bool CRoutingZone::CanSplit() const
-{
-	if (Kademlia::CKademlia::GetRoutingZone()->GetNumContacts() < 2000)
-		return true;
-
-	// Max levels allowed.
-	if (m_uLevel >= 127)
-		return false;
-
-	// Check if this zone is allowed to split.
-	if ( (m_uZoneIndex < KK || m_uLevel < KBASE) && m_pBin->GetSize() == K)
-		return true;
-	return false;
-}
-#endif
-
 
 // Returns true if a contact was added or updated, false if the routing table was not touched
 bool CRoutingZone::Add(const CUInt128 &uID, uint32 uIP, uint16 uUDPPort, uint16 uTCPPort, uint8 uVersion, CKadUDPKey cUDPKey, bool& bIPVerified, bool bUpdate, bool bFromNodesDat, bool bFromHello)

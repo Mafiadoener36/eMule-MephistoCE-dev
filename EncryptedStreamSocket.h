@@ -29,7 +29,12 @@
 // cryptoPP used for DH integer calculations
 #pragma warning(disable:4244) // conversion from 'type1' to 'type2', possible loss of data
 #pragma warning(disable:4100) // unreferenced formal parameter
+//Xman
+/*
 #include <crypto51/integer.h>
+*/
+#include <cryptopp/integer.h> //Xman
+//Xman end
 #pragma warning(default:4100) // unreferenced formal parameter
 #pragma warning(default:4244) // conversion from 'type1' to 'type2', possible loss of data
 
@@ -96,7 +101,6 @@ public:
 
 protected:
 	int Send(const void* lpBuf, int nBufLen, int nFlags = 0);
-	int SendOv(CArray<WSABUF>& raBuffer, DWORD& dwBytesSent, LPWSAOVERLAPPED lpOverlapped);
 	int Receive(void* lpBuf, int nBufLen, int nFlags = 0);
 	virtual void	OnError(int nErrorCode) = 0;
 	virtual void	OnSend(int nErrorCode);

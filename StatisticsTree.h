@@ -25,7 +25,12 @@
 	and a context menu.
 */
 #pragma once
+// ==> XP Style Menu [Xanatos] - Stulle
+/*
 #include "TitleMenu.h"
+*/
+#include "MenuXP.h"
+// <== XP Style Menu [Xanatos] - Stulle
 
 // -khaos--+++> Items for our stat's tree context menu.
 #define	MP_STATTREE_RESET		10950
@@ -61,6 +66,11 @@ protected:
 	afx_msg		void	OnContextMenu( CWnd* pWnd, CPoint point );
 	afx_msg		void	OnItemExpanded( NMHDR* pNMHDR, LRESULT* pResult );
 
+	// ==> XP Style Menu [Xanatos] - Stulle
+	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
+	afx_msg LRESULT OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu);
+	// <== XP Style Menu [Xanatos] - Stulle
+
 public:
 	void				Init();
     void				ExportHTML();
@@ -79,6 +89,7 @@ public:
 	void				DoMenu(CPoint doWhere, UINT nFlags);
 	void				ExpandAll(bool onlyBold = false, HTREEITEM theItem = NULL);
 	void				CollapseAll(HTREEITEM theItem = NULL);
+	void				DeleteChildItems(HTREEITEM parentItem); //Xman extended stats (taken from emule plus)
 	CString				GetExpandedMask(HTREEITEM theItem = NULL);
 	int					ApplyExpandedMask(CString theMask, HTREEITEM theItem = NULL, int theStringIndex = 0);
 private:

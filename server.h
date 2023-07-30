@@ -19,6 +19,8 @@
 class CTag;
 class CFileDataIO;
 
+struct Country_Struct; //EastShare - added by AndCycle, IP to Country
+
 #pragma pack(1)
 struct ServerMet_Struct {
 	uint32	ip;
@@ -191,4 +193,15 @@ private:
 	uint16		m_nObfuscationPortTCP;
 	uint16		m_nObfuscationPortUDP;
 	uint32		m_dwRealLastPingedTime;
+
+	//EastShare Start - added by AndCycle, IP to Country
+public:
+	CString	GetCountryName() const;
+	int		GetCountryFlagIndex() const;
+	void	ResetIP2Country();
+
+private:
+	/*struct*/	Country_Struct* m_structServerCountry;
+	//EastShare End - added by AndCycle, IP to Country
+
 };

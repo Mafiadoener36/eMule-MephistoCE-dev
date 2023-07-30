@@ -42,8 +42,16 @@ public:
 	void		Process();
 	int			GetCount()		{ return m_listFriends.GetCount(); }
 
+	bool		IsFriendSlot(); // Multiple friendslots [ZZ] - Mephisto
+
 private:
 	CTypedPtrList<CPtrList, CFriend*>	m_listFriends;
 	CFriendListCtrl*					m_wndOutput;
 	uint32								m_nLastSaved;
+
+// MORPH START - Added by Commander, Friendlinks [emulEspaa] - added by zz_fly
+public:
+	bool		IsAlreadyFriend(uchar userHash[]) const;
+	bool		AddEmfriendsMetToList(const CString& strFile);
+// MORPH END - Added by Commander, Friendlinks [emulEspaa]
 };

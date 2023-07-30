@@ -40,12 +40,25 @@
 #include "Log.h"
 #include "MuleToolbarCtrl.h"
 #include "VistaDefines.h"
+//Xman
+#include "BandWidthControl.h" // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+// ==> UPnP support [MoNKi] - leuk_he
+#include "emuleDlg.h" // for WEBGUIIA_UPDATEMYINFO
+#include "UserMsgs.h" // for webguiintercation
+// <== UPnP support [MoNKi] - leuk_he
 
 #pragma warning(disable:4516) // access-declarations are deprecated; member using-declarations provide a better alternative
 #pragma warning(disable:4244) // conversion from 'type1' to 'type2', possible loss of data
 #pragma warning(disable:4100) // unreferenced formal parameter
 #pragma warning(disable:4702) // unreachable code
+//Xman
+/*
 #include <crypto51/osrng.h>
+*/
+#pragma warning(disable:4189) // local variable is initialized but not referenced
+#include <cryptopp/osrng.h>
+#pragma warning(default:4189) // local variable is initialized but not referenced
+//Xman end
 #pragma warning(default:4702) // unreachable code
 #pragma warning(default:4100) // unreferenced formal parameter
 #pragma warning(default:4244) // conversion from 'type1' to 'type2', possible loss of data
@@ -60,14 +73,153 @@ static char THIS_FILE[] = __FILE__;
 
 CPreferences thePrefs;
 
+//-------------------------------------------------------------------------------
+//Xman Xtreme Mod:
+
+//Xman Xtreme Upload
+float	CPreferences::m_slotspeed;
+bool	CPreferences::m_openmoreslots;
+bool	CPreferences::m_bandwidthnotreachedslots;
+int		CPreferences::m_sendbuffersize;
+int		CPreferences::m_internetdownreactiontime;
+
+//Xman process prio
+uint32	CPreferences::m_MainProcessPriority; // [TPT] - Select process priority 
+
+//Xman Anti-Leecher
+bool CPreferences::m_antileecher;
+bool CPreferences::m_antileechername;
+bool CPreferences::m_antighost;
+bool CPreferences::m_antileecherbadhello;
+bool CPreferences::m_antileechersnafu;
+bool CPreferences::m_antileechermod;
+bool CPreferences::m_antileecherthief;
+bool CPreferences::m_antileecherspammer;
+bool CPreferences::m_antileecherxsexploiter;
+bool CPreferences::m_antileecheremcrypt;
+bool CPreferences::m_antileecheruserhash;
+bool CPreferences::m_antileechercommunity_action;
+bool CPreferences::m_antileecherghost_action;
+bool CPreferences::m_antileecherthief_action;
+//X-Ray :: Fincan Hash Detection :: Start
+bool CPreferences::m_antileecherFincan;
+CString CPreferences::m_antileecherFincanURL;
+//X-Ray :: Fincan Hash Detection :: End
+//Xman end
+
+//Xman narrow font at transferwindow
+bool CPreferences::m_bUseNarrowFont;
+//Xman end
+
+//Xman 1:3 Ratio
+bool CPreferences::m_13ratio;
+//Xman end
+
+// ==> Superior Client Handling [Stulle] - Stulle
+/*
+//Xman always one release-slot
+bool CPreferences::m_onerealeseslot;
+//Xman end
+*/
+// <== Superior Client Handling [Stulle] - Stulle
+
+//Xman advanced upload-priority
+bool CPreferences::m_AdvancedAutoPrio;
+//Xman end
+
+//Xman chunk chooser
+uint8 CPreferences::m_chunkchooser;
+
+//Xman disable compression
+bool CPreferences::m_bUseCompression;
+
+//Xman auto update IPFilter
+bool CPreferences::m_bautoupdateipfilter;
+CString CPreferences::m_strautoupdateipfilter_url;
+SYSTEMTIME CPreferences::m_IPfilterVersion;
+// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+/*
+uint32 CPreferences::m_last_ipfilter_check;
+*/
+// <== Advanced Updates [MorphXT/Stulle] - Stulle
+//Xman end
+
+//Xman Funny-Nick (Stulle/Morph)
+bool CPreferences::m_bFunnyNick;
+//Xman end
+
+//Xman count block/success send
+bool CPreferences::m_showblockratio;
+bool CPreferences::m_dropblockingsockets;
+
+//Xman remove unused AICH-hashes
+bool CPreferences::m_rememberAICH;
+
+//Xman smooth-accurate-graph
+bool CPreferences::usesmoothgraph;
+
+bool CPreferences::retryconnectionattempts; //Xman 
+
+// Maella 
+float	CPreferences::maxupload;                    // [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+float	CPreferences::maxdownload;
+float	CPreferences::maxGraphDownloadRate;
+float	CPreferences::maxGraphUploadRate;
+
+uint8	CPreferences::zoomFactor;                   // -Graph: display zoom-
+
+uint16	CPreferences::MTU;                          // -MTU Configuration-
+bool	CPreferences::usedoublesendsize;
+bool	CPreferences::retrieveMTUFromSocket; // netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+
+bool	CPreferences::NAFCFullControl;	          // -Network Adapter Feedback Control-
+uint32	CPreferences::forceNAFCadapter;
+uint8	CPreferences::datarateSamples;              // -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+
+bool    CPreferences::enableMultiQueue;             // -One-queue-per-file- (idea bloodymad)
+//bool    CPreferences::enableReleaseMultiQueue;
+// Maella end
+
+// Mighty Knife: Static server handling
+bool	CPreferences::m_bDontRemoveStaticServers;
+// [end] Mighty Knife
+
+
+//Xman [MoNKi: -Downloaded History-]
+bool	CPreferences::m_bHistoryShowShared;
+//Xman end
+
+//Xman GlobalMaxHarlimit for fairness
+uint32	CPreferences::m_uMaxGlobalSources;
+bool	CPreferences::m_bAcceptsourcelimit;
+
+//Xman show additional graph lines
+bool	CPreferences::m_bShowAdditionalGraph;
+
+//Xman versions check
+bool	CPreferences::updatenotifymod;
+
+
+//Xman don't overwrite bak files if last sessions crashed
+bool	CPreferences::m_this_session_aborted_in_an_unnormal_way;
+bool	CPreferences::m_last_session_aborted_in_an_unnormal_way;
+
+
+//Xman end
+//-------------------------------------------------------------------------------
+
 CString CPreferences::m_astrDefaultDirs[13];
 bool	CPreferences::m_abDefaultDirsCreated[13] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int		CPreferences::m_nCurrentUserDirMode = -1;
 int		CPreferences::m_iDbgHeap;
 CString	CPreferences::strNick;
 uint16	CPreferences::minupload;
+//Xman
+/*
 uint16	CPreferences::maxupload;
 uint16	CPreferences::maxdownload;
+*/
+//Xman end
 LPCSTR	CPreferences::m_pszBindAddrA;
 CStringA CPreferences::m_strBindAddrA;
 LPCWSTR	CPreferences::m_pszBindAddrW;
@@ -77,7 +229,6 @@ uint16	CPreferences::udpport;
 uint16	CPreferences::nServerUDPPort;
 UINT	CPreferences::maxconnections;
 UINT	CPreferences::maxhalfconnections;
-bool	CPreferences::m_bOverlappedSockets;
 bool	CPreferences::m_bConditionalTCPAccept;
 bool	CPreferences::reconnect;
 bool	CPreferences::m_bUseServerPriorities;
@@ -107,13 +258,27 @@ UINT	CPreferences::statsInterval;
 bool	CPreferences::m_bFillGraphs;
 uchar	CPreferences::userhash[16];
 WINDOWPLACEMENT CPreferences::EmuleWindowPlacement;
+//Xman
+/*
 int		CPreferences::maxGraphDownloadRate;
 int		CPreferences::maxGraphUploadRate;
 uint32	CPreferences::maxGraphUploadRateEstimated = 0;
+*/
+//Xman end
 bool	CPreferences::beepOnError;
 bool	CPreferences::m_bIconflashOnNewMessage;
 bool	CPreferences::confirmExit;
+//Maella Bandwidth control
+/*
 DWORD	CPreferences::m_adwStatsColors[15];
+*/
+// ==> Source Graph - Stulle
+/*
+DWORD	CPreferences::m_adwStatsColors[14];
+//Xman end
+*/
+DWORD	CPreferences::m_adwStatsColors[15];
+// <== Source Graph - Stulle
 bool	CPreferences::bHasCustomTaskIconColor;
 bool	CPreferences::splashscreen;
 bool	CPreferences::filterLANIPs;
@@ -307,6 +472,8 @@ bool	CPreferences::m_bLogSecureIdent;
 bool	CPreferences::m_bLogFilteredIPs;
 bool	CPreferences::m_bLogFileSaving;
 bool	CPreferences::m_bLogA4AF; // ZZ:DownloadManager
+bool	CPreferences::m_bLogDrop; //Xman Xtreme Downloadmanager
+bool	CPreferences::m_bLogpartmismatch; //Xman Log part/size-mismatch
 bool	CPreferences::m_bLogUlDlEvents;
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 bool	CPreferences::m_bUseDebugDevice = true;
@@ -347,8 +514,11 @@ bool	CPreferences::indicateratings;
 bool	CPreferences::watchclipboard;
 bool	CPreferences::filterserverbyip;
 bool	CPreferences::m_bFirstStart;
-bool	CPreferences::m_bBetaNaggingDone;
+// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+/*
 bool	CPreferences::m_bCreditSystem;
+*/
+// <== CreditSystems [EastShare/ MorphXT] - Stulle
 bool	CPreferences::log2disk;
 bool	CPreferences::debug2disk;
 int		CPreferences::iMaxLogBuff;
@@ -365,7 +535,15 @@ UINT	CPreferences::m_uFileBufferTimeLimit;
 UINT	CPreferences::m_iQueueSize;
 int		CPreferences::m_iCommitFiles;
 UINT	CPreferences::maxmsgsessions;
+// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+/*
 uint32	CPreferences::versioncheckLastAutomatic;
+*/
+time_t	CPreferences::versioncheckLastAutomatic;
+// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+//Xman versions check
+uint32	CPreferences::mversioncheckLastAutomatic;
+//Xman end
 CString	CPreferences::messageFilter;
 CString	CPreferences::commentFilter;
 CString	CPreferences::filenameCleanups;
@@ -435,7 +613,11 @@ bool	CPreferences::m_bAutoShowLookups;
 bool	CPreferences::m_bExtraPreviewWithMenu;
 
 // ZZ:DownloadManager -->
+//Xman
+/*
 bool    CPreferences::m_bA4AFSaveCpu;
+*/
+//Xman end
 // ZZ:DownloadManager <--
 bool    CPreferences::m_bHighresTimer;
 bool	CPreferences::m_bResolveSharedShellLinks;
@@ -477,6 +659,8 @@ bool	CPreferences::m_bCryptLayerRequired;
 uint32	CPreferences::m_dwKadUDPKey;
 uint8	CPreferences::m_byCryptTCPPaddingLength;
 
+// ==> UPnP support [MoNKi] - leuk_he
+/*
 bool	CPreferences::m_bSkipWANIPSetup;
 bool	CPreferences::m_bSkipWANPPPSetup;
 bool	CPreferences::m_bEnableUPnP;
@@ -484,6 +668,22 @@ bool	CPreferences::m_bCloseUPnPOnExit;
 bool	CPreferences::m_bIsWinServImplDisabled;
 bool	CPreferences::m_bIsMinilibImplDisabled;
 int		CPreferences::m_nLastWorkingImpl;
+
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+//UPnP chooser
+bool	CPreferences::m_bUseACATUPnPCurrent;
+bool	CPreferences::m_bUseACATUPnPNextStart;
+
+//ACAT UPnP
+bool	CPreferences::m_bUPnPNat; // UPnP On/Off
+bool	CPreferences::m_bUPnPTryRandom; // Try to use random external port if already in use On/Off
+uint16	CPreferences::m_iUPnPTCPExternal = 0; // TCP External Port
+uint16	CPreferences::m_iUPnPUDPExternal = 0; // UDP External Port
+#endif //zz_fly :: dual upnp
+
+bool	CPreferences::m_bUPnPRebindOnIPChange; //zz_fly :: Rebind UPnP on IP-change
+*/
+// <== UPnP support [MoNKi] - leuk_he
 
 bool	CPreferences::m_bEnableSearchResultFilter;
 
@@ -493,6 +693,385 @@ bool	CPreferences::m_bMessageEnableSmileys;
 BOOL	CPreferences::m_bIsRunningAeroGlass;
 bool	CPreferences::m_bPreventStandby;
 bool	CPreferences::m_bStoreSearches;
+
+bool	CPreferences::m_bShowCountryFlagInKad; //zz_fly :: show country flag in KAD
+bool	CPreferences::m_bKnown2Buffer; //zz_fly :: known2 buffer
+bool	CPreferences::m_bKnown2Split; //zz_fly :: known2 split
+bool	CPreferences::m_bKnown2Split_next; //zz_fly :: known2 split
+uint64	CPreferences::m_uAutoPreviewLimit; //zz_fly :: do not auto preview big archive
+
+CString CPreferences::m_strBrokenURLs; //MORPH - Added by WiZaRd, Fix broken HTTP downloads
+
+// ==> Advanced Options [Official/MorphXT] - Stulle
+bool CPreferences::bMiniMuleAutoClose;
+int  CPreferences::iMiniMuleTransparency; 
+bool CPreferences::bCheckComctl32 ;
+bool CPreferences::bCheckShell32;
+bool CPreferences::bIgnoreInstances;
+CString CPreferences::sNotifierMailEncryptCertName;
+CString CPreferences::sMediaInfo_MediaInfoDllPath ;
+bool CPreferences::bMediaInfo_RIFF;
+bool CPreferences::bMediaInfo_ID3LIB ;
+#ifdef HAVE_QEDIT_H
+bool CPreferences::m_bMediaInfo_MediaDet;
+#endif//HAVE_QEDIT_H
+bool CPreferences::m_bMediaInfo_RM;
+#ifdef HAVE_WMSDK_H
+bool CPreferences::m_bMediaInfo_WM;
+#endif//HAVE_WMSDK_H
+CString CPreferences::sInternetSecurityZone;
+// <== Advanced Options [Official/MorphXT] - Stulle
+
+// ==> Global Source Limit [Max/Stulle] - Stulle
+bool    CPreferences::m_bGlobalHlDefault; 
+UINT	CPreferences::m_uGlobalHL; 
+bool	CPreferences::m_bGlobalHL;
+bool	CPreferences::m_bGlobalHlAll;
+// <== Global Source Limit [Max/Stulle] - Stulle
+
+// ==> push small files [sivka] - Stulle
+bool	CPreferences::enablePushSmallFile;
+uint32	CPreferences::m_iPushSmallFiles;
+uint16	CPreferences::m_iPushSmallBoost;
+// <== push small files [sivka] - Stulle
+bool	CPreferences::enablePushRareFile; // push rare file - Stulle
+
+bool	CPreferences::showSrcInTitle; // Show sources on title - Stulle
+bool	CPreferences::showOverheadInTitle; // show overhead on title - Stulle
+bool	CPreferences::ShowGlobalHL; // show global HL - Stulle
+bool	CPreferences::ShowFileHLconst; // show HL per file constantly - Stulle
+bool	CPreferences::m_bShowInMSN7; //Show in MSN7 [TPT] - Stulle
+bool CPreferences::m_bClientQueueProgressBar; // Client queue progress bar [Commander] - Stulle
+bool	CPreferences::m_bShowClientPercentage; // Show Client Percentage optional [Stulle] - Stulle
+// ==> CPU/MEM usage [$ick$/Stulle] - Max
+bool	CPreferences::m_bSysInfo;
+bool	CPreferences::m_bSysInfoGlobal;
+// <== CPU/MEM usage [$ick$/Stulle] - Max
+bool	CPreferences::m_bShowSpeedMeter; // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+// ==> Static Tray Icon [MorphXT] - MyTh88
+bool CPreferences::m_bStaticIcon;
+// <== Static Tray Icon [MorphXT] - MyTh88
+
+uint8	CPreferences::creditSystemMode; // CreditSystems [EastShare/ MorphXT] - Stulle
+
+bool	CPreferences::m_bSaveUploadQueueWaitTime; // SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+
+// ==> File Settings [sivka/Stulle] - Stulle
+uint16	CPreferences::m_MaxSourcesPerFileTemp;
+bool	CPreferences::m_EnableAutoDropNNSTemp;
+DWORD	CPreferences::m_AutoNNS_TimerTemp;
+uint16	CPreferences::m_MaxRemoveNNSLimitTemp;
+bool	CPreferences::m_EnableAutoDropFQSTemp;
+DWORD	CPreferences::m_AutoFQS_TimerTemp;
+uint16	CPreferences::m_MaxRemoveFQSLimitTemp;
+bool	CPreferences::m_EnableAutoDropQRSTemp;
+DWORD	CPreferences::m_AutoHQRS_TimerTemp;
+uint16	CPreferences::m_MaxRemoveQRSTemp;
+uint16	CPreferences::m_MaxRemoveQRSLimitTemp;
+bool	CPreferences::m_bHQRXmanTemp;
+bool	CPreferences::m_bGlobalHlTemp; // Global Source Limit (customize for files) - Stulle
+bool	CPreferences::m_EnableAutoDropNNSDefault;
+DWORD	CPreferences::m_AutoNNS_TimerDefault;
+uint16	CPreferences::m_MaxRemoveNNSLimitDefault;
+bool	CPreferences::m_EnableAutoDropFQSDefault;
+DWORD	CPreferences::m_AutoFQS_TimerDefault;
+uint16	CPreferences::m_MaxRemoveFQSLimitDefault;
+bool	CPreferences::m_EnableAutoDropQRSDefault;
+DWORD	CPreferences::m_AutoHQRS_TimerDefault;
+uint16	CPreferences::m_MaxRemoveQRSDefault;
+uint16	CPreferences::m_MaxRemoveQRSLimitDefault;
+bool	CPreferences::m_bHQRXmanDefault;
+bool	CPreferences::m_MaxSourcesPerFileTakeOver;
+bool	CPreferences::m_EnableAutoDropNNSTakeOver;
+bool	CPreferences::m_AutoNNS_TimerTakeOver;
+bool	CPreferences::m_MaxRemoveNNSLimitTakeOver;
+bool	CPreferences::m_EnableAutoDropFQSTakeOver;
+bool	CPreferences::m_AutoFQS_TimerTakeOver;
+bool	CPreferences::m_MaxRemoveFQSLimitTakeOver;
+bool	CPreferences::m_EnableAutoDropQRSTakeOver;
+bool	CPreferences::m_AutoHQRS_TimerTakeOver;
+bool	CPreferences::m_MaxRemoveQRSTakeOver;
+bool	CPreferences::m_MaxRemoveQRSLimitTakeOver;
+bool	CPreferences::m_bHQRXmanTakeOver;
+bool	CPreferences::m_bGlobalHlTakeOver; // Global Source Limit (customize for files) - Stulle
+bool	CPreferences::m_TakeOverFileSettings;
+// <== File Settings [sivka/Stulle] - Stulle
+
+// ==> Source Graph - Stulle
+bool	CPreferences::m_bSrcGraph;
+uint16  CPreferences::m_iStatsHLMin;
+uint16  CPreferences::m_iStatsHLMax;
+uint16  CPreferences::m_iStatsHLDif;
+// <== Source Graph - Stulle
+
+// ==> FunnyNick [SiRoB/Stulle] - Stulle
+uint8	CPreferences::FnTagMode;
+TCHAR	CPreferences::m_sFnCustomTag [256];
+bool	CPreferences::m_bFnTagAtEnd;
+// <== FunnyNick [SiRoB/Stulle] - Stulle
+
+bool	CPreferences::m_bACC; // ACC [Max/WiZaRd] - Max
+
+uint32	CPreferences::m_uScarVerCheckLastAutomatic; // ScarAngel Version Check - Stulle
+
+// ==> Quick start [TPT] - Max
+bool	CPreferences::m_bQuickStart;
+uint16  CPreferences::m_iQuickStartMaxTime;
+UINT	CPreferences::m_iQuickStartMaxConn;
+uint16  CPreferences::m_iQuickStartMaxConnPerFive;
+UINT	CPreferences::m_iQuickStartMaxConnBack;
+uint16  CPreferences::m_iQuickStartMaxConnPerFiveBack;
+bool	CPreferences::m_bQuickStartAfterIPChange;
+// <== Quick start [TPT] - Max
+
+// ==> TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+bool	CPreferences::m_bAutoBackup;
+bool	CPreferences::m_bAutoBackup2;
+// <== TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+
+// ==> TBH: minimule - Max
+int	    CPreferences::speedmetermin;
+int	    CPreferences::speedmetermax;
+bool    CPreferences::m_bMiniMule;
+uint32  CPreferences::m_iMiniMuleUpdate;
+bool    CPreferences::m_bMiniMuleLives;
+uint8   CPreferences::m_iMiniMuleTransparency;
+bool	CPreferences::m_bMMCompl;
+bool	CPreferences::m_bMMOpen;
+// <== TBH: minimule - Max
+
+// ==> Simple cleanup [MorphXT] - Stulle
+int      CPreferences::m_SimpleCleanupOptions;
+CString  CPreferences::m_SimpleCleanupSearch;
+CString  CPreferences::m_SimpleCleanupReplace;
+CString  CPreferences::m_SimpleCleanupSearchChars;
+CString  CPreferences::m_SimpleCleanupReplaceChars;
+// <== Simple cleanup [MorphXT] - Stulle
+
+bool	CPreferences::startupsound; // Startupsound [Commander] - mav744
+
+uint8	CPreferences::m_uCompressLevel; // Adjust Compress Level [Stulle] - Stulle
+
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+bool	CPreferences::m_bValidSrcsOnly;
+bool	CPreferences::m_bShowCatNames;
+bool	CPreferences::m_bActiveCatDefault;
+bool	CPreferences::m_bSelCatOnAdd;
+bool	CPreferences::m_bAutoSetResumeOrder;
+bool	CPreferences::m_bSmallFileDLPush;
+uint8	CPreferences::m_iStartDLInEmptyCats;
+bool	CPreferences::m_bRespectMaxSources;
+bool	CPreferences::m_bUseAutoCat;
+uint8	CPreferences::dlMode;
+bool	CPreferences::m_bAddRemovedInc;
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+bool	CPreferences::m_bSpreadbarSetStatus; // Spread bars [Slugfiller/MorphXT] - Stulle
+// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+int		CPreferences::hideOS;
+bool	CPreferences::selectiveShare;
+int		CPreferences::ShareOnlyTheNeed;
+// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+// ==> PowerShare [ZZ/MorphXT] - Stulle
+int		CPreferences::m_iPowershareMode;
+int		CPreferences::PowerShareLimit;
+// <== PowerShare [ZZ/MorphXT] - Stulle
+
+uint8	CPreferences::m_uReleaseBonus; // Release Bonus [sivka] - Stulle
+bool	CPreferences::m_bReleaseScoreAssurance; // Release Score Assurance [Stulle] - Stulle
+
+// ==> Design Settings [eWombat/Stulle] - Stulle
+// client styles
+DWORD		CPreferences::nClientStyleFlags[style_c_count]; 
+COLORREF	CPreferences::nClientStyleFontColor[style_c_count];
+COLORREF	CPreferences::nClientStyleBackColor[style_c_count];
+short		CPreferences::nClientStyleOnOff[style_c_count];
+
+// download styles
+DWORD		CPreferences::nDownloadStyleFlags[style_d_count]; 
+COLORREF	CPreferences::nDownloadStyleFontColor[style_d_count];
+COLORREF	CPreferences::nDownloadStyleBackColor[style_d_count];
+short		CPreferences::nDownloadStyleOnOff[style_d_count];
+
+// share styles
+DWORD		CPreferences::nShareStyleFlags[style_s_count]; 
+COLORREF	CPreferences::nShareStyleFontColor[style_s_count];
+COLORREF	CPreferences::nShareStyleBackColor[style_s_count];
+short		CPreferences::nShareStyleOnOff[style_s_count];
+
+// server styles
+DWORD		CPreferences::nServerStyleFlags[style_se_count]; 
+COLORREF	CPreferences::nServerStyleFontColor[style_se_count];
+COLORREF	CPreferences::nServerStyleBackColor[style_se_count];
+short		CPreferences::nServerStyleOnOff[style_se_count];
+
+// background styles
+DWORD		CPreferences::nBackgroundStyleFlags[style_b_count]; 
+COLORREF	CPreferences::nBackgroundStyleFontColor[style_b_count];
+COLORREF	CPreferences::nBackgroundStyleBackColor[style_b_count];
+short		CPreferences::nBackgroundStyleOnOff[style_b_count];
+
+// window styles
+DWORD		CPreferences::nWindowStyleFlags[style_w_count]; 
+COLORREF	CPreferences::nWindowStyleFontColor[style_w_count];
+COLORREF	CPreferences::nWindowStyleBackColor[style_w_count];
+short		CPreferences::nWindowStyleOnOff[style_w_count];
+
+// ==> Feedback personalization [Stulle] - Stulle
+// window styles
+DWORD		CPreferences::nFeedBackStyleFlags[style_f_count]; 
+COLORREF	CPreferences::nFeedBackStyleFontColor[style_f_count];
+COLORREF	CPreferences::nFeedBackStyleBackColor[style_f_count];
+short		CPreferences::nFeedBackStyleOnOff[style_f_count];
+// <== Feedback personalization [Stulle] - Stulle
+// <== Design Settings [eWombat/Stulle] - Stulle
+
+int		CPreferences::PsAmountLimit; // Limit PS by amount of data uploaded [Stulle] - Stulle
+
+// ==> Control download priority [tommy_gun/iONiX] - MyTh88
+uint8	CPreferences::m_nBowlfishPrioPercentValue;
+uint16	CPreferences::m_nBowlfishPrioSizeValue;
+uint8	CPreferences::m_nBowlfishPrioNewValue;
+uint8	CPreferences::m_uiBowlfishMode;
+// <== Control download priority [tommy_gun/iONiX] - MyTh88
+
+// ==> Enforce Ratio [Stulle] - Stulle
+bool	CPreferences::m_bEnforceRatio;
+uint8	CPreferences::m_uRatioValue;
+// <== Enforce Ratio [Stulle] - Stulle
+
+// ==> Improved ICS-Firewall support [MoNKi]-Max
+bool	CPreferences::m_bICFSupport;
+bool	CPreferences::m_bICFSupportFirstTime;
+bool	CPreferences::m_bICFSupportStatusChanged;
+bool	CPreferences::m_bICFSupportServerUDP;
+// <== Improved ICS-Firewall support [MoNKi]-Max
+
+// ==> Invisible Mode [TPT/MoNKi] - Stulle
+bool	CPreferences::m_bInvisibleMode;		
+UINT	CPreferences::m_iInvisibleModeHotKeyModifier;
+char	CPreferences::m_cInvisibleModeHotKey;
+bool	CPreferences::m_bInvisibleModeStart;
+// <== Invisible Mode [TPT/MoNKi] - Stulle
+
+//==> UPnP support [MoNKi] - leuk_he
+bool	CPreferences::m_bUPnPNat;
+bool	CPreferences::m_bUPnPNatWeb;
+bool	CPreferences::m_bUPnPVerboseLog;
+uint16	CPreferences::m_iUPnPPort;
+bool	CPreferences::m_bUPnPLimitToFirstConnection;
+bool	CPreferences::m_bUPnPClearOnClose;
+int     CPreferences::m_iDetectuPnP; //leuk_he autodetect in startup wizard
+DWORD	 CPreferences::m_dwUpnpBindAddr;
+bool     CPreferences::m_bBindAddrIsDhcp;
+bool    CPreferences::m_bUPnPForceUpdate;
+//<== UPnP support [MoNKi] - leuk_he
+
+// ==> Random Ports [MoNKi] - Stulle
+bool	CPreferences::m_bRndPorts;
+uint16	CPreferences::m_iMinRndPort;
+uint16	CPreferences::m_iMaxRndPort;
+bool	CPreferences::m_bRndPortsResetOnRestart;
+uint16	CPreferences::m_iRndPortsSafeResetOnRestartTime;
+uint16	CPreferences::m_iCurrentTCPRndPort;
+uint16	CPreferences::m_iCurrentUDPRndPort;
+// <== Random Ports [MoNKi] - Stulle
+
+// ==> Automatic shared files updater [MoNKi] - Stulle
+bool	CPreferences::m_bDirectoryWatcher;
+bool	CPreferences::m_bSingleSharedDirWatcher;
+uint32	CPreferences::m_uTimeBetweenReloads;
+// <== Automatic shared files updater [MoNKi] - Stulle
+
+// ==> Anti Uploader Ban [Stulle] - Stulle
+uint16  CPreferences::m_uAntiUploaderBanLimit;
+uint8	CPreferences::AntiUploaderBanCaseMode;
+// <== Anti Uploader Ban [Stulle] - Stulle
+
+// ==> Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+bool	CPreferences::m_bEmuMLDonkey;
+bool	CPreferences::m_bEmueDonkey;
+bool	CPreferences::m_bEmueDonkeyHybrid;
+bool	CPreferences::m_bEmuShareaza;
+bool    CPreferences::m_bEmuLphant;
+bool	CPreferences::m_bLogEmulator;
+// <== Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+
+// ==> Spread Credits Slot [Stulle] - Stulle
+bool	CPreferences::SpreadCreditsSlot;
+uint16  CPreferences::SpreadCreditsSlotCounter;
+// <== Spread Credits Slot [Stulle] - Stulle
+
+// ==> Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+bool	CPreferences::m_bPayBackFirst;
+uint8	CPreferences::m_iPayBackFirstLimit;
+bool	CPreferences::m_bPayBackFirst2;
+uint16	CPreferences::m_iPayBackFirstLimit2;
+// <== Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+
+bool	CPreferences::m_bIgnoreThird; // Do not reserve 1/3 of your uploadlimit for emule [Stulle] - Stulle
+
+bool	CPreferences::m_bDisableUlThres; // Disable accepting only clients who asked within last 30min [Stulle] - Stulle
+
+bool	CPreferences::m_bFollowTheMajority; // Follow The Majority [AndCycle/Stulle] - Stulle
+
+int		CPreferences::m_iFairPlay; // Fair Play [AndCycle/Stulle] - Stulle
+
+bool	CPreferences::m_bMaxSlotSpeed; // Alwasy maximize slot speed [Stulle] - Stulle
+
+uint32	CPreferences::m_uReAskTimeDif; // Timer for ReAsk File Sources [Stulle] - Stulle
+
+// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+bool	CPreferences::m_bAutoUpdateAntiLeech;
+CString CPreferences::m_strAntiLeechURL;
+uint32	CPreferences::m_uIPFilterVersionNum;
+bool	CPreferences::AutoUpdateIP2Country;
+CString CPreferences::UpdateURLIP2Country;
+SYSTEMTIME	CPreferences::m_IP2CountryVersion;
+// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
+bool	CPreferences::m_bFineCS; // Modified FineCS [CiccioBastardo/Stulle] - Stulle
+
+bool	CPreferences::m_bTrayComplete; // Completed in Tray [Stulle] - Stulle
+
+bool	CPreferences::m_bColorFeedback; // Feedback personalization [Stulle] - Stulle 
+
+bool	CPreferences::m_bSplitWindow; // Advanced Transfer Window Layout [Stulle] - Stulle
+
+bool	CPreferences::m_bDateFileNameLog; // Date File Name Log [AndCycle] - Stulle
+
+bool	CPreferences::m_bIonixWebsrv; // Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+
+// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+int		CPreferences::m_iServiceStartupMode;
+int		CPreferences::m_iServiceOptLvl;
+// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+// ==> Adjustable NT Service Strings [Stulle] - Stulle
+bool	CPreferences::m_bServiceStringsLoaded = false;
+CString	CPreferences::m_strServiceName;
+CString	CPreferences::m_strServiceDispName;
+CString	CPreferences::m_strServiceDescr;
+// <== Adjustable NT Service Strings [Stulle] - Stulle
+
+bool	CPreferences::m_bCloseEasteregg; // Diabolic Easteregg [Stulle] - Mephisto
+
+// ==> Mephisto Upload - Mephisto
+uint8	CPreferences::m_uMinSlots;
+uint8	CPreferences::m_uNoNewSlotTimer;
+uint8	CPreferences::m_uFullLoops;
+uint8	CPreferences::m_uMonitorLoops;
+uint8	CPreferences::m_uNotReachedBW;
+uint8	CPreferences::m_uNoTrickleTimer;
+uint16	CPreferences::m_uMoveDownKB;
+// <== Mephisto Upload - Mephisto
+
+// ==> Multiple Part Transfer [Stulle] - Mephisto
+uint8	CPreferences::m_uChunksMode;
+uint8	CPreferences::m_uChunksToFinish;
+uint8	CPreferences::m_uChunksToUpload;
+// <== Multiple Part Transfer [Stulle] - Mephisto
+uint16	CPreferences::m_uMaxUpMinutes; // Adjust max upload time [Stulle] - Mephisto
 
 CPreferences::CPreferences()
 {
@@ -547,12 +1126,19 @@ void CPreferences::Init()
 	if (PathFileExists(GetMuleDirectory(EMULE_EXECUTEABLEDIR) + L"downloads.bak"))
 		MoveFile(GetMuleDirectory(EMULE_EXECUTEABLEDIR) + L"downloads.bak", GetMuleDirectory(EMULE_CONFIGDIR) + L"downloads.bak");
 
+	//zz_fly :: userhash initializing :: Enig123 :: start
+	/*
 	CreateUserHash();
+	*/	
+	md4clr(userhash);	//clear userhash
+	//zz_fly :: userhash initializing :: Enig123 :: end
 
 	// load preferences.dat or set standart values
 	CString strFullPath;
 	strFullPath = GetMuleDirectory(EMULE_CONFIGDIR) + L"preferences.dat";
 	FILE* preffile = _tfsopen(strFullPath, L"rb", _SH_DENYWR);
+
+	InitStyles(); // Design Settings [eWombat/Stulle] - Stulle
 
 	LoadPreferences();
 
@@ -562,13 +1148,24 @@ void CPreferences::Init()
 	else{
 		if (fread(prefsExt,sizeof(Preferences_Ext_Struct),1,preffile) != 1 || ferror(preffile))
 			SetStandartValues();
-
-		md4cpy(userhash, prefsExt->userhash);
-		EmuleWindowPlacement = prefsExt->EmuleWindowPlacement;
-
+		else { //Enig123 :: Fix
+			md4cpy(userhash, prefsExt->userhash);
+			EmuleWindowPlacement = prefsExt->EmuleWindowPlacement;
+		} //Enig123 :: Fix
 		fclose(preffile);
 		smartidstate = 0;
 	}
+
+	//zz_fly :: check userhash after initialized :: Enig123 :: start
+	userhash[5] = 0;
+	userhash[14] = 0;
+
+	if (isnulmd4(userhash))
+		CreateUserHash();
+
+	userhash[5] = 14;
+	userhash[14] = 111;
+	//zz_fly :: check userhash after initialized :: Enig123 :: end
 
 	// shared directories
 	strFullPath = GetMuleDirectory(EMULE_CONFIGDIR) + L"shareddir.dat";
@@ -593,8 +1190,12 @@ void CPreferences::Init()
 				if (PathCanonicalize(szFullPath, toadd))
 					toadd = szFullPath;
 
+				// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+				/*
 				if (!IsShareableDirectory(toadd))
 					continue;
+				*/
+				// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 
 				// Skip non-existing directories from fixed disks only
 				int iDrive = PathGetDriveNumber(toadd);
@@ -644,7 +1245,7 @@ void CPreferences::Init()
 				toadd.Trim(L" \t\r\n"); // need to trim '\r' in binary mode
 				if (toadd.IsEmpty())
 					continue;
-				addresses_list.AddTail(toadd);
+				addresses_list.AddHead(toadd);
 			}
 		}
 		catch (CFileException* ex) {
@@ -655,8 +1256,12 @@ void CPreferences::Init()
 	}
 	delete sdirfile;
 
+	//zz_fly :: move up
+	/*
 	userhash[5] = 14;
 	userhash[14] = 111;
+	*/
+	//zz_fly :: end
 
 	// Explicitly inform the user about errors with incoming/temp folders!
 	if (!PathFileExists(GetMuleDirectory(EMULE_INCOMINGDIR)) && !::CreateDirectory(GetMuleDirectory(EMULE_INCOMINGDIR),0)) {
@@ -693,8 +1298,12 @@ void CPreferences::Init()
 	}
 
 
+	//zz_fly :: move up
+	/*
 	if (isnulmd4(userhash))
 		CreateUserHash();
+	*/
+	//zz_fly :: end
 }
 
 void CPreferences::Uninit()
@@ -709,7 +1318,11 @@ void CPreferences::Uninit()
 
 void CPreferences::SetStandartValues()
 {
+	//zz_fly :: userhash initializing :: Enig123 :: start
+	/*
 	CreateUserHash();
+	*/
+	//zz_fly :: userhash initializing :: Enig123 :: end
 
 	WINDOWPLACEMENT defaultWPM;
 	defaultWPM.length = sizeof(WINDOWPLACEMENT);
@@ -718,10 +1331,17 @@ void CPreferences::SetStandartValues()
 	defaultWPM.showCmd=0;
 	EmuleWindowPlacement=defaultWPM;
 	versioncheckLastAutomatic=0;
+	//Xman versions check
+	mversioncheckLastAutomatic=0;
+	//Xman end
+
+	m_uScarVerCheckLastAutomatic=0; // ScarAngel Version Check - Stulle
 
 //	Save();
 }
 
+// SLUGFILLER: SafeHash remove - global form of IsTempFile unnececery
+/*
 bool CPreferences::IsTempFile(const CString& rstrDirectory, const CString& rstrName)
 {
 	bool bFound = false;
@@ -752,7 +1372,12 @@ bool CPreferences::IsTempFile(const CString& rstrDirectory, const CString& rstrN
 
 	return false;
 }
+*/
+// SLUGFILLER: SafeHash remove - global form of IsTempFile unnececery
 
+//Xman Xtreme Mod
+// Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+/*
 uint16 CPreferences::GetMaxDownload(){
     return (uint16)(GetMaxDownloadInBytesPerSec()/1024);
 }
@@ -770,6 +1395,23 @@ uint64 CPreferences::GetMaxDownloadInBytesPerSec(bool dynamic){
 		return (((maxup < 10*1024) && ((uint64)maxup*3 < maxdownload*1024)) ? (uint64)maxup*3 : maxdownload*1024);
 	return (((maxup < 10*1024) && ((uint64)maxup*4 < maxdownload*1024)) ? (uint64)maxup*4 : maxdownload*1024);
 }
+*/
+float CPreferences::GetMaxDownload() {
+	//dont be a Lam3r :)
+	const float maxUpload = (GetMaxUpload() >= UNLIMITED) ? GetMaxGraphUploadRate() : GetMaxUpload();
+	if(maxUpload < 4.0f)
+		return (3.0f * maxUpload < maxdownload) ? 3.0f * maxUpload : maxdownload;
+	else if(maxUpload < 11.0f) //Xman changed to 11
+		return (4.0f * maxUpload < maxdownload) ? 4.0f * maxUpload : maxdownload;
+	return maxdownload;
+}
+// Maella end
+
+uint64 CPreferences::GetMaxDownloadInBytesPerSec() {
+	//dont be a Lam3r :)
+	return ((uint64)GetMaxDownload() * 1024);
+}
+//Xman end
 
 // -khaos--+++> A whole bunch of methods!  Keep going until you reach the end tag.
 void CPreferences::SaveStats(int bBackUp){
@@ -793,7 +1435,12 @@ void CPreferences::SaveStats(int bBackUp){
 	// We do NOT SET the values in prefs struct here.
 
     // Save Cum Down Data
+	//Xman // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	/*
 	ini.WriteUInt64(L"TotalDownloadedBytes", theStats.sessionReceivedBytes + GetTotalDownloaded());
+	*/
+	ini.WriteUInt64(L"TotalDownloadedBytes", theApp.pBandWidthControl->GeteMuleIn()+GetTotalDownloaded());
+	//Xman end
 	ini.WriteInt(L"DownSuccessfulSessions", cumDownSuccessfulSessions);
 	ini.WriteInt(L"DownFailedSessions", cumDownFailedSessions);
 	ini.WriteInt(L"DownAvgTime", (GetDownC_AvgTime() + GetDownS_AvgTime()) / 2);
@@ -836,7 +1483,12 @@ void CPreferences::SaveStats(int bBackUp){
 	ini.WriteUInt64(L"DownOverheadKadPackets", theStats.GetDownDataOverheadKadPackets() + GetDownOverheadKadPackets());
 
 	// Save Cumulative Upline Statistics
+	//Xman // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	/*
 	ini.WriteUInt64(L"TotalUploadedBytes", theStats.sessionSentBytes + GetTotalUploaded());
+	*/
+	ini.WriteUInt64(L"TotalUploadedBytes", theApp.pBandWidthControl->GeteMuleOut()+GetTotalUploaded()); // Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	//Xman end
 	ini.WriteInt(L"UpSuccessfulSessions", theApp.uploadqueue->GetSuccessfullUpCount() + GetUpSuccessfulSessions());
 	ini.WriteInt(L"UpFailedSessions", theApp.uploadqueue->GetFailedUpCount() + GetUpFailedSessions());
 	ini.WriteInt(L"UpAvgTime", (theApp.uploadqueue->GetAverageUpTime() + GetUpAvgTime())/2);
@@ -878,8 +1530,24 @@ void CPreferences::SaveStats(int bBackUp){
 	// Save Cumulative Connection Statistics
 	float tempRate = 0.0F;
 
+	// Xman
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	uint32 eMuleIn;
+	uint32 eMuleOut;
+	uint32 notUsed;
+	theApp.pBandWidthControl->GetDatarates(GetDatarateSamples(),
+		eMuleIn, notUsed,
+		eMuleOut, notUsed,
+		notUsed, notUsed);
+	//Xman end
+
 	// Download Rate Average
+	// Xman
+	/*
 	tempRate = theStats.GetAvgDownloadRate(AVG_TOTAL);
+	*/
+	tempRate = theStats.GetSessionAvgDownloadRate();
+	//Xman end
 	ini.WriteFloat(L"ConnAvgDownRate", tempRate);
 	
 	// Max Download Rate Average
@@ -888,13 +1556,23 @@ void CPreferences::SaveStats(int bBackUp){
 	ini.WriteFloat(L"ConnMaxAvgDownRate", GetConnMaxAvgDownRate());
 	
 	// Max Download Rate
+	// Xman
+	/*
 	tempRate = (float)theApp.downloadqueue->GetDatarate() / 1024;
+	*/
+	tempRate = (float)eMuleIn / 1024.0f;
+	//Xman end
 	if (tempRate > GetConnMaxDownRate())
 		SetConnMaxDownRate(tempRate);
 	ini.WriteFloat(L"ConnMaxDownRate", GetConnMaxDownRate());
 	
 	// Upload Rate Average
+	// Xman
+	/*
 	tempRate = theStats.GetAvgUploadRate(AVG_TOTAL);
+	*/
+	tempRate = theStats.GetSessionAvgUploadRate();
+	//Xman end
 	ini.WriteFloat(L"ConnAvgUpRate", tempRate);
 	
 	// Max Upload Rate Average
@@ -903,7 +1581,12 @@ void CPreferences::SaveStats(int bBackUp){
 	ini.WriteFloat(L"ConnMaxAvgUpRate", GetConnMaxAvgUpRate());
 	
 	// Max Upload Rate
+	// Xman
+	/*
 	tempRate = (float)theApp.uploadqueue->GetDatarate() / 1024;
+	*/
+	tempRate = (float)eMuleOut / 1024.0f;
+	//Xman end
 	if (tempRate > GetConnMaxUpRate())
 		SetConnMaxUpRate(tempRate);
 	ini.WriteFloat(L"ConnMaxUpRate", GetConnMaxUpRate());
@@ -1048,6 +1731,11 @@ void CPreferences::Add2SessionTransferData(UINT uClientID, UINT uClientPort, BOO
 				case SO_MLDONKEY:		sesUpData_MLDONKEY+=bytes;		break;
 				case SO_AMULE:			sesUpData_AMULE+=bytes;			break;
 				case SO_SHAREAZA:		sesUpData_SHAREAZA+=bytes;		break;
+				// ==> Enhanced Client Recognition [Spike] - Stulle
+				case SO_HYDRANODE:
+				case SO_EMULEPLUS:
+				case SO_TRUSTYFILES:
+				// <== Enhanced Client Recognition [Spike] - Stulle
 				case SO_CDONKEY:
 				case SO_LPHANT:
 				case SO_XMULE:			sesUpData_EMULECOMPAT+=bytes;	break;
@@ -1080,6 +1768,11 @@ void CPreferences::Add2SessionTransferData(UINT uClientID, UINT uClientPort, BOO
 				case SO_MLDONKEY:		sesDownData_MLDONKEY+=bytes;	break;
 				case SO_AMULE:			sesDownData_AMULE+=bytes;		break;
 				case SO_SHAREAZA:		sesDownData_SHAREAZA+=bytes;	break;
+				// ==> Enhanced Client Recognition [Spike] - Stulle
+				case SO_HYDRANODE:
+				case SO_EMULEPLUS:
+				case SO_TRUSTYFILES:
+				// <== Enhanced Client Recognition [Spike] - Stulle
 				case SO_CDONKEY:
 				case SO_LPHANT:
 				case SO_XMULE:			sesDownData_EMULECOMPAT+=bytes;	break;
@@ -1306,9 +1999,11 @@ bool CPreferences::LoadStats(int loadBackUp)
 
 	// Load stats for cumulative connection data
 	cumConnAvgDownRate				= ini.GetFloat(L"ConnAvgDownRate");
+	if(cumConnAvgDownRate<0) cumConnAvgDownRate=0; //Xman prevent floating point underun
 	cumConnMaxAvgDownRate			= ini.GetFloat(L"ConnMaxAvgDownRate");
 	cumConnMaxDownRate				= ini.GetFloat(L"ConnMaxDownRate");
 	cumConnAvgUpRate				= ini.GetFloat(L"ConnAvgUpRate");
+	if(cumConnAvgUpRate<0) cumConnAvgUpRate=0; //Xman prevent floating point underun
 	cumConnMaxAvgUpRate				= ini.GetFloat(L"ConnMaxAvgUpRate");
 	cumConnMaxUpRate				= ini.GetFloat(L"ConnMaxUpRate");
 	cumConnRunTime					= ini.GetInt(L"ConnRunTime");
@@ -1472,6 +2167,7 @@ bool CPreferences::Save(){
 
 	SavePreferences();
 	SaveStats();
+	SaveCats(); // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 	strFullPath = GetMuleDirectory(EMULE_CONFIGDIR) + L"shareddir.dat";
 	CStdioFile sdirfile;
@@ -1538,12 +2234,14 @@ void CPreferences::SavePreferences()
 	
 	CIni ini(GetConfigFile(), L"eMule");
 	//---
+	// ==> ModID [itsonlyme/SiRoB] - Stulle
+	/*
 	ini.WriteString(L"AppVersion", theApp.m_strCurVersionLong);
+	*/
+	ini.WriteString(L"AppVersion", theApp.m_strCurVersionLong + _T(" [") + theApp.m_strModLongVersion + _T("]"));
+	// <== ModID [itsonlyme/SiRoB] - Stulle
 	//---
-#ifdef _BETA
-	if (m_bBetaNaggingDone)
-		ini.WriteString(L"BetaVersionNotified", theApp.m_strCurVersionLong);
-#endif
+
 #ifdef _DEBUG
 	ini.WriteInt(L"DebugHeap", m_iDbgHeap);
 #endif
@@ -1562,8 +2260,17 @@ void CPreferences::SavePreferences()
 	ini.WriteString(L"TempDirs", tempdirs);
 
     ini.WriteInt(L"MinUpload", minupload);
+	//Xman
+	// Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	/*
 	ini.WriteInt(L"MaxUpload",maxupload);
 	ini.WriteInt(L"MaxDownload",maxdownload);
+	*/
+	ini.WriteFloat(L"MaxUpload", maxupload);
+	ini.WriteFloat(L"MaxDownload", maxdownload);
+	ini.WriteFloat(L"DownloadCapacity", maxGraphDownloadRate);
+	ini.WriteFloat(L"UploadCapacity", maxGraphUploadRate);
+	// Maella end
 	ini.WriteInt(L"MaxConnections",maxconnections);
 	ini.WriteInt(L"MaxHalfConnections",maxhalfconnections);
 	ini.WriteBool(L"ConditionalTCPAccept", m_bConditionalTCPAccept);
@@ -1577,20 +2284,35 @@ void CPreferences::SavePreferences()
 	ini.WriteInt(L"StatGraphsInterval",trafficOMeterInterval);
 	ini.WriteInt(L"StatsInterval",statsInterval);
 	ini.WriteBool(L"StatsFillGraphs",m_bFillGraphs);
+	//Xman
+	// Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	/*
 	ini.WriteInt(L"DownloadCapacity",maxGraphDownloadRate);
 	ini.WriteInt(L"UploadCapacityNew",maxGraphUploadRate);
+	*/
+	// Maella end
 	ini.WriteInt(L"DeadServerRetry",m_uDeadServerRetries);
 	ini.WriteInt(L"ServerKeepAliveTimeout",m_dwServerKeepAliveTimeout);
 	ini.WriteInt(L"SplitterbarPosition",splitterbarPosition);
 	ini.WriteInt(L"SplitterbarPositionServer",splitterbarPositionSvr);
 	ini.WriteInt(L"SplitterbarPositionStat",splitterbarPositionStat+1);
+	//Xman BlueSonicBoy-Stats-Fix
+	/*
 	ini.WriteInt(L"SplitterbarPositionStat_HL",splitterbarPositionStat_HL+1);
 	ini.WriteInt(L"SplitterbarPositionStat_HR",splitterbarPositionStat_HR+1);
+	*/
+	ini.WriteInt(L"SplitterbarPositionStat_HL",splitterbarPositionStat_HL);
+	ini.WriteInt(L"SplitterbarPositionStat_HR",splitterbarPositionStat_HR);
+	//Xman end
 	ini.WriteInt(L"SplitterbarPositionFriend",splitterbarPositionFriend);
 	ini.WriteInt(L"SplitterbarPositionIRC",splitterbarPositionIRC);
 	ini.WriteInt(L"SplitterbarPositionShared",splitterbarPositionShared);
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+	/*
 	ini.WriteInt(L"TransferWnd1",m_uTransferWnd1);
 	ini.WriteInt(L"TransferWnd2",m_uTransferWnd2);
+	*/
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
 	ini.WriteInt(L"VariousStatisticsMaxValue",statsMax);
 	ini.WriteInt(L"StatsAverageMinutes",statsAverageMinutes);
 	ini.WriteInt(L"MaxConnectionsPerFiveSeconds",MaxConperFive);
@@ -1650,6 +2372,8 @@ void CPreferences::SavePreferences()
 	ini.WriteInt(L"NotifierUseSound", (int)notifierSoundType);
 	ini.WriteString(L"NotifierSoundPath", notifierSoundFile);
 
+	ini.WriteBool(L"ShowActiveDownloadsBold",m_bShowActiveDownloadsBold); //Xman Show active downloads bold
+
 	ini.WriteString(L"TxtEditor",m_strTxtEditor);
 	ini.WriteString(L"VideoPlayer",m_strVideoPlayer);
 	ini.WriteString(L"VideoPlayerArgs",m_strVideoPlayerArgs);
@@ -1657,6 +2381,7 @@ void CPreferences::SavePreferences()
 	ini.WriteString(L"CommentFilter",commentFilter);
 	ini.WriteString(L"DateTimeFormat",GetDateTimeFormat());
 	ini.WriteString(L"DateTimeFormat4Log",GetDateTimeFormat4Log());
+	ini.WriteString(L"DateTimeFormat4Lists",GetDateTimeFormat4Lists());
 	ini.WriteString(L"WebTemplateFile",m_strTemplateFile);
 	ini.WriteString(L"FilenameCleanups",filenameCleanups);
 	ini.WriteInt(L"ExtractMetaData",m_iExtractMetaData);
@@ -1694,6 +2419,9 @@ void CPreferences::SavePreferences()
 	ini.WriteBool(L"LogFileSaving", m_bLogFileSaving);				// do *not* use the according 'Get...' function here!
     ini.WriteBool(L"LogA4AF", m_bLogA4AF);                           // do *not* use the according 'Get...' function here!
 	ini.WriteBool(L"LogUlDlEvents", m_bLogUlDlEvents);
+	ini.WriteBool(L"LogDrop", m_bLogDrop); //Xman Xtreme Downloadmanager
+	ini.WriteBool(L"Logpartmismatch", m_bLogpartmismatch); //Xman Log part/size-mismatch
+
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 	// following options are for debugging or when using an external debug device viewer only.
 	ini.WriteInt(L"DebugServerTCP",m_iDebugServerTCPLevel);
@@ -1723,7 +2451,11 @@ void CPreferences::SavePreferences()
 	ini.WriteBool(L"FilterServersByIP",filterserverbyip);
 	ini.WriteBool(L"DisableKnownClientList",m_bDisableKnownClientList);
 	ini.WriteBool(L"DisableQueueList",m_bDisableQueueList);
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	ini.WriteBool(L"UseCreditSystem",m_bCreditSystem);
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	ini.WriteBool(L"SaveLogToDisk",log2disk);
 	ini.WriteBool(L"SaveDebugToDisk",debug2disk);
 	ini.WriteBool(L"EnableScheduler",scheduler);
@@ -1743,6 +2475,9 @@ void CPreferences::SavePreferences()
 	ini.WriteBool(L"AutoShowLookups", m_bAutoShowLookups);
 
 	ini.WriteInt(L"VersionCheckLastAutomatic", versioncheckLastAutomatic);
+	//Xman versions check
+	ini.WriteInt(L"MVersionCheckLastAutomatic", mversioncheckLastAutomatic);
+	//Xman end
 	ini.WriteInt(L"FilterLevel",filterlevel);
 
 	ini.WriteBool(L"SecureIdent", m_bUseSecureIdent);// change the name in future version to enable it by default
@@ -1774,7 +2509,11 @@ void CPreferences::SavePreferences()
     ini.WriteInt(L"USSNumberOfPings", m_iDynUpNumberOfPings);
 	// ZZ:UploadSpeedSense <--
 
+	//Xman
+	/*
     ini.WriteBool(L"A4AFSaveCpu", m_bA4AFSaveCpu); // ZZ:DownloadManager
+	*/
+	//Xman end
     ini.WriteBool(L"HighresTimer", m_bHighresTimer);
 	ini.WriteInt(L"WebMirrorAlertLevel", m_nWebMirrorAlertLevel);
 	ini.WriteBool(L"RunAsUnprivilegedUser", m_bRunAsUser);
@@ -1783,6 +2522,7 @@ void CPreferences::SavePreferences()
 	ini.WriteInt(L"WinXPSP2OrHigher", IsRunningXPSP2OrHigher());
 	ini.WriteBool(L"RememberCancelledFiles", m_bRememberCancelledFiles);
 	ini.WriteBool(L"RememberDownloadedFiles", m_bRememberDownloadedFiles);
+	ini.WriteBool(L"PartiallyPurgeOldKnownFiles", m_bPartiallyPurgeOldKnownFiles);
 
 	ini.WriteBool(L"NotifierSendMail", m_bNotifierSendMail);
 	ini.WriteString(L"NotifierMailSender", m_strNotifierMailSender);
@@ -1799,6 +2539,9 @@ void CPreferences::SavePreferences()
 
 	ini.WriteBool(L"EnableSearchResultSpamFilter", m_bEnableSearchResultFilter);
 	
+	//Xman Added PaddingLength to Extended preferences
+	ini.WriteInt(L"CryptTCPPaddingLength",m_byCryptTCPPaddingLength);
+	//Xman end
 
 	///////////////////////////////////////////////////////////////////////////
 	// Section: "Proxy"
@@ -1818,7 +2561,12 @@ void CPreferences::SavePreferences()
 	ini.WriteInt(L"statsConnectionsGraphRatio", statsConnectionsGraphRatio,L"Statistics");
 	ini.WriteString(L"statsExpandedTreeItems", m_strStatsExpandedTreeItems);
 	CString buffer2;
+	// ==> Source Graph - Stulle
+	/*
 	for (int i=0;i<15;i++) {
+	*/
+	for (int i=0;i<16;i++) {
+	// <== Source Graph - Stulle
 		buffer.Format(L"0x%06x",GetStatsColor(i));
 		buffer2.Format(L"StatColor%i",i);
 		ini.WriteString(buffer2,buffer,L"Statistics" );
@@ -1859,12 +2607,529 @@ void CPreferences::SavePreferences()
 	///////////////////////////////////////////////////////////////////////////
 	// Section: "UPnP"
 	//
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	ini.WriteBool(L"EnableUPnP", m_bEnableUPnP, L"UPnP");
 	ini.WriteBool(L"SkipWANIPSetup", m_bSkipWANIPSetup);
 	ini.WriteBool(L"SkipWANPPPSetup", m_bSkipWANPPPSetup);
 	ini.WriteBool(L"CloseUPnPOnExit", m_bCloseUPnPOnExit);
 	ini.WriteInt(L"LastWorkingImplementation", m_nLastWorkingImpl);
+
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	ini.WriteBool(L"UseACATUPnPNextStart", m_bUseACATUPnPNextStart, L"UPnP");
+
+	//ACAT UPnP
+	ini.WriteBool(L"UPnPNAT", m_bUPnPNat, L"UPnP");
+	ini.WriteBool(L"UPnPNAT_TryRandom", m_bUPnPTryRandom, L"UPnP");
+#endif //zz_fly :: dual upnp
+
+	ini.WriteBool(L"UPnPNAT_RebindOnIPChange", m_bUPnPRebindOnIPChange, L"UPnP"); //zz_fly :: rebind UPnP on ip-change
+
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 	
+	//Xman Xtreme Mod:
+	//--------------------------------------------------------------------------
+
+	//Xman Xtreme Upload
+	ini.WriteFloat(L"uploadslotspeed",m_slotspeed,L"Xtreme");
+	ini.WriteBool(L"openmoreslots",m_openmoreslots);
+	ini.WriteBool(L"bandwidthnotreachedslots",m_bandwidthnotreachedslots);
+	ini.WriteInt(L"sendbuffersize", m_sendbuffersize);
+
+	ini.WriteBool(L"retryconnectionattempts", retryconnectionattempts); 
+
+	//Xman GlobalMaxHarlimit for fairness
+	ini.WriteBool(L"Acceptsourcelimit", m_bAcceptsourcelimit);
+
+	//Xman show additional graph lines
+	ini.WriteBool(L"ShowAdditionalGraph", m_bShowAdditionalGraph);
+
+	//Xman process prio
+	ini.WriteInt(L"MainProcessPriority", m_MainProcessPriority); // [TPT] - Select process priority 
+
+	//Xman Anti-Leecher
+	ini.WriteBool(L"AntiLeecher",m_antileecher);
+	ini.WriteBool(L"AntiLeecherName", m_antileechername);
+	ini.WriteBool(L"AntiGhost", m_antighost);
+	ini.WriteBool(L"AntiLeecherBadHello", m_antileecherbadhello);
+	ini.WriteBool(L"AntiLeecherSnafu", m_antileechersnafu);
+	ini.WriteBool(L"AntiLeecherMod", m_antileechermod);
+	ini.WriteBool(L"AntiLeecherThief", m_antileecherthief);
+	ini.WriteBool(L"AntiLeecherSpammer", m_antileecherspammer);
+	ini.WriteBool(L"AntiLeecherXSExploiter", m_antileecherxsexploiter);
+	ini.WriteBool(L"AntiLeecheremcrypt", m_antileecheremcrypt);
+	ini.WriteBool(L"AntiLeecherUserhash", m_antileecheruserhash);
+	ini.WriteBool(L"AntiLeecherCommunity_Action", m_antileechercommunity_action);
+	ini.WriteBool(L"AntiLeecherGhost_Action", m_antileecherghost_action);
+	ini.WriteBool(L"AntiLeecherThief_Action", m_antileecherthief_action);
+	//X-Ray :: Fincan Hash Detection :: Start
+	ini.WriteBool(L"AntiLeecherFincan", m_antileecherFincan);
+	ini.WriteString(_T("AntiLeecherFincanURL"), m_antileecherFincanURL);
+	//X-Ray :: Fincan Hash Detection :: End
+	//Xman end
+
+	//Xman narrow font at transferwindow
+	ini.WriteBool(L"UseNarrowFont", m_bUseNarrowFont);
+	//Xman end
+
+	//Xman 1:3 Ratio
+	ini.WriteBool(L"amountbasedratio",m_13ratio);
+	//Xman end
+
+	// ==> Superior Client Handling [Stulle] - Stulle
+	/*
+	//Xman always one release-slot
+	ini.WriteBool(L"onerealeseslot",m_onerealeseslot);
+	//Xman end
+	*/
+	// <== Superior Client Handling [Stulle] - Stulle
+
+	//Xman advanced upload-priority
+	ini.WriteBool(L"AdvancedAutoPrio",m_AdvancedAutoPrio);
+	//Xman end
+
+	//Xman chunk chooser
+	ini.WriteInt(L"chunkchooser", m_chunkchooser);
+
+	//Xman auto update IPFilter
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	/*
+	ini.WriteString(L"AutoUpdateIPFilter_URL", m_strautoupdateipfilter_url);
+	ini.WriteBool(L"AutoUpdateIPFilter", m_bautoupdateipfilter);
+	ini.WriteBinary(_T("IPfilterVersion"), (LPBYTE)&m_IPfilterVersion, sizeof(m_IPfilterVersion)); 
+	ini.WriteInt(_T("lastipfiltercheck"),m_last_ipfilter_check);
+	*/
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+	//Xman end
+
+	//Xman count block/success send
+	ini.WriteBool(L"ShowSocketBlockRatio", m_showblockratio);
+	// ==> Drop blocking clients [Stulle] - Mephisto
+	/*
+	ini.WriteBool(L"DropBlockingSockets", m_dropblockingsockets);
+	*/
+	ini.WriteBool(L"DropBlockingSocketsNew", m_dropblockingsockets);
+	// <== Drop blocking clients [Stulle] - Mephisto
+
+	//Xman Funny-Nick (Stulle/Morph)
+	ini.WriteBool(_T("DisplayFunnyNick"), m_bFunnyNick);
+	//Xman end
+
+	//Xman remove unused AICH-hashes
+	ini.WriteBool(L"rememberAICH", m_rememberAICH);
+
+	//Xman smooth-accurate-graph
+	ini.WriteBool(L"usesmoothgraph",usesmoothgraph);
+
+	// Maella -Graph: display zoom-
+	ini.WriteInt(L"ZoomFactor", zoomFactor);
+	// Maella end
+
+	// Maella -MTU Configuration-
+	if (MTU<500)
+		MTU=500;
+	if (MTU>1500)
+		MTU=1500;
+	ini.WriteInt(L"MTU", MTU);
+	// Maella end
+
+	ini.WriteBool(L"usedoublesendsize",usedoublesendsize);
+	// netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+	ini.WriteBool(L"retrieveMTUFromSocket", retrieveMTUFromSocket);
+
+	// Maella -Network Adapter Feedback Control-
+	ini.WriteBool(L"NAFCFullControl", NAFCFullControl);
+	ini.WriteInt(L"ForceNAFCAdapter",forceNAFCadapter);
+	// Maella end
+
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	ini.WriteInt(L"DatarateSamples", datarateSamples);
+	// Maella end
+
+	// Maella -One-queue-per-file- (idea bloodymad)
+	ini.WriteBool(L"EnableMultiQueue", enableMultiQueue);
+	//ini.WriteBool(L"EnableReleaseMultiQueue", enableReleaseMultiQueue);
+	// Maella end
+
+	// Mighty Knife: Static server handling
+	ini.WriteBool (L"DontRemoveStaticServers",m_bDontRemoveStaticServers);
+	// [end] Mighty Knife
+
+	//Xman [MoNKi: -Downloaded History-]
+	ini.WriteBool(L"ShowSharedInHistory", m_bHistoryShowShared);
+	//Xman end
+
+	//Xman versions check
+	ini.WriteBool(L"updatenotifymod", updatenotifymod);
+
+	//Xman don't overwrite bak files if last sessions crashed
+	ini.WriteBool(L"last_session_aborted_in_an_unnormal_way", m_this_session_aborted_in_an_unnormal_way);
+
+	ini.WriteBool(L"ShowCountryFlagInKad", m_bShowCountryFlagInKad); //zz_fly :: show country flag in KAD
+	ini.WriteBool(L"EnableKnown2Buffer", m_bKnown2Buffer); //zz_fly :: known2 buffer
+	ini.WriteBool(L"SplitKnown2DotMet", m_bKnown2Split_next); //zz_fly :: known2 split
+	ini.WriteUInt64(L"AutoPreviewLimit", m_uAutoPreviewLimit); //zz_fly :: do not auto preview big archive
+
+	ini.WriteString(L"BrokenURLs", m_strBrokenURLs); //MORPH - Added by WiZaRd, Fix broken HTTP downloads
+	//Xman end
+	//--------------------------------------------------------------------------
+
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	ini.WriteBool(_T("MiniMuleAutoClose"),bMiniMuleAutoClose,L"eMule");
+	ini.WriteInt(_T("MiniMuleTransparency"),iMiniMuleTransparency);
+	ini.WriteBool(_T("CheckComctl32"),bCheckComctl32 );
+	ini.WriteBool(_T("CheckShell32"),bCheckShell32);
+	ini.WriteBool(_T("IgnoreInstance"),bIgnoreInstances);
+	ini.WriteString(_T("NotifierMailEncryptCertName"),sNotifierMailEncryptCertName);
+	ini.WriteString(_T("MediaInfo_MediaInfoDllPath"),sMediaInfo_MediaInfoDllPath);
+	if (theApp.GetProfileInt(_T("eMule"), _T("MediaInfo_RIFF_FIX"), 1)==1){ // fix morph 9.3 bad default once.
+		bMediaInfo_RIFF=true;
+		bMediaInfo_ID3LIB=true;
+		ini.WriteInt(_T("MediaInfo_RIFF_FIX"),0); //once
+	}
+	ini.WriteBool(_T("MediaInfo_RIFF"),bMediaInfo_RIFF);
+	ini.WriteBool(_T("MediaInfo_ID3LIB"),bMediaInfo_ID3LIB);
+#ifdef HAVE_QEDIT_H
+	ini.WriteBool(_T("MediaInfo_MediaDet"),m_bMediaInfo_MediaDet);
+#endif//HAVE_QEDIT_H
+	ini.WriteBool(_T("MediaInfo_RM"),m_bMediaInfo_RM);
+#ifdef HAVE_WMSDK_H
+	ini.WriteBool(_T("MediaInfo_WM"),m_bMediaInfo_WM);
+#endif//HAVE_WMSDK_H
+	ini.WriteInt(_T("MaxLogBuff"),iMaxLogBuff/1024);
+	ini.WriteInt(_T("MaxChatHistoryLines"),m_iMaxChatHistory);
+	ini.WriteInt(_T("PreviewSmallBlocks"),m_iPreviewSmallBlocks);
+	ini.WriteBool(_T("RestoreLastMainWndDlg"),m_bRestoreLastMainWndDlg);
+	ini.WriteBool(_T("RestoreLastLogPane"),m_bRestoreLastLogPane);
+	ini.WriteBool(_T("PreviewCopiedArchives"),m_bPreviewCopiedArchives);
+	ini.WriteInt(_T("StraightWindowStyles"),m_iStraightWindowStyles);
+	ini.WriteInt(_T("LogFileFormat"),m_iLogFileFormat);
+	ini.WriteBool(_T("RTLWindowsLayout"),m_bRTLWindowsLayout);
+	ini.WriteBool(_T("PreviewOnIconDblClk"),m_bPreviewOnIconDblClk);
+	ini.WriteString(_T("InternetSecurityZone"),sInternetSecurityZone);
+	ini.WriteInt(L"InspectAllFileTypes",m_iInspectAllFileTypes);
+    ini.WriteInt(L"MaxMessageSessions",maxmsgsessions);
+    ini.WriteBool(L"PreferRestrictedOverUser",m_bPreferRestrictedOverUser);
+	ini.WriteBool(L"UserSortedServerList",m_bUseUserSortedServerList);
+    ini.WriteBool(L"AdjustNTFSDaylightFileTime",m_bAdjustNTFSDaylightFileTime); 
+    ini.WriteBool(L"DontCompressAvi",dontcompressavi);
+    ini.WriteBool(L"ShowCopyEd2kLinkCmd",m_bShowCopyEd2kLinkCmd);
+    ini.WriteBool(L"IconflashOnNewMessage",m_bIconflashOnNewMessage);
+    ini.WriteBool(L"ReBarToolbar",m_bReBarToolbar);
+	ini.WriteBool(L"ICH",IsICHEnabled());	// 10.5
+	ini.WriteInt(L"FileBufferTimeLimit", m_uFileBufferTimeLimit/1000);
+	ini.WriteBool(L"RearrangeKadSearchKeywords",m_bRearrangeKadSearchKeywords);
+	ini.WriteBool(L"UpdateQueueListPref", m_bupdatequeuelist);
+	ini.WriteBool(L"DontRecreateStatGraphsOnResize",dontRecreateGraphs);
+	ini.WriteBool(L"BeepOnError",beepOnError);
+	ini.WriteBool(L"MessageFromValidSourcesOnly",msgsecure);
+	ini.WriteBool(L"ShowUpDownIconInTaskbar",m_bShowUpDownIconInTaskbar);
+	ini.WriteBool(L"ForceSpeedsToKB",m_bForceSpeedsToKB);
+	ini.WriteBool(L"ExtraPreviewWithMenu",m_bExtraPreviewWithMenu);
+	ini.WriteBool(L"KeepUnavailableFixedSharedDirs",m_bKeepUnavailableFixedSharedDirs);
+	ini.WriteString(L"BindAddr",m_pszBindAddrW);
+	ini.WriteColRef(L"LogErrorColor",m_crLogError);
+	ini.WriteColRef(L"LogWarningColor",m_crLogWarning);
+	ini.WriteColRef(L"LogSuccessColor",m_crLogSuccess);
+	ini.WriteInt(L"MaxFileUploadSizeMB",m_iWebFileUploadSizeLimitMB, L"WebServer" );//section WEBSERVER start
+	CString WriteAllowedIPs ;
+	if (GetAllowedRemoteAccessIPs().GetCount() > 0)
+		for (int i = 0; i <  GetAllowedRemoteAccessIPs().GetCount(); i++)
+           WriteAllowedIPs = WriteAllowedIPs  + _T(";") + ipstr(GetAllowedRemoteAccessIPs()[i]);
+    ini.WriteString(L"AllowedIPs",WriteAllowedIPs);  // End Seciotn Webserver
+    ini.WriteBool(L"ShowVerticalHourMarkers",m_bShowVerticalHourMarkers,L"Statistics");
+	ini.WriteBool(L"EnabledDeprecated", m_bPeerCacheEnabled, L"PeerCache");
+	// <== Advanced Options [Official/MorphXT] - Stulle
+
+	// ==> Global Source Limit [Max/Stulle] - Stulle
+	ini.WriteBool(_T("GlobalHL"), m_bGlobalHL,_T("ScarAngel"));
+	ini.WriteInt(_T("GlobalHLvalue"), m_uGlobalHL);
+	ini.WriteBool(_T("GlobalHlAll"),m_bGlobalHlAll);
+	ini.WriteBool(_T("GlobalHlDefault"), m_bGlobalHlDefault);
+	// <== Global Source Limit [Max/Stulle] - Stulle
+
+	// ==> push small files [sivka] - Stulle
+	ini.WriteBool(_T("EnablePushSmallFile"), enablePushSmallFile);
+	ini.WriteInt(_T("PushSmallFiles"), m_iPushSmallFiles);
+	ini.WriteInt(_T("PushSmallBoost"), m_iPushSmallBoost);
+	// <== push small files [sivka] - Stulle
+	ini.WriteBool(_T("EnablePushRareFile"), enablePushRareFile); // push rare file - Stulle
+
+	ini.WriteBool(_T("ShowSrcOnTitle"),showSrcInTitle); // Show sources on title - Stulle
+	ini.WriteBool(_T("ShowOverheadOnTitle"),showOverheadInTitle); // show overhead on title - Stulle
+	ini.WriteBool(_T("ShowGlobalHL"),ShowGlobalHL); // show global HL - Stulle
+	ini.WriteBool(_T("ShowFileHLconst"),ShowFileHLconst); // show HL per file constantly - Stulle
+	ini.WriteBool(_T("ShowInMSN7"), m_bShowInMSN7); //Show in MSN7 [TPT] - Stulle
+	ini.WriteBool(_T("ClientQueueProgressBar"),m_bClientQueueProgressBar); // Client queue progress bar [Commander] - Stulle
+	ini.WriteBool(_T("ShowClientPercentage"),m_bShowClientPercentage); // Show Client Percentage optional [Stulle] - Stulle
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max
+	ini.WriteBool(_T("SysInfos"),m_bSysInfo);
+	ini.WriteBool(_T("SysInfosGlobal"),m_bSysInfoGlobal);
+	// <== CPU/MEM usage [$ick$/Stulle] - Max
+	ini.WriteBool(_T("ShowSpeedMeter"),m_bShowSpeedMeter); // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	// ==> Static Tray Icon [MorphXT] - MyTh88
+	ini.WriteBool(_T("StaticIcon"),m_bStaticIcon);
+	// <== Static Tray Icon [MorphXT] - MyTh88
+
+	ini.WriteInt(_T("CreditSystemMode"), creditSystemMode); // CreditSystems [EastShare/ MorphXT] - Stulle
+
+	ini.WriteBool(_T("SaveUploadQueueWaitTime"), m_bSaveUploadQueueWaitTime); // SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+
+	// ==> File Settings [sivka/Stulle] - Stulle
+	ini.WriteBool(_T("EnableAutoDropNNS"), m_EnableAutoDropNNSDefault );
+	ini.WriteInt(_T("AutoNNS_Timer"), m_AutoNNS_TimerDefault );
+	ini.WriteInt(_T("MaxRemoveNNSLimit"), m_MaxRemoveNNSLimitDefault );
+	ini.WriteBool(_T("EnableAutoDropFQS"), m_EnableAutoDropFQSDefault );
+	ini.WriteInt(_T("AutoFQS_Timer"), m_AutoFQS_TimerDefault );
+	ini.WriteInt(_T("MaxRemoveFQSLimit"), m_MaxRemoveFQSLimitDefault );
+	ini.WriteBool(_T("EnableAutoDropQRS"), m_EnableAutoDropQRSDefault );
+	ini.WriteInt(_T("AutoHQRS_Timer"), m_AutoHQRS_TimerDefault );
+	ini.WriteInt(_T("MaxRemoveQRS"), m_MaxRemoveQRSDefault );
+	ini.WriteInt(_T("MaxRemoveQRSLimit"), m_MaxRemoveQRSLimitDefault );
+	ini.WriteBool(_T("HQRXman"), m_bHQRXmanDefault );
+	// <== File Settings [sivka/Stulle] - Stulle
+
+	// ==> Source Graph - Stulle
+	ini.WriteBool(_T("SrcGraph"), m_bSrcGraph);
+	ini.WriteInt(_T("StatsHLMin"), m_iStatsHLMin);
+	ini.WriteInt(_T("StatsHLMax"), m_iStatsHLMax);
+	// <== Source Graph - Stulle
+
+	// ==> FunnyNick [SiRoB/Stulle] - Stulle
+	ini.WriteInt(_T("FnTagMode"), FnTagMode);
+	ini.WriteString(_T("FnCustomTag"), m_sFnCustomTag);
+	ini.WriteBool(_T("FnTagAtEnd"), m_bFnTagAtEnd);
+	// <== FunnyNick [SiRoB/Stulle] - Stulle
+
+	ini.WriteBool(_T("ActiveConnectionControl"), m_bACC); // ACC [Max/WiZaRd] - Max
+
+	ini.WriteInt(_T("ScarVerCheckLastAutomatic"), m_uScarVerCheckLastAutomatic); // ScarAngel Version Check - Stulle
+
+	// ==> Quick start [TPT] - Max
+	ini.WriteBool(_T("QuickStart"), m_bQuickStart);
+	ini.WriteInt(_T("QuickStartMaxTime"), m_iQuickStartMaxTime);
+	ini.WriteInt(_T("QuickStartMaxConn"), m_iQuickStartMaxConn);
+	ini.WriteInt(_T("QuickStartMaxConnPerFive"), m_iQuickStartMaxConnPerFive);
+	ini.WriteInt(_T("QuickStartMaxConnBack"), m_iQuickStartMaxConnBack);
+	ini.WriteInt(_T("QuickStartMaxConnPerFiveBack"), m_iQuickStartMaxConnPerFiveBack);
+	ini.WriteBool(_T("QuickStartAfterIPChange"), m_bQuickStartAfterIPChange);
+	// <== Quick start [TPT] - Max
+
+	// ==> TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+	ini.WriteBool(_T("AutoBackup"),m_bAutoBackup);
+	ini.WriteBool(_T("AutoBackupDouble"),m_bAutoBackup2);
+	// <== TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+
+	// ==> TBH: minimule - Max
+	ini.WriteInt(_T("SpeedMeterMin"), speedmetermin);
+	ini.WriteInt(_T("SpeedMeterMax"), speedmetermax);	
+	ini.WriteBool(_T("ShowMiniMule"),m_bMiniMule);
+	ini.WriteInt(_T("MiniMuleUpdate"),m_iMiniMuleUpdate);
+	ini.WriteBool(_T("MiniMuleLives"),m_bMiniMuleLives);
+	ini.WriteInt(_T("MiniMuleTransparency"),m_iMiniMuleTransparency);
+	ini.WriteBool(_T("MiniMuleCompl"),m_bMMCompl);
+	ini.WriteBool(_T("MiniMuleOpen"),m_bMMOpen);
+	// <== TBH: minimule - Max
+
+	// ==> Simple cleanup [MorphXT] - Stulle
+	ini.WriteInt (_T("SimpleCleanupOptions"),m_SimpleCleanupOptions);
+	// Enclose the strings with '"' before writing them to the file.
+	// These will be filtered if the string is read again
+	ini.WriteString (_T("SimpleCleanupSearch"),CString ('\"')+m_SimpleCleanupSearch+'\"');
+	ini.WriteString (_T("SimpleCleanupReplace"),CString ('\"')+m_SimpleCleanupReplace+'\"');
+	ini.WriteString (_T("SimpleCleanupSearchChars"),CString ('\"')+m_SimpleCleanupSearchChars+'\"');
+	ini.WriteString (_T("SimpleCleanupReplaceChars"),CString ('\"')+m_SimpleCleanupReplaceChars+'\"');
+	// <== Simple cleanup [MorphXT] - Stulle
+
+	ini.WriteBool(L"Startupsound",startupsound); // Startupsound [Commander] - mav744
+
+	ini.WriteInt(L"CompressLevel",m_uCompressLevel); // Adjust Compress Level [Stulle] - Stulle
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	ini.WriteBool(_T("ValidSrcsOnly"), m_bValidSrcsOnly);
+	ini.WriteBool(_T("ShowCatName"), m_bShowCatNames);
+	ini.WriteBool(_T("ActiveCatDefault"), m_bActiveCatDefault);
+	ini.WriteBool(_T("SelCatOnAdd"), m_bSelCatOnAdd);
+	ini.WriteBool(_T("AutoSetResumeOrder"), m_bAutoSetResumeOrder);
+	ini.WriteBool(_T("SmallFileDLPush"), m_bSmallFileDLPush);
+	ini.WriteInt(_T("StartDLInEmptyCats"), m_iStartDLInEmptyCats);
+	ini.WriteBool(_T("UseAutoCat"), m_bUseAutoCat);
+	ini.WriteInt(_T("dlMode"),dlMode);
+	ini.WriteBool(L"AddRemovedInc", m_bAddRemovedInc);
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+	ini.WriteBool(_T("SpreadbarSetStatus"), m_bSpreadbarSetStatus); // Spread bars [Slugfiller/MorphXT] - Stulle
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	ini.WriteInt(_T("HideOvershares"),hideOS);
+	ini.WriteBool(_T("SelectiveShare"),selectiveShare);
+	ini.WriteInt(_T("ShareOnlyTheNeed"),ShareOnlyTheNeed);
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	ini.WriteInt(_T("PowershareMode"),m_iPowershareMode);
+	ini.WriteInt(_T("PowerShareLimit"),PowerShareLimit);
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	ini.WriteInt(_T("ReleaseBonus"),m_uReleaseBonus); // Release Bonus [sivka] - Stulle
+	ini.WriteBool(_T("ReleaseScoreAssurance"),m_bReleaseScoreAssurance); // Release Score Assurance [Stulle] - Stulle
+
+	ini.WriteInt(_T("PsAmountLimit"),PsAmountLimit); // Limit PS by amount of data uploaded [Stulle] - Stulle
+
+	// ==> Enforce Ratio [Stulle] - Stulle
+	ini.WriteBool(_T("EnforceRatio"), m_bEnforceRatio);
+	ini.WriteInt(_T("RatioValue"), m_uRatioValue);
+	// <== Enforce Ratio [Stulle] - Stulle
+
+	// ==> Improved ICS-Firewall support [MoNKi]-Max
+	ini.WriteBool(_T("ICFSupportFirstTime"), m_bICFSupportFirstTime);
+	ini.WriteBool(_T("ICFSupport"), m_bICFSupport);
+	ini.WriteBool(_T("ICFSupportServerUDP"), m_bICFSupportServerUDP);
+	// <== Improved ICS-Firewall support [MoNKi]-Max
+
+	// ==> Invisible Mode [TPT/MoNKi] - Stulle
+	ini.WriteBool(_T("InvisibleMode"), m_bInvisibleMode);
+	ini.WriteInt(_T("InvisibleModeHKKey"), (int)m_cInvisibleModeHotKey);
+	ini.WriteInt(_T("InvisibleModeHKKeyModifier"), m_iInvisibleModeHotKeyModifier);
+	ini.WriteBool(_T("InvisibleModeStart"), m_bInvisibleModeStart);
+	// <== Invisible Mode [TPT/MoNKi] - Stulle
+
+	// ==> UPnP support [MoNKi] - leuk_he
+	ini.WriteBool(_T("UPnPNAT"), m_bUPnPNat);
+	ini.WriteBool(_T("UPnPNAT_Web"), m_bUPnPNatWeb);
+	ini.WriteBool(_T("UPnPVerbose"), m_bUPnPVerboseLog);
+	ini.WriteInt(_T("UPnPPort"), m_iUPnPPort);
+	ini.WriteBool(_T("UPnPClearOnClose"), m_bUPnPClearOnClose);
+	ini.WriteBool(_T("UPnPLimitToFirstConnection"), m_bUPnPLimitToFirstConnection);
+	ini.WriteInt(_T("UPnPDetect"), m_iDetectuPnP);
+	ini.WriteString(L"UpnpBindAddr", ipstr(htonl(GetUpnpBindAddr())));
+	ini.WriteBool(L"UpnpBindAddrDhcp",GetUpnpBindDhcp());
+	ini.WriteBool(_T("UPnPForceUpdate"), m_bUPnPForceUpdate);
+	//<== UPnP support [MoNKi] - leuk_he
+
+	// ==> Random Ports [MoNKi] - Stulle
+	ini.WriteBool(_T("RandomPorts"), m_bRndPorts);
+	ini.WriteInt(_T("MinRandomPort"), m_iMinRndPort);
+	ini.WriteInt(_T("MaxRandomPort"), m_iMaxRndPort);
+	ini.WriteBool(_T("RandomPortsReset"), m_bRndPortsResetOnRestart);
+	ini.WriteInt(_T("RandomPortsSafeResetOnRestartTime"), m_iRndPortsSafeResetOnRestartTime);
+	ini.WriteInt(_T("OldTCPRandomPort"), m_iCurrentTCPRndPort);
+	ini.WriteInt(_T("OldUDPRandomPort"), m_iCurrentUDPRndPort);
+	ini.WriteUInt64(_T("RandomPortsLastRun"), CTime::GetCurrentTime().GetTime());
+	// <== Random Ports [MoNKi] - Stulle
+
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	ini.WriteBool(L"AutoReloadSharedFiles", GetDirectoryWatcher());
+	ini.WriteBool(L"SingleSharedDirWatcher", GetSingleSharedDirWatcher());
+	ini.WriteInt(L"TimeBetweenReloads", GetTimeBetweenReloads());
+	// <== Automatic shared files updater [MoNKi] - Stulle
+
+	// ==> Anti Uploader Ban [Stulle] - Stulle
+	ini.WriteInt(_T("AntiUploaderBanLimit"), m_uAntiUploaderBanLimit);
+	ini.WriteInt(_T("AntiUploaderBanCaseMode"), AntiUploaderBanCaseMode);
+	// <== Anti Uploader Ban [Stulle] - Stulle
+
+	// ==> Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+	ini.WriteBool(_T("EmuMLDonkey"), m_bEmuMLDonkey);
+	ini.WriteBool(_T("EmueDonkey"), m_bEmueDonkey);
+	ini.WriteBool(_T("EmueDonkeyHybrid"), m_bEmueDonkeyHybrid);
+	ini.WriteBool(_T("EmuShareaza"), m_bEmuShareaza);
+	ini.WriteBool(_T("EmuLphant"), m_bEmuLphant);
+	ini.WriteBool(_T("LogEmulator"), m_bLogEmulator);
+	// <== Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+
+	// ==> Spread Credits Slot [Stulle] - Stulle
+	ini.WriteBool(_T("SpreadCreditsSlot"), SpreadCreditsSlot);
+	ini.WriteInt(_T("SpreadCreditsSlotCounter"), SpreadCreditsSlotCounter);
+	// <== Spread Credits Slot [Stulle] - Stulle
+
+	// ==> Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+	ini.WriteBool(_T("IsPayBackFirst"),m_bPayBackFirst);
+	ini.WriteInt(_T("PayBackFirstLimit"),m_iPayBackFirstLimit);
+	ini.WriteBool(_T("IsPayBackFirst2"),m_bPayBackFirst2);
+	ini.WriteInt(_T("PayBackFirstLimit2"),m_iPayBackFirstLimit2);
+	// <== Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+
+	ini.WriteBool(_T("IgnoreThird"), m_bIgnoreThird); // Do not reserve 1/3 of your uploadlimit for emule [Stulle] - Stulle
+
+	ini.WriteBool(_T("DisableUlThreshold"),m_bDisableUlThres); // Disable accepting only clients who asked within last 30min [Stulle] - Stulle
+
+	ini.WriteBool(_T("FollowTheMajority"), m_bFollowTheMajority); // Follow The Majority [AndCycle/Stulle] - Stulle
+
+	ini.WriteInt(_T("FairPlay"), m_iFairPlay); // Fair Play [AndCycle/Stulle] - Stulle
+
+	ini.WriteBool(_T("MaxSlotSpeed"), m_bMaxSlotSpeed); // Alwasy maximize slot speed [Stulle] - Stulle
+
+	// ==> Control download priority [tommy_gun/iONiX] - MyTh88
+	ini.WriteInt(_T("BownfishMode"), m_uiBowlfishMode);
+	ini.WriteInt(_T("AutoBowlfishPrioPercentValue"), m_nBowlfishPrioPercentValue);
+	ini.WriteInt(_T("AutoBowlfishPrioSizeValue"), m_nBowlfishPrioSizeValue);
+	ini.WriteInt(_T("AutoBowlfishPrioNewValue"), m_nBowlfishPrioNewValue);
+	// <== Control download priority [tommy_gun/iONiX] - MyTh88
+
+	// ==> Timer for ReAsk File Sources [Stulle] - Stulle
+	uint8 uTemp = (uint8)((m_uReAskTimeDif+FILEREASKTIME)/60000);
+	ini.WriteInt(_T("ReAskTime"),uTemp);
+	// <== Timer for ReAsk File Sources [Stulle] - Stulle
+
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	ini.WriteBool(L"AutoUpdateAntiLeech", m_bAutoUpdateAntiLeech);
+	ini.WriteString(L"AntiLeechURL", m_strAntiLeechURL);
+	ini.WriteString(L"AutoUpdateIPFilter_URL", m_strautoupdateipfilter_url);
+	ini.WriteBool(L"AutoUpdateIPFilter", m_bautoupdateipfilter);
+	ini.WriteInt(_T("IPFilterVersionNum"), m_uIPFilterVersionNum);
+	ini.WriteBinary(_T("IPfilterVersion"), (LPBYTE)&m_IPfilterVersion, sizeof(m_IPfilterVersion)); 
+	ini.WriteBool(L"AutoUpdateIP2Country", AutoUpdateIP2Country);
+	ini.WriteString(L"UpdateURLIP2Country", UpdateURLIP2Country);
+	ini.WriteBinary(_T("IP2CountryVersion"), (LPBYTE)&m_IP2CountryVersion, sizeof(m_IP2CountryVersion)); 
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
+	ini.WriteInt(_T("FineCS"), m_bFineCS); // Modified FineCS [CiccioBastardo/Stulle] - Stulle
+
+	ini.WriteBool(_T("TrayComplete"), m_bTrayComplete); // Completed in Tray [Stulle] - Stulle
+
+	ini.WriteBool(_T("ColorFeedback"), m_bColorFeedback); // Feedback personalization [Stulle] - Stulle
+
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+	ini.WriteInt(L"TransferWnd1",m_uTransferWnd1);
+	ini.WriteInt(L"TransferWnd2",m_uTransferWnd2);
+	ini.WriteBool(_T("SplitWindow"), m_bSplitWindow);
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
+
+	ini.WriteBool(_T("DateFileNameLog"), m_bDateFileNameLog); // Date File Name Log [AndCycle] - Stulle
+
+	ini.WriteBool(_T("UseIonixWebsrv"), m_bIonixWebsrv); // Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	ini.WriteInt(_T("ServiceStartupMode"),m_iServiceStartupMode);
+	ini.WriteInt(_T("ServiceOptLvl"),m_iServiceOptLvl);
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// ==> Adjustable NT Service Strings [Stulle] - Stulle
+	ini.WriteString(L"ServiceName", m_strServiceName);
+	ini.WriteString(L"ServiceDispName", m_strServiceDispName);
+	ini.WriteString(L"ServiceDescr", m_strServiceDescr);
+	// <== Adjustable NT Service Strings [Stulle] - Stulle
+
+	// ==> Mephisto Upload - Mephisto
+	ini.WriteInt(_T("MinSlotsNew"), m_uMinSlots);
+	ini.WriteInt(_T("NoNewSlotTimer"), m_uNoNewSlotTimer);
+	ini.WriteInt(_T("FullLoops"), m_uFullLoops);
+	ini.WriteInt(_T("MonitorLoops"),m_uMonitorLoops);
+	ini.WriteInt(_T("NotReachedBW"),m_uNotReachedBW);
+	ini.WriteInt(_T("NoTrickleTimerNew"), m_uNoTrickleTimer);
+	ini.WriteInt(_T("MoveDownKB"), m_uMoveDownKB);
+	// <== Mephisto Upload - Mephisto
+
+	// ==> Multiple Part Transfer [Stulle] - Mephisto
+	ini.WriteInt(_T("ChunksMode"), m_uChunksMode);
+	ini.WriteInt(_T("ChunksToFinish"), m_uChunksToFinish);
+	ini.WriteInt(_T("ChunksToUpload"), m_uChunksToUpload);
+	// <== Multiple Part Transfer [Stulle] - Mephisto
+	ini.WriteInt(_T("MaxUpMinutes"), m_uMaxUpMinutes); // Adjust max upload time [Stulle] - Mephisto
+
+	SaveStylePrefs(ini); // Design Settings [eWombat/Stulle] - Stulle
 }
 
 void CPreferences::ResetStatsColor(int index)
@@ -1884,8 +3149,15 @@ void CPreferences::ResetStatsColor(int index)
 		case 10: m_adwStatsColors[10]=RGB(255,255,128);break;
 		case 11: m_adwStatsColors[11]=RGB(  0,  0,  0); bHasCustomTaskIconColor = false; break;
 		case 12: m_adwStatsColors[12]=RGB(255,255,255);break;
+		//Xman Xtreme Upload: this graph isn't shown at xtreme
+		//Maella Bandwidth control
+		/*
 		case 13: m_adwStatsColors[13]=RGB(255,255,255);break;
 		case 14: m_adwStatsColors[14]=RGB(255,190,190);break;
+		*/
+		case 13: m_adwStatsColors[13]=RGB(255,255,128);break;
+		//Xman end
+		case 14 : m_adwStatsColors[14]=RGB(192,192,255);break; // Source Graph - Stulle
 	}
 }
 
@@ -1932,7 +3204,13 @@ void CPreferences::LoadPreferences()
 
 	CString strCurrVersion, strPrefsVersion;
 
+	// ==> ModID [itsonlyme/SiRoB] - Stulle
+	/*
 	strCurrVersion = theApp.m_strCurVersionLong;
+	*/
+	strCurrVersion = theApp.m_strCurVersionLong + _T(" [") + theApp.m_strModLongVersion + _T("]");
+	// <== ModID [itsonlyme/SiRoB] - Stulle
+
 	strPrefsVersion = ini.GetString(L"AppVersion");
 
 	m_bFirstStart = false;
@@ -1940,10 +3218,6 @@ void CPreferences::LoadPreferences()
 	if (strPrefsVersion.IsEmpty()){
 		m_bFirstStart = true;
 	}
-#ifdef _BETA
-	CString strBetaNotified = ini.GetString(L"BetaVersionNotified", L"");
-	m_bBetaNaggingDone = strBetaNotified.Compare(strCurrVersion) == 0;
-#endif
 
 #ifdef _DEBUG
 	m_iDbgHeap = ini.GetInt(L"DebugHeap", 1);
@@ -1952,11 +3226,11 @@ void CPreferences::LoadPreferences()
 #endif
 
 	m_nWebMirrorAlertLevel = ini.GetInt(L"WebMirrorAlertLevel",0);
-	updatenotify=ini.GetBool(L"UpdateNotifyTestClient",true);
+	updatenotify=ini.GetBool(L"UpdateNotifyTestClient",true); // Stulle
 
 	SetUserNick(ini.GetStringUTF8(L"Nick", DEFAULT_NICK));
 	if (strNick.IsEmpty() || IsDefaultNick(strNick))
-		SetUserNick(DEFAULT_NICK);
+		SetUserNick(DEFAULT_NICK); // Max
 
 	m_strIncomingDir = ini.GetString(L"IncomingDir", _T(""));
 	if (m_strIncomingDir.IsEmpty()) // We want GetDefaultDirectory to also create the folder, so we have to know if we use the default or not
@@ -1997,6 +3271,13 @@ void CPreferences::LoadPreferences()
 		atmp = tempdirs.Tokenize(L"|", curPos);
 	}
 
+	//-------------------------------------------------------------------
+	//Xman Xtreme Mod
+	m_wLanguageID=ini.GetWORD(L"Language",0);	//thx [MoNKi: -FIX: ini.GetFloat needs Language- ]
+	SetLanguage();
+
+	//Xman Xtreme Upload
+	/*
 	maxGraphDownloadRate=ini.GetInt(L"DownloadCapacity",96);
 	if (maxGraphDownloadRate==0)
 		maxGraphDownloadRate=96;
@@ -2025,9 +3306,47 @@ void CPreferences::LoadPreferences()
 	maxdownload=(uint16)ini.GetInt(L"MaxDownload", UNLIMITED);
 	if (maxdownload > maxGraphDownloadRate && maxdownload != UNLIMITED)
 		maxdownload = (uint16)(maxGraphDownloadRate * .8);
+	*/
+	maxGraphDownloadRate=ini.GetFloat(L"DownloadCapacity",96); // Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	if (maxGraphDownloadRate==0) maxGraphDownloadRate=96;
+	maxGraphUploadRate=ini.GetFloat(L"UploadCapacity",16);// Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	if (maxGraphUploadRate==0) maxGraphUploadRate=16;
+	minupload=(uint16)ini.GetInt(L"MinUpload", 1); //Xman not used!
+	maxupload=ini.GetFloat(L"MaxUpload",12); // Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+
+	if(maxupload<= 0.0f || maxupload >= UNLIMITED)
+	{
+		maxupload=11.0f;
+		::MessageBox(NULL,
+			_T("Warning, an 'unlimited' datarate for the upload limit is invalid\n\n")
+			_T("Attention, une bande passante 'illimitée' pour l'émission est invalide\n\n")
+			_T("Achtung, unbegrenzte Datarate für das Upload ist ungültig\n\n")
+			_T("Advirtiendo, el límite para el datarate del upload es inválido"),
+			_T("Warning/Attention/Achtung/Advirtiendo"), 
+			MB_ICONINFORMATION);
+	}
+	else if(maxupload<3.0f)
+		maxupload=3.0f;
+	if(maxGraphUploadRate<= 0.0f || maxGraphUploadRate >= UNLIMITED)
+		maxGraphUploadRate=16.0f;
+	else if(maxGraphUploadRate<5.0f)
+		maxGraphUploadRate=5.0f;
+
+
+	if (maxupload>maxGraphUploadRate && maxupload!=UNLIMITED) maxupload=maxGraphUploadRate*.8f;
+	maxdownload=ini.GetFloat(L"MaxDownload",UNLIMITED); // Maella [FAF] -Allow Bandwidth Settings in <1KB Incremements-
+	if (maxdownload>maxGraphDownloadRate && maxdownload!=UNLIMITED) maxdownload=maxGraphDownloadRate*.8f;
+
+	m_internetdownreactiontime=ini.GetInt(L"internetdownreactiontime",2);
+	if(m_internetdownreactiontime <1)
+		m_internetdownreactiontime=1;
+	if(m_internetdownreactiontime>10)
+		m_internetdownreactiontime=10;
+	//Xman end
+	//-------------------------------------------------------------------	
+
 	maxconnections=ini.GetInt(L"MaxConnections",GetRecommendedMaxConnections());
 	maxhalfconnections=ini.GetInt(L"MaxHalfConnections",9);
-	m_bOverlappedSockets = ini.GetBool(L"OverlappedSockets", false); // Overlapped sockets are under investigations for buggyness (heap corruption), disable by default until fixed
 	m_bConditionalTCPAccept = ini.GetBool(L"ConditionalTCPAccept", false);
 
 	// reset max halfopen to a default if OS changed to SP2 (or higher) or away
@@ -2059,10 +3378,14 @@ void CPreferences::LoadPreferences()
 
 	nServerUDPPort = (uint16)ini.GetInt(L"ServerUDPPort", -1); // 0 = Don't use UDP port for servers, -1 = use a random port (for backward compatibility)
 	maxsourceperfile=ini.GetInt(L"MaxSourcesPerFile",400 );
+	// [MoNKi: -FIX: ini.GetFloat needs Language- ]
+	/*
 	m_wLanguageID=ini.GetWORD(L"Language",0);
+	*/
+	//Xman end
 	m_iSeeShares=(EViewSharedFilesAccess)ini.GetInt(L"SeeShare",vsfaNobody);
 	m_iToolDelayTime=ini.GetInt(L"ToolTipDelay",1);
-	trafficOMeterInterval=ini.GetInt(L"StatGraphsInterval",3);
+	trafficOMeterInterval=ini.GetInt(L"StatGraphsInterval",5); //Xman
 	statsInterval=ini.GetInt(L"statsInterval",5);
 	m_bFillGraphs=ini.GetBool(L"StatsFillGraphs");
 	dontcompressavi=ini.GetBool(L"DontCompressAvi",false);
@@ -2090,8 +3413,12 @@ void CPreferences::LoadPreferences()
 	if (splitterbarPositionSvr>90 || splitterbarPositionSvr<10)
 		splitterbarPositionSvr=75;
 
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+	/*
 	m_uTransferWnd1 = ini.GetInt(L"TransferWnd1",0);
 	m_uTransferWnd2 = ini.GetInt(L"TransferWnd2",1);
+	*/
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
 
 	statsMax=ini.GetInt(L"VariousStatisticsMaxValue",100);
 	statsAverageMinutes=ini.GetInt(L"StatsAverageMinutes",5);
@@ -2135,7 +3462,7 @@ void CPreferences::LoadPreferences()
 	m_bSafeServerConnect =ini.GetBool(L"SafeServerConnect",false);
 
 	m_bTransflstRemain =ini.GetBool(L"TransflstRemainOrder",false);
-	filterserverbyip=ini.GetBool(L"FilterServersByIP",false);
+	filterserverbyip=ini.GetBool(L"FilterServersByIP",true); // changed - Max
 	filterlevel=ini.GetInt(L"FilterLevel",127);
 	checkDiskspace=ini.GetBool(L"CheckDiskspace",false);
 	m_uMinFreeDiskSpace=ini.GetInt(L"MinFreeDiskSpace",20*1024*1024);
@@ -2196,7 +3523,11 @@ void CPreferences::LoadPreferences()
 	log2disk = ini.GetBool(L"SaveLogToDisk",false);
 	uMaxLogFileSize = ini.GetInt(L"MaxLogFileSize", 1024*1024);
 	iMaxLogBuff = ini.GetInt(L"MaxLogBuff",64) * 1024;
-	m_iLogFileFormat = (ELogFileFormat)ini.GetInt(L"LogFileFormat", Unicode);
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	if (iMaxLogBuff  < 64*1024)  iMaxLogBuff =  64*1024;
+	if (iMaxLogBuff  > 512*1024) iMaxLogBuff =512*1024;
+	// <== Advanced Options [Official/MorphXT] - Stulle
+	m_iLogFileFormat = (ELogFileFormat)ini.GetInt(L"LogFileFormat", Unicode, 0); //Xman
 	m_bEnableVerboseOptions=ini.GetBool(L"VerboseOptions", true);
 	if (m_bEnableVerboseOptions)
 	{
@@ -2204,12 +3535,14 @@ void CPreferences::LoadPreferences()
 		m_bFullVerbose=ini.GetBool(L"FullVerbose",false);
 		debug2disk=ini.GetBool(L"SaveDebugToDisk",false);
 		m_bDebugSourceExchange=ini.GetBool(L"DebugSourceExchange",false);
-		m_bLogBannedClients=ini.GetBool(L"LogBannedClients", true);
+		m_bLogBannedClients=ini.GetBool(L"LogBannedClients", false); //Xman
 		m_bLogRatingDescReceived=ini.GetBool(L"LogRatingDescReceived",true);
 		m_bLogSecureIdent=ini.GetBool(L"LogSecureIdent",true);
-		m_bLogFilteredIPs=ini.GetBool(L"LogFilteredIPs",true);
+		m_bLogFilteredIPs=ini.GetBool(L"LogFilteredIPs",false); //Xman
 		m_bLogFileSaving=ini.GetBool(L"LogFileSaving",false);
         m_bLogA4AF=ini.GetBool(L"LogA4AF",false); // ZZ:DownloadManager
+		m_bLogDrop=ini.GetBool(L"LogDrop",false); //Xman Xtreme Downloadmanager
+		m_bLogpartmismatch=ini.GetBool(L"Logpartmismatch", true); //Xman Log part/size-mismatch
 		m_bLogUlDlEvents=ini.GetBool(L"LogUlDlEvents",true);
 	}
 	else
@@ -2240,11 +3573,11 @@ void CPreferences::LoadPreferences()
 #endif
 
 	m_bpreviewprio=ini.GetBool(L"PreviewPrio",false);
-	m_bupdatequeuelist=ini.GetBool(L"UpdateQueueListPref",false);
+	m_bupdatequeuelist=ini.GetBool(L"UpdateQueueListPref",true); //Xman
 	m_bManualAddedServersHighPriority=ini.GetBool(L"ManualHighPrio",false);
 	m_btransferfullchunks=ini.GetBool(L"FullChunkTransfers",true);
 	m_istartnextfile=ini.GetInt(L"StartNextFile",0);
-	m_bshowoverhead=ini.GetBool(L"ShowOverhead",false);
+	m_bshowoverhead=ini.GetBool(L"ShowOverhead",true); //Xman
 	moviePreviewBackup=ini.GetBool(L"VideoPreviewBackupped",true);
 	m_iPreviewSmallBlocks=ini.GetInt(L"PreviewSmallBlocks", 0);
 	m_bPreviewCopiedArchives=ini.GetBool(L"PreviewCopiedArchives", true);
@@ -2265,7 +3598,7 @@ void CPreferences::LoadPreferences()
 	else
 		m_iFileBufferSize = ((m_iFileBufferSize*15000 + 512)/1024)*1024;
 	m_iFileBufferSize=ini.GetInt(L"FileBufferSize",m_iFileBufferSize);
-	m_uFileBufferTimeLimit = SEC2MS(ini.GetInt(L"FileBufferTimeLimit", 60));
+	m_uFileBufferTimeLimit = SEC2MS(ini.GetInt(L"FileBufferTimeLimit", 80)); //Xman
 
 	// read queue size (with backward compatibility)
 	m_iQueueSize=ini.GetInt(L"QueueSizePref",0); // old setting
@@ -2276,7 +3609,7 @@ void CPreferences::LoadPreferences()
 	m_iQueueSize=ini.GetInt(L"QueueSize",m_iQueueSize);
 
 	m_iCommitFiles=ini.GetInt(L"CommitFiles", 1); // 1 = "commit" on application shut down; 2 = "commit" on each file saveing
-	versioncheckdays=ini.GetInt(L"Check4NewVersionDelay",5);
+	versioncheckdays=ini.GetInt(L"Check4NewVersionDelay",3); //Xman
 	m_bDAP=ini.GetBool(L"DAPPref",true);
 	m_bUAP=ini.GetBool(L"UAPPref",true);
 	m_bPreviewOnIconDblClk=ini.GetBool(L"PreviewOnIconDblClk",false);
@@ -2291,9 +3624,16 @@ void CPreferences::LoadPreferences()
 	m_bExtControls =ini.GetBool(L"ShowExtControls",false);
 
 	versioncheckLastAutomatic=ini.GetInt(L"VersionCheckLastAutomatic",0);
+	//Xman versions check
+	mversioncheckLastAutomatic=ini.GetInt(_T("MVersionCheckLastAutomatic"),0);
+	//Xman end
 	m_bDisableKnownClientList=ini.GetBool(L"DisableKnownClientList",false);
 	m_bDisableQueueList=ini.GetBool(L"DisableQueueList",false);
+	// ==> CreditSystems [EastShare/ MorphXT] - Stulle
+	/*
 	m_bCreditSystem=ini.GetBool(L"UseCreditSystem",true);
+	*/
+	// <== CreditSystems [EastShare/ MorphXT] - Stulle
 	scheduler=ini.GetBool(L"EnableScheduler",false);
 	msgonlyfriends=ini.GetBool(L"MessagesFromFriendsOnly",false);
 	msgsecure=ini.GetBool(L"MessageFromValidSourcesOnly",true);
@@ -2310,6 +3650,11 @@ void CPreferences::LoadPreferences()
 	if (m_iMaxChatHistory < 1)
 		m_iMaxChatHistory = 100;
 	maxmsgsessions=ini.GetInt(L"MaxMessageSessions",50);
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	if (m_iMaxChatHistory > 2048)  m_iMaxChatHistory = 2048;
+	if (maxmsgsessions > 6000)  maxmsgsessions = 6000;
+	if (maxmsgsessions < 0 )  maxmsgsessions = 0;
+	// <== Advanced Options [Official/MorphXT] - Stulle
 	m_bShowActiveDownloadsBold = ini.GetBool(L"ShowActiveDownloadsBold", false);
 
 	m_strTxtEditor = ini.GetString(L"TxtEditor", L"notepad.exe");
@@ -2326,10 +3671,12 @@ void CPreferences::LoadPreferences()
 		ff.Close();
 	}
 
-	messageFilter=ini.GetStringLong(L"MessageFilter",L"fastest download speed|fastest eMule");
+	//messageFilter=ini.GetStringLong(L"MessageFilter",L"fastest download speed|fastest eMule");
+	messageFilter=ini.GetStringLong(L"MessageFilter",L"angelm|autore|boomerang|Candide|connecting too fast|CoPeerRight|detected|DI-Emule|emule fx|fastest|havefuntonight|http://|https://|illecita|infinite queue|ketamine|penali|RIAA|scambi|slot|te@m|trade|Your MOD|zambor");
 	commentFilter = ini.GetStringLong(L"CommentFilter",L"http://|https://|ftp://|www.|ftp.");
 	commentFilter.MakeLower();
-	filenameCleanups=ini.GetStringLong(L"FilenameCleanups",L"http|www.|.com|.de|.org|.net|shared|powered|sponsored|sharelive|filedonkey|");
+	//filenameCleanups=ini.GetStringLong(L"FilenameCleanups",L"http|www.|.com|.de|.org|.net|shared|powered|sponsored|sharelive|filedonkey|");
+	filenameCleanups=ini.GetStringLong(L"FilenameCleanups",L".com|.it|.net|.org|32|33|34|$|€|abc|arica|berlus|cache|cambi|cerco|dagna|destra|downl|dwn|emul|fasci|global|govern|gratis|http|kad|legge|munis|negr|politi|prima|priorit|razor|rinomin|ronzi|slot|soldi|tepay|terron|unipol|usate|veloc|visit|vota|wc|www.|zambor|albania|alema|comuni|dinero|donkey|duce|glion|inter|juve|ladium|milan|moggi|money|napoli|prodi|referend|roia|sinistra|ttana|unione|zapatero|mulo|mule");
 	m_iExtractMetaData = ini.GetInt(L"ExtractMetaData", 1); // 0=disable, 1=mp3, 2=MediaDet
 	if (m_iExtractMetaData > 1)
 		m_iExtractMetaData = 1;
@@ -2394,7 +3741,11 @@ void CPreferences::LoadPreferences()
     m_iDynUpNumberOfPings = ini.GetInt(L"USSNumberOfPings", 1);
 	// ZZ:UploadSpeedSense <--
 
+	//Xman
+	/*
     m_bA4AFSaveCpu = ini.GetBool(L"A4AFSaveCpu", false); // ZZ:DownloadManager
+	*/
+	//Xman end
     m_bHighresTimer = ini.GetBool(L"HighresTimer", false);
 	m_bRunAsUser = ini.GetBool(L"RunAsUnprivilegedUser", false);
 	m_bPreferRestrictedOverUser = ini.GetBool(L"PreferRestrictedOverUser", false);
@@ -2406,10 +3757,14 @@ void CPreferences::LoadPreferences()
 	m_bPartiallyPurgeOldKnownFiles = ini.GetBool(L"PartiallyPurgeOldKnownFiles", true);
 
 	m_bNotifierSendMail = ini.GetBool(L"NotifierSendMail", false);
+//Xman
+/*
 #if _ATL_VER >= 0x0710
 	if (!IsRunningXPSP2OrHigher())
 		m_bNotifierSendMail = false;
 #endif
+*/
+//Xman end
 	m_strNotifierMailSender = ini.GetString(L"NotifierMailSender", L"");
 	m_strNotifierMailServer = ini.GetString(L"NotifierMailServer", L"");
 	m_strNotifierMailReceiver = ini.GetString(L"NotifierMailRecipient", L"");
@@ -2422,8 +3777,13 @@ void CPreferences::LoadPreferences()
 	m_bCryptLayerSupported = ini.GetBool(L"CryptLayerSupported", true);
 	m_dwKadUDPKey = ini.GetInt(L"KadUDPKey", GetRandomUInt32());
 
+	//zz_fly :: hardlimit on CryptTCPPaddingLength
+	/*
 	uint32 nTmp = ini.GetInt(L"CryptTCPPaddingLength", 128);
 	m_byCryptTCPPaddingLength = (uint8)min(nTmp, 254);
+	*/
+	SetCryptTCPPaddingLength(ini.GetInt(L"CryptTCPPaddingLength", 128));
+	//zz_fly :: end
 
 	m_bEnableSearchResultFilter = ini.GetBool(L"EnableSearchResultSpamFilter", true);
 
@@ -2505,17 +3865,662 @@ void CPreferences::LoadPreferences()
 	///////////////////////////////////////////////////////////////////////////
 	// Section: "UPnP"
 	//
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	m_bEnableUPnP = ini.GetBool(L"EnableUPnP", false, L"UPnP");
 	m_bSkipWANIPSetup = ini.GetBool(L"SkipWANIPSetup", false);
 	m_bSkipWANPPPSetup = ini.GetBool(L"SkipWANPPPSetup", false);
 	m_bCloseUPnPOnExit = ini.GetBool(L"CloseUPnPOnExit", true);
-	m_nLastWorkingImpl = ini.GetInt(L"LastWorkingImplementation", 1 /*MiniUPnPLib*/);
+	m_nLastWorkingImpl = ini.GetInt(L"LastWorkingImplementation", 1 /*MiniUPnPLib*//*);
 	m_bIsMinilibImplDisabled = ini.GetBool(L"DisableMiniUPNPLibImpl", false);
 	m_bIsWinServImplDisabled = ini.GetBool(L"DisableWinServImpl", false);
 
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	//UPnP chooser
+	m_bUseACATUPnPNextStart = ini.GetBool(L"UseACATUPnPNextStart", false, L"UPnP"); 
+	m_bUseACATUPnPCurrent = m_bUseACATUPnPNextStart;
+
+	//ACAT UPnP
+	m_bUPnPNat = ini.GetBool(L"UPnPNAT", false, L"UPnP");
+	m_bUPnPTryRandom = ini.GetBool(L"UPnPNAT_TryRandom", false, L"UPnP");
+#endif //zz_fly :: dual upnp
+
+	m_bUPnPRebindOnIPChange = ini.GetBool(L"UPnPNAT_RebindOnIPChange", false, L"UPnP"); //zz_fly :: Rebind UPnP on IP-change
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
+
 	LoadCats();
+	//Xman done above
+	/*
 	SetLanguage();
+	*/
+	//Xman end
+
+	//--------------------------------------------------------------------------
+	//Xman Xtreme Mod:
+
+	//Xman Xtreme Upload
+	m_slotspeed=ini.GetFloat(L"uploadslotspeed",3.4f, L"Xtreme");
+	CheckSlotSpeed();
+	m_openmoreslots=ini.GetBool(L"openmoreslots",true);
+	m_bandwidthnotreachedslots=ini.GetBool(L"bandwidthnotreachedslots",false);
+	m_sendbuffersize=ini.GetInt(L"sendbuffersize", 8192);
+	switch (m_sendbuffersize)
+	{
+		case 6000:
+		case 8192:
+		case 12000:
+		case 24000: //zz_fly :: support 24k send buffer
+			break;
+		default:
+			m_sendbuffersize=8192;
+	}
+
+	retryconnectionattempts=ini.GetBool(L"retryconnectionattempts",true);
+
+	//Xman GlobalMaxHarlimit for fairness
+	m_bAcceptsourcelimit=ini.GetBool(L"Acceptsourcelimit", true);
+
+	//Xman show additional graph lines
+	m_bShowAdditionalGraph=ini.GetBool(L"ShowAdditionalGraph", false);
+
+	//Xman process prio
+	m_MainProcessPriority = ini.GetInt(L"MainProcessPriority", NORMAL_PRIORITY_CLASS); // changed - Stulle
+	switch (GetWindowsVersion())
+	{
+	case _WINVER_98_:
+	case _WINVER_95_:	
+	case _WINVER_ME_:
+		//		case _WINVER_NT4_: // same as win95
+		if (m_MainProcessPriority == ABOVE_NORMAL_PRIORITY_CLASS || m_MainProcessPriority == BELOW_NORMAL_PRIORITY_CLASS )
+			m_MainProcessPriority = NORMAL_PRIORITY_CLASS;
+	}
+	switch (m_MainProcessPriority)
+	{
+	case IDLE_PRIORITY_CLASS:
+		m_MainProcessPriority=NORMAL_PRIORITY_CLASS;
+		break;
+	case BELOW_NORMAL_PRIORITY_CLASS:
+		m_MainProcessPriority=NORMAL_PRIORITY_CLASS;
+		break;
+	case NORMAL_PRIORITY_CLASS:
+	case ABOVE_NORMAL_PRIORITY_CLASS:
+	case HIGH_PRIORITY_CLASS:
+		break;
+	case REALTIME_PRIORITY_CLASS:
+		m_MainProcessPriority=HIGH_PRIORITY_CLASS;
+		break;
+	default:
+		m_MainProcessPriority=NORMAL_PRIORITY_CLASS;
+	}
+	//Xman end
+
+	// Maella -Graph: display zoom-
+	zoomFactor = (uint8)ini.GetInt(L"ZoomFactor", 1);
+	if(zoomFactor < 1) zoomFactor = 1;
+	// Maella end
+
+	// Maella -MTU Configuration-
+	MTU=(uint16)ini.GetInt(L"MTU",1340);
+	if (MTU<500)
+		MTU=500;
+	if (MTU>1500)
+		MTU=1500;
+	// Maella end
+
+	usedoublesendsize=ini.GetBool(L"usedoublesendsize",false);
+	// netfinity: Maximum Segment Size (MSS - Vista only) //added by zz_fly
+	retrieveMTUFromSocket = ini.GetBool(L"retrieveMTUFromSocket", false);
+	if(retrieveMTUFromSocket && GetWindowsVersion() < _WINVER_VISTA_)
+		retrieveMTUFromSocket = false;
+
+	// Maella -Network Adapter Feedback Control-
+	NAFCFullControl=ini.GetBool(L"NAFCFullControl", false);
+	forceNAFCadapter=ini.GetInt(L"ForceNAFCAdapter",0);
+	// Maella end
+
+	// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+	datarateSamples=(uint8)ini.GetInt(L"DatarateSamples", 10);
+	if(datarateSamples < 1) datarateSamples = 1;
+	if(datarateSamples > 20) datarateSamples = 20;
+	// Maella end
+
+	// Maella -One-queue-per-file- (idea bloodymad)
+	enableMultiQueue=ini.GetBool(L"EnableMultiQueue", false);
+	//enableReleaseMultiQueue=ini.GetBool(L"EnableReleaseMultiQueue", false);
+	// Maella end
+
+	//Xman Anti-Leecher
+	m_antileecher=ini.GetBool(L"AntiLeecher",true);
+	m_antileechername=ini.GetBool(L"AntiLeecherName",true);
+	m_antighost=ini.GetBool(L"AntiGhost",true);
+	m_antileecherbadhello= ini.GetBool(L"AntiLeecherBadHello", true );
+	m_antileechersnafu= ini.GetBool(L"AntiLeecherSnafu", true);
+	m_antileechermod= ini.GetBool(L"AntiLeecherMod", true);
+	m_antileecherthief=ini.GetBool(L"AntiLeecherThief", true);
+	m_antileecherspammer= ini.GetBool(L"AntiLeecherSpammer", true);
+	m_antileecherxsexploiter= ini.GetBool(L"AntiLeecherXSExploiter", true);
+	m_antileecheremcrypt= ini.GetBool(L"AntiLeecheremcrypt", true);
+	m_antileecheruserhash= ini.GetBool(L"AntiLeecherUserhash", true);
+	m_antileechercommunity_action= ini.GetBool(L"AntiLeecherCommunity_Action", true);
+	m_antileecherghost_action= ini.GetBool(L"AntiLeecherGhost_Action", true);
+	m_antileecherthief_action= ini.GetBool(L"AntiLeecherThief_Action", true);
+	//X-Ray :: Fincan Hash Detection :: Start
+	m_antileecherFincan = ini.GetBool(L"AntiLeecherFincan", false);
+	m_antileecherFincanURL = ini.GetString(_T("AntiLeecherFincanURL"), _T(""));
+	//X-Ray :: Fincan Hash Detection :: End
+	//Xman end
+
+	//Xman narrow font at transferwindow
+	m_bUseNarrowFont=ini.GetBool(L"UseNarrowFont",false);
+	//Xman end
+
+	//Xman 1:3 Ratio
+	m_13ratio=ini.GetBool(L"amountbasedratio",false);
+	//Xman end
+
+	// ==> Superior Client Handling [Stulle] - Stulle
+	/*
+	//Xman always one release-slot
+	m_onerealeseslot=ini.GetBool(L"onerealeseslot",false);
+	//Xman end
+	*/
+	// <== Superior Client Handling [Stulle] - Stulle
+
+	//Xman advanced upload-priority
+	m_AdvancedAutoPrio=ini.GetBool(L"AdvancedAutoPrio",false);
+	//Xman end
+
+	//Xman chunk chooser
+	m_chunkchooser=(uint8)ini.GetInt(L"chunkchooser",1); //1 = Mealla 2=zz
+	if(m_chunkchooser<1 || m_chunkchooser>2)
+		m_chunkchooser=1;
+	//Xman end
+
+	//Xman disable compression
+	m_bUseCompression=ini.GetBool(L"UseCompression",true);
+
+	//Xman auto update IPFilter
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	/*
+	m_strautoupdateipfilter_url= ini.GetString(L"AutoUpdateIPFilter_URL", _T("http://emulepawcio.sourceforge.net/nieuwe_site/Ipfilter_fakes/ipfilter.zip"));
+	m_bautoupdateipfilter= ini.GetBool(L"AutoUpdateIPFilter", false);
+	LPBYTE pst = NULL;
+	UINT usize = sizeof m_IPfilterVersion;
+	if (ini.GetBinary(L"IPfilterVersion", &pst, &usize) && usize == sizeof m_IPfilterVersion)
+		memcpy(&m_IPfilterVersion, pst, sizeof m_IPfilterVersion);
+	else
+		memset(&m_IPfilterVersion, 0, sizeof m_IPfilterVersion);
+	delete[] pst;
+	m_last_ipfilter_check= ini.GetInt(L"lastipfiltercheck", 0);
+	*/
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+	//Xman end
+
+	//Xman count block/success send
+	m_showblockratio=ini.GetBool(L"ShowSocketBlockRatio", false);
+	// ==> Drop blocking clients [Stulle] - Mephisto
+	/*
+	m_dropblockingsockets=ini.GetBool(L"DropBlockingSockets", false);
+	*/
+	m_dropblockingsockets=ini.GetBool(L"DropBlockingSocketsNew", true);
+	// <== Drop blocking clients [Stulle] - Mephisto
+
+	//Xman Funny-Nick (Stulle/Morph)
+	m_bFunnyNick = ini.GetBool(_T("DisplayFunnyNick"), false);
+	//Xman end
+
+	//Xman remove unused AICH-hashes
+	m_rememberAICH=ini.GetBool(L"rememberAICH",false); 
+	//Xman end
+
+	//Xman smooth-accurate-graph
+	usesmoothgraph=ini.GetBool(L"usesmoothgraph",false);
+
+	// Mighty Knife: Static server handling
+	SetDontRemoveStaticServers (ini.GetBool (L"DontRemoveStaticServers",false));
+	// [end] Mighty Knife
+
+	//Xman [MoNKi: -Downloaded History-]
+	m_bHistoryShowShared = ini.GetBool(L"ShowSharedInHistory", false);
+	//Xman end
+
+	//Xman versions check
+	updatenotifymod = ini.GetBool(L"updatenotifymod",true);
+
+	//Xman don't overwrite bak files if last sessions crashed
+	m_last_session_aborted_in_an_unnormal_way = ini.GetBool(L"last_session_aborted_in_an_unnormal_way",false);
+
+	m_bShowCountryFlagInKad = ini.GetBool(L"ShowCountryFlagInKad", false); //zz_fly :: show country flag in KAD
+	m_bKnown2Buffer = ini.GetBool(L"EnableKnown2Buffer", false); //zz_fly :: known2 buffer
+	m_bKnown2Split = m_bKnown2Split_next = ini.GetBool(L"SplitKnown2DotMet", false); //zz_fly :: known2 split
+	m_uAutoPreviewLimit = ini.GetUInt64(L"AutoPreviewLimit", ((uint64)64)<<20); //zz_fly :: do not auto preview big archive
+
+	m_strBrokenURLs = ini.GetStringLong(L"BrokenURLs", L"sourceforge"); //MORPH - Added by WiZaRd, Fix broken HTTP downloads
+	//Xman end
+	//--------------------------------------------------------------------------
+
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	bMiniMuleAutoClose=ini.GetBool(_T("MiniMuleAutoClose"),0,_T("eMule"));
+	iMiniMuleTransparency=min(ini.GetInt(_T("MiniMuleTransparency"),0),100); // range 0..100
+	bCheckComctl32 =ini.GetBool(_T("CheckComctl32"),true);
+	bCheckShell32=ini.GetBool(_T("CheckShell32"),true);
+	bIgnoreInstances=ini.GetBool(_T("IgnoreInstance"),false);
+	sNotifierMailEncryptCertName=ini.GetString(_T("NotifierMailEncryptCertName"),L"");
+	sMediaInfo_MediaInfoDllPath=ini.GetString(L"MediaInfo_MediaInfoDllPath",_T("MEDIAINFO.DLL")) ;
+	bMediaInfo_RIFF=ini.GetBool(_T("MediaInfo_RIFF"),true);
+	bMediaInfo_ID3LIB =ini.GetBool(_T("MediaInfo_ID3LIB"),true);
+#ifdef HAVE_QEDIT_H
+	m_bMediaInfo_MediaDet =ini.GetBool(_T("MediaInfo_MediaDet"),true);
+#endif//HAVE_QEDIT_H
+	m_bMediaInfo_RM =ini.GetBool(_T("MediaInfo_RM"),true);
+#ifdef HAVE_WMSDK_H
+	m_bMediaInfo_WM =ini.GetBool(_T("MediaInfo_WM"),true);
+#endif//HAVE_WMSDK_H
+	sInternetSecurityZone=ini.GetString(_T("InternetSecurityZone"),_T("Untrusted"));
+    m_iDebugSearchResultDetailLevel = ini.GetInt(L"DebugSearchResultDetailLevel", 0); // NOTE: this variable is also initialized to 0 above! 
+	// <== Advanced Options [Official/MorphXT] - Stulle
+
+	uint32 temp;
+	// ==> Global Source Limit [Max/Stulle] - Stulle
+	m_bGlobalHL = ini.GetBool(_T("GlobalHL"), false,_T("ScarAngel"));
+	uint32 m_uGlobalHlStandard = (uint32)(maxGraphUploadRate*0.9f);
+	m_uGlobalHlStandard = (uint32)((m_uGlobalHlStandard*400 - (m_uGlobalHlStandard-10.0f)*100)*0.65f);
+	m_uGlobalHlStandard = max(1000,min(m_uGlobalHlStandard,MAX_GSL));
+	temp = ini.GetInt(_T("GlobalHLvalue"), m_uGlobalHlStandard);
+	m_uGlobalHL = (temp >= 1000 && temp <= MAX_GSL) ? temp : m_uGlobalHlStandard;
+	m_bGlobalHlAll = ini.GetBool(_T("GlobalHlAll"),true);
+	m_bGlobalHlDefault = ini.GetBool(_T("GlobalHlDefault"),false);
+	// <== Global Source Limit [Max/Stulle] - Stulle
+
+	// ==> push small files [sivka] - Stulle
+    enablePushSmallFile = ini.GetBool(_T("EnablePushSmallFile"), false);
+	temp = ini.GetInt(_T("PushSmallFiles"), 2097152);
+		m_iPushSmallFiles = (temp > 0 && temp <= PARTSIZE) ? temp : 2097152;
+	temp = ini.GetInt(_T("PushSmallBoost"), 100);
+		m_iPushSmallBoost = (uint16)((temp > 0 && temp <= 65536) ? temp : 100);
+	// <== push small files [sivka] - Stulle
+    enablePushRareFile = ini.GetBool(_T("EnablePushRareFile"), false); // push rare file - Stulle
+
+	showSrcInTitle = ini.GetBool(_T("ShowSrcOnTitle"),false); // Show sources on title - Stulle
+	showOverheadInTitle=ini.GetBool(_T("ShowOverheadOnTitle"),false); // show overhead on title - Stulle
+	ShowGlobalHL = ini.GetBool(_T("ShowGlobalHL"),false); // show global HL - Stulle
+	ShowFileHLconst = ini.GetBool(_T("ShowFileHLconst"),true); // show HL per file constantly - Stulle
+	m_bShowInMSN7 = ini.GetBool(_T("ShowInMSN7"), false); //Show in MSN7 [TPT] - Stulle
+	m_bClientQueueProgressBar=ini.GetBool(_T("ClientQueueProgressBar"),true); // Client queue progress bar [Commander] - Stulle
+	m_bShowClientPercentage=ini.GetBool(_T("ShowClientPercentage"),false); // Show Client Percentage optional [Stulle] - Stulle
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max
+	m_bSysInfo = ini.GetBool(_T("SysInfos"),false);
+	m_bSysInfoGlobal = ini.GetBool(_T("SysInfosGlobal"),false);
+	// <== CPU/MEM usage [$ick$/Stulle] - Max
+	m_bShowSpeedMeter=ini.GetBool(_T("ShowSpeedMeter"),false); // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+	// ==> Static Tray Icon [MorphXT] - MyTh88
+	m_bStaticIcon=ini.GetBool(L"StaticIcon",false);
+	// <== Static Tray Icon [MorphXT] - MyTh88
+
+	creditSystemMode = (uint8)ini.GetInt(_T("CreditSystemMode"), 1/*lovelace*/); // CreditSystems [EastShare/ MorphXT] - Stulle
+
+	m_bSaveUploadQueueWaitTime = ini.GetBool(_T("SaveUploadQueueWaitTime"), true); // SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+
+	// ==> File Settings [sivka/Stulle] - Stulle
+	m_EnableAutoDropNNSDefault = ini.GetBool(_T("EnableAutoDropNNS"), ENABLE_AUTO_DROP_NNS);
+	temp = ini.GetInt(_T("AutoNNS_Timer"), AUTO_NNS_TIMER);
+	m_AutoNNS_TimerDefault = (temp >= 0 && temp <= 60000) ? temp : AUTO_NNS_TIMER;
+	temp = ini.GetInt(_T("MaxRemoveNNSLimit"), MAX_REMOVE_NNS_LIMIT);
+	m_MaxRemoveNNSLimitDefault = (uint16)((temp >= 50 && temp <= 100) ? temp : MAX_REMOVE_NNS_LIMIT);
+	m_EnableAutoDropFQSDefault = ini.GetBool(_T("EnableAutoDropFQS"), ENABLE_AUTO_DROP_FQS);
+	temp = ini.GetInt(_T("AutoFQS_Timer"), AUTO_FQS_TIMER);
+	m_AutoFQS_TimerDefault = (temp >= 0 && temp <= 60000) ? temp : AUTO_FQS_TIMER;
+	temp = ini.GetInt(_T("MaxRemoveFQSLimit"), MAX_REMOVE_FQS_LIMIT);
+	m_MaxRemoveFQSLimitDefault = (uint16)((temp >= 50 && temp <= 100) ? temp : MAX_REMOVE_FQS_LIMIT);
+	m_EnableAutoDropQRSDefault = ini.GetBool(_T("EnableAutoDropQRS"), ENABLE_AUTO_DROP_QRS);
+	temp = ini.GetInt(_T("AutoHQRS_Timer"), AUTO_HQRS_TIMER);
+	m_AutoHQRS_TimerDefault = (temp >= 0 && temp <= 120000) ? temp : AUTO_HQRS_TIMER;
+	temp = ini.GetInt(_T("MaxRemoveQRS"), MAX_REMOVE_QRS);
+	m_MaxRemoveQRSDefault = (uint16)((temp >= 2500 && temp <= 10000) ? temp : MAX_REMOVE_QRS);
+	temp = ini.GetInt(_T("MaxRemoveQRSLimit"), MAX_REMOVE_QRS_LIMIT);
+	m_MaxRemoveQRSLimitDefault = (uint16)((temp >= 50 && temp <= 100) ? temp : MAX_REMOVE_QRS_LIMIT);
+	m_bHQRXmanDefault = ini.GetBool(_T("HQRXman"), HQR_XMAN);
+	// <== File Settings [sivka/Stulle] - Stulle
+
+	// ==> Source Graph - Stulle
+	m_bSrcGraph = ini.GetBool(_T("SrcGraph"), false);
+	m_iStatsHLMin = (uint16)ini.GetInt(_T("StatsHLMin"), 2000);
+	m_iStatsHLMax = (uint16)ini.GetInt(_T("StatsHLMax"), 4000);
+	m_iStatsHLDif = m_iStatsHLMax-m_iStatsHLMin;
+	// <== Source Graph - Stulle
+
+	// ==> FunnyNick [SiRoB/Stulle] - Stulle
+	FnTagMode = (uint8)ini.GetInt(_T("FnTagMode"), 2);
+	_stprintf (m_sFnCustomTag,_T("%s"),ini.GetString (_T("FnCustomTag")));
+	m_bFnTagAtEnd = ini.GetBool(_T("FnTagAtEnd"), false);
+	// <== FunnyNick [SiRoB/Stulle] - Stulle
+
+	m_bACC = ini.GetBool(_T("ActiveConnectionControl"),true); // ACC [Max/WiZaRd] - Max
+
+	m_uScarVerCheckLastAutomatic = ini.GetInt(_T("ScarVerCheckLastAutomatic"),0); // ScarAngel Version Check - Stulle
+
+	// ==> Quick start [TPT] - Max
+	m_bQuickStart=ini.GetBool(_T("QuickStart"),false);
+	if (MaxConperFive == m_iQuickStartMaxConnPerFive) { MaxConperFive = 30; }
+	m_iQuickStartMaxTime=(uint16)ini.GetInt(_T("QuickStartMaxTime"), 10);
+	m_iQuickStartMaxConn=ini.GetInt(_T("QuickStartMaxConn"), 1001);
+	m_iQuickStartMaxConnPerFive=(uint16)ini.GetInt(_T("QuickStartMaxConnPerFive"), 151);
+	if(maxconnections == m_iQuickStartMaxConn) { maxconnections = 400; }
+	m_iQuickStartMaxConnBack=ini.GetInt(_T("QuickStartMaxConnBack"), 400);
+	m_iQuickStartMaxConnPerFiveBack=(uint16)ini.GetInt(_T("QuickStartMaxConnPerFiveBack"), 30);
+	m_bQuickStartAfterIPChange=ini.GetBool(_T("QuickStartAfterIPChange"),false);
+	// <== Quick start [TPT] - Max
+
+	// ==> TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+	m_bAutoBackup = ini.GetBool(_T("AutoBackup"),true);
+	m_bAutoBackup2 = ini.GetBool(_T("AutoBackupDouble"),false);
+	// <== TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+
+	// ==> TBH: minimule - Max
+	speedmetermin = ini.GetInt(_T("SpeedMeterMin"),0);
+	speedmetermax = ini.GetInt(_T("SpeedMeterMax"),(int)GetMaxGraphDownloadRate());	
+	m_bMiniMule = ini.GetBool(_T("ShowMiniMule"), false);
+	m_iMiniMuleUpdate = ini.GetInt(_T("MiniMuleUpdate"), 2);
+	m_bMiniMuleLives = ini.GetBool(_T("MiniMuleLives"), true);
+	m_iMiniMuleTransparency = (uint8)ini.GetInt(_T("MiniMuleTransparency"), 255);
+	m_bMMCompl = ini.GetBool(_T("MiniMuleCompl"),false);
+	m_bMMOpen = ini.GetBool(_T("MiniMuleOpen"),true);
+	// <== TBH: minimule - Max
+
+	// ==> Simple cleanup [MorphXT] - Stulle
+	SetSimpleCleanupOptions (ini.GetInt (_T("SimpleCleanupOptions"),3));
+	SetSimpleCleanupSearch (ini.GetString (_T("SimpleCleanupSearch")));
+	SetSimpleCleanupReplace (ini.GetString (_T("SimpleCleanupReplace")));
+	// Format of the preferences string for character replacement:
+	//      "str";"str";"str";...;"str"
+	// Every "str" in SimpleCleanupSearchChars corresponds to a "str"
+	// in SimpleCleanupReplaceChars at the same position.
+	SetSimpleCleanupSearchChars (ini.GetString (_T("SimpleCleanupSearchChars"),
+								 _T("\"\xE4\";\"\xF6\";\"\xFC\";\"\xC4\";\"\xD6\";\"\xDC\";\"\xDF\"")));/*ISO 8859-4*/
+	SetSimpleCleanupReplaceChars (ini.GetString (_T("SimpleCleanupReplaceChars"),
+								 _T("\"ae\";\"oe\";\"ue\";\"Ae\";\"Oe\";\"Ue\";\"ss\"")));
+	// <== Simple cleanup [MorphXT] - Stulle
+	startupsound=ini.GetBool(L"Startupsound",true); // Startupsound [Commander] - mav744
+
+	// ==> Adjust Compress Level [Stulle] - Stulle
+	m_uCompressLevel = (uint8)ini.GetInt(L"CompressLevel",9);
+	if(m_uCompressLevel == 0)
+		m_bUseCompression = false;
+	// <== Adjust Compress Level [Stulle] - Stulle
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	m_bShowCatNames=ini.GetBool(_T("ShowCatName"),true);
+	m_bValidSrcsOnly=ini.GetBool(_T("ValidSrcsOnly"), false);
+	m_bActiveCatDefault=ini.GetBool(_T("ActiveCatDefault"), true);
+	m_bSelCatOnAdd=ini.GetBool(_T("SelCatOnAdd"), true);
+	m_bAutoSetResumeOrder=ini.GetBool(_T("AutoSetResumeOrder"), true);
+	m_bSmallFileDLPush=ini.GetBool(_T("SmallFileDLPush"), true);
+	m_iStartDLInEmptyCats=(uint8)ini.GetInt(_T("StartDLInEmptyCats"), 0);
+	m_bUseAutoCat=ini.GetBool(_T("UseAutoCat"), true);
+	dlMode = (uint8)ini.GetInt(_T("dlMode"),0);
+	m_bAddRemovedInc=ini.GetBool(L"AddRemovedInc",true);
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+	m_bSpreadbarSetStatus = ini.GetBool(_T("SpreadbarSetStatus"), true); // Spread bars [Slugfiller/MorphXT] - Stulle
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	hideOS=ini.GetInt(_T("HideOvershares"),0);
+	selectiveShare=ini.GetBool(_T("SelectiveShare"),false);
+	ShareOnlyTheNeed=ini.GetInt(_T("ShareOnlyTheNeed"),false);
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	m_iPowershareMode=ini.GetInt(_T("PowershareMode"),0);
+	PowerShareLimit=ini.GetInt(_T("PowerShareLimit"),0);
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	m_uReleaseBonus = (uint8)ini.GetInt(_T("ReleaseBonus"),0); // Release Bonus [sivka] - Stulle
+	m_bReleaseScoreAssurance = ini.GetBool(_T("ReleaseScoreAssurance"),false); // Release Score Assurance [Stulle] - Stulle
+
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	temp = ini.GetInt(_T("PsAmountLimit"),0);
+	PsAmountLimit = (temp >= 0 && temp <= MAX_PS_AMOUNT_LIMIT)?temp:0;
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
+
+	// ==> Enforce Ratio [Stulle] - Stulle
+	m_bEnforceRatio = ini.GetBool(_T("EnforceRatio"),false);
+	temp = ini.GetInt(_T("RatioValue"),3);
+	m_uRatioValue = (uint8)((temp > 0 && temp <= 10)?temp:3);
+	// <== Enforce Ratio [Stulle] - Stulle
+
+	// ==> Improved ICS-Firewall support [MoNKi]-Max
+	m_bICFSupportStatusChanged = false;
+	m_bICFSupport = ini.GetBool(_T("ICFSupport"), false);
+	m_bICFSupportFirstTime = ini.GetBool(_T("ICFSupportFirstTime"), true);
+	m_bICFSupportServerUDP = ini.GetBool(_T("ICFSupportServerUDP"), false);
+	// <== Improved ICS-Firewall support [MoNKi]-Max
+
+	// ==> Invisible Mode [TPT/MoNKi] - Stulle
+    m_bInvisibleMode = ini.GetBool(_T("InvisibleMode"), false);
+	m_iInvisibleModeHotKeyModifier = ini.GetInt(_T("InvisibleModeHKKeyModifier"), MOD_CONTROL | MOD_SHIFT | MOD_ALT);
+	m_cInvisibleModeHotKey = (char)ini.GetInt(_T("InvisibleModeHKKey"),(int)'E');
+    SetInvisibleMode(m_bInvisibleMode  ,m_iInvisibleModeHotKeyModifier ,m_cInvisibleModeHotKey );
+	m_bInvisibleModeStart = ini.GetBool(_T("InvisibleModeStart"), false);
+	// <== Invisible Mode [TPT/MoNKi] - Stulle
+
+	//==> UPnP support [MoNKi] - leuk_he
+	CString strTemp = ini.GetString(L"UpnpBindAddr");
+	strTemp.Trim();
+  	SetUpnpBindAddr(ntohl(inet_addr((LPCSTR)(CStringA)strTemp  )));
+	m_bUPnPNat = ini.GetBool(_T("UPnPNAT"), false);
+	m_bUPnPNatWeb = ini.GetBool(_T("UPnPNAT_Web"), false);
+	m_bUPnPVerboseLog = ini.GetBool(_T("UPnPVerbose"), true);
+	m_iUPnPPort = (uint16)ini.GetInt(_T("UPnPPort"), 0);
+	m_bUPnPLimitToFirstConnection = ini.GetBool(_T("UPnPLimitToFirstConnection"), false);
+	m_bUPnPClearOnClose = ini.GetBool(_T("UPnPClearOnClose"), true);
+	SetUpnpDetect(ini.GetInt(_T("uPnPDetect"), UPNP_DO_AUTODETECT)); //leuk_he autodetect upnp in wizard
+    m_bUPnPForceUpdate=ini.GetBool(_T("UPnPForceUpdate"), false);
+	//<== UPnP support [MoNKi] - leuk_he
+
+	// ==> Random Ports [MoNKi] - Stulle
+	m_bRndPorts = ini.GetBool(_T("RandomPorts"), false);
+	m_iMinRndPort = (uint16)ini.GetInt(_T("MinRandomPort"), 3000);
+	m_iMaxRndPort = (uint16)ini.GetInt(_T("MaxRandomPort"), 0xFFFF);
+	m_bRndPortsResetOnRestart = ini.GetBool(_T("RandomPortsReset"), false);
+	m_iRndPortsSafeResetOnRestartTime = (uint16)ini.GetInt(_T("RandomPortsSafeResetOnRestartTime"), 0);
+	uint16 iOldRndTCPPort = (uint16)ini.GetInt(_T("OldTCPRandomPort"), 0);
+	uint16 iOldRndUDPPort = (uint16)ini.GetInt(_T("OldUDPRandomPort"), 0);
+	__time64_t iRndPortsLastRun = ini.GetUInt64(_T("RandomPortsLastRun"), 0);
+	
+	m_iCurrentTCPRndPort = 0;
+	m_iCurrentUDPRndPort = 0;
+
+	if(m_bRndPorts && !m_bRndPortsResetOnRestart &&
+		m_iRndPortsSafeResetOnRestartTime != 0)
+	{
+		CTime tNow = CTime::GetCurrentTime();
+		CTime tOld = CTime(iRndPortsLastRun);
+		CTimeSpan ts = tNow - tOld;
+		if(ts.GetTimeSpan() <= m_iRndPortsSafeResetOnRestartTime){
+			m_iCurrentTCPRndPort = iOldRndTCPPort;
+			m_iCurrentUDPRndPort = iOldRndUDPPort;
+		}
+	}
+	m_bRndPortsResetOnRestart = false;
+	// <== Random Ports [MoNKi] - Stulle
+
+	// ==> Automatic shared files updater [MoNKi] - Stulle
+	SetDirectoryWatcher(ini.GetBool(L"AutoReloadSharedFiles", true));
+	SetSingleSharedDirWatcher(ini.GetBool(L"SingleSharedDirWatcher", true));
+	temp = ini.GetInt(L"TimeBetweenReloads",120);
+	SetTimeBetweenReloads((temp >= 0 && temp <= 1800)?temp:120);
+	// <== Automatic shared files updater [MoNKi] - Stulle
+
+	// ==> Anti Uploader Ban [Stulle] - Stulle
+	m_uAntiUploaderBanLimit = (uint16)ini.GetInt(_T("AntiUploaderBanLimit"), 0);
+	AntiUploaderBanCaseMode = (uint8)ini.GetInt(_T("AntiUploaderBanCaseMode"), 1);
+	// <== Anti Uploader Ban [Stulle] - Stulle
+
+	// ==> Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+	m_bEmuMLDonkey = ini.GetBool(_T("EmuMLDonkey"), false);
+	m_bEmueDonkey= ini.GetBool(_T("EmueDonkey"), false);
+	m_bEmueDonkeyHybrid= ini.GetBool(_T("EmueDonkeyHybrid"), false);
+	m_bEmuShareaza= ini.GetBool(_T("EmuShareaza"), false);
+	m_bEmuLphant= ini.GetBool(_T("EmuLphant"), false);
+	m_bLogEmulator= ini.GetBool(_T("LogEmulator"), false);
+	// <== Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+
+	// ==> Spread Credits Slot [Stulle] - Stulle
+	SpreadCreditsSlot = ini.GetBool(_T("SpreadCreditsSlot"), false);
+	SpreadCreditsSlotCounter = (uint16)ini.GetInt(_T("SpreadCreditsSlotCounter"));
+	if (SpreadCreditsSlotCounter < 3)
+		SpreadCreditsSlotCounter = 3;
+	// <== Spread Credits Slot [Stulle] - Stulle
+
+	// ==> Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+	m_bPayBackFirst=ini.GetBool(_T("IsPayBackFirst"),false);
+	temp = ini.GetInt(_T("PayBackFirstLimit"), 10);
+	m_iPayBackFirstLimit = (uint8)((temp >= 5 && temp <=255) ? temp : 10);
+	m_bPayBackFirst2=ini.GetBool(_T("IsPayBackFirst2"),false);
+	temp = ini.GetInt(_T("PayBackFirstLimit2"), 50);
+	m_iPayBackFirstLimit2 = (uint16)((temp >= 5 && temp <=1024) ? temp : 50);
+	// <== Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+
+	m_bIgnoreThird = ini.GetBool(_T("IgnoreThird"),false); // Do not reserve 1/3 of your uploadlimit for emule [Stulle] - Stulle
+
+	m_bDisableUlThres = ini.GetBool(_T("DisableUlThreshold"),false); // Disable accepting only clients who asked within last 30min [Stulle] - Stulle
+
+	m_bFollowTheMajority = ini.GetBool(_T("FollowTheMajority"), false); // Follow The Majority [AndCycle/Stulle] - Stulle
+
+	m_iFairPlay = ini.GetInt(_T("FairPlay"), 0); // Fair Play [AndCycle/Stulle] - Stulle
+
+	// ==> Alwasy maximize slot speed [Stulle] - Stulle
+	m_bMaxSlotSpeed = ini.GetBool(_T("MaxSlotSpeed"),false);
+	CheckSlotSpeed();
+	// <== Alwasy maximize slot speed [Stulle] - Stulle
+
+	// ==> Timer for ReAsk File Sources [Stulle] - Stulle
+	temp = ini.GetInt(_T("ReAskTime"),29);
+	temp = (temp >= 29 && temp <= 55) ? temp : 29;
+	m_uReAskTimeDif = (temp-29)*60000;
+	// <== Timer for ReAsk File Sources [Stulle] - Stulle
+
+
+	// ==> Control download priority [tommy_gun/iONiX] - MyTh88
+	temp = ini.GetInt(_T("BownfishMode"), 0);
+	m_uiBowlfishMode = (uint8)((temp >= 0 && temp <= 2)?temp:0);
+	m_nBowlfishPrioPercentValue = (uint8)ini.GetInt(_T("AutoBowlfishPrioPercentValue"), 80);
+	m_nBowlfishPrioSizeValue = (uint16)ini.GetInt(_T("AutoBowlfishPrioSizeValue"), 100);
+	temp = ini.GetInt(_T("AutoBowlfishPrioNewValue"), 2);
+	m_nBowlfishPrioNewValue = (uint8)((temp >= 0 && temp <= 2)?temp:2);
+	// <== Control download priority [tommy_gun/iONiX] - MyTh88
+
+	// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+	m_bAutoUpdateAntiLeech=ini.GetBool(_T("AutoUpdateAntiLeech"),true);
+	m_strAntiLeechURL=ini.GetString(L"AntiLeechURL", _T("http://downloads.sourceforge.net/emulextreme/antiLeech.dll.new"));
+	m_strautoupdateipfilter_url= ini.GetString(L"AutoUpdateIPFilter_URL", _T("http://downloads.sourceforge.net/scarangel/ipfilter.rar"));
+	m_bautoupdateipfilter= ini.GetBool(L"AutoUpdateIPFilter", true);
+	m_uIPFilterVersionNum = ini.GetInt(_T("IPFilterVersionNum"),0);
+	LPBYTE pst = NULL;
+	UINT usize = sizeof m_IPfilterVersion;
+	if (ini.GetBinary(L"IPfilterVersion", &pst, &usize) && usize == sizeof m_IPfilterVersion)
+		memcpy(&m_IPfilterVersion, pst, sizeof m_IPfilterVersion);
+	else
+		memset(&m_IPfilterVersion, 0, sizeof m_IPfilterVersion);
+	delete[] pst;
+	pst = NULL;
+	usize = sizeof m_IP2CountryVersion;
+	if (ini.GetBinary(_T("IP2CountryVersion"), &pst, &usize) && usize == sizeof m_IP2CountryVersion)
+		memcpy(&m_IP2CountryVersion, pst, sizeof m_IP2CountryVersion);
+	else
+		memset(&m_IP2CountryVersion, 0, sizeof m_IP2CountryVersion);
+	delete[] pst;
+	AutoUpdateIP2Country=ini.GetBool(_T("AutoUpdateIP2Country"),true);
+	UpdateURLIP2Country=ini.GetString(L"UpdateURLIP2Country", _T("http://ip-to-country.webhosting.info/downloads/ip-to-country.csv.zip"));
+	// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
+	m_bFineCS=ini.GetBool(_T("FineCS"), false); // Modified FineCS [CiccioBastardo/Stulle] - Stulle
+
+	m_bTrayComplete = ini.GetBool(_T("TrayComplete"),false); // Completed in Tray [Stulle] - Stulle
+
+	m_bColorFeedback = ini.GetBool(_T("ColorFeedback"),false); // Feedback personalization [Stulle] - Stulle
+
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+	m_uTransferWnd1 = ini.GetInt(L"TransferWnd1",1);
+	m_uTransferWnd2 = ini.GetInt(L"TransferWnd2",1);
+	m_bSplitWindow = ini.GetBool(_T("SplitWindow"), true);
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
+
+	m_bDateFileNameLog = ini.GetBool(_T("DateFileNameLog"), true); // Date File Name Log [AndCycle] - Stulle
+
+	m_bIonixWebsrv = ini.GetBool(_T("UseIonixWebsrv"), false); // Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+
+	// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	GetServiceName();
+	m_iServiceOptLvl = ini.GetInt(L"ServiceOptLvl",SVC_SVR_OPT);
+	// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+	// ==> Adjustable NT Service Strings [Stulle] - Stulle
+	m_strServiceName = ini.GetString(L"ServiceName",NULL);
+	m_strServiceDispName = ini.GetString(L"ServiceDispName",NULL);
+	m_strServiceDescr = ini.GetString(L"ServiceDescr",NULL);
+	m_bServiceStringsLoaded = true;
+	// <== Adjustable NT Service Strings [Stulle] - Stulle
+
+	m_bCloseEasteregg=false; // Diabolic Easteregg [Stulle] - Mephisto
+
+	// ==> Mephisto Upload - Mephisto
+	temp = ini.GetInt(_T("MinSlotsNew"),2);
+	m_uMinSlots = (uint8)((temp >= 2 && temp <=10) ? temp : 2);
+	temp = ini.GetInt(_T("NoNewSlotTimer"),3);
+	m_uNoNewSlotTimer = (uint8)((temp >= 1 && temp <=120) ? temp : 3);
+	temp = ini.GetInt(_T("FullLoops"),33);
+	m_uFullLoops = (uint8)((temp >= 1 && temp <=100) ? temp : 33);
+	temp = ini.GetInt(_T("MonitorLoops"),3);
+	m_uMonitorLoops = (uint8)((temp >= 1 && temp <=10) ? temp : 3);
+	temp = ini.GetInt(_T("NotReachedBW"),1);
+	m_uNotReachedBW = (uint8)((temp >= 1 && temp <=10) ? temp : 1);
+	temp = ini.GetInt(_T("NoTrickleTimerNew"),5);
+	m_uNoTrickleTimer = (uint8)((temp >= 0 && temp <=120) ? temp : 5);
+	temp = ini.GetInt(_T("MoveDownKB"),30);
+	m_uMoveDownKB = (uint16)((temp >= 1 && temp <= 180) ? temp : 30);
+	// <== Mephisto Upload - Mephisto
+
+	// ==> Multiple Part Transfer [Stulle] - Mephisto
+	temp = (uint8)ini.GetInt(_T("ChunksMode"),CHUNK_XMAN);
+	m_uChunksMode = (uint8)((temp >= CHUNK_SCORE && temp <= CHUNK_FULL) ? temp : CHUNK_XMAN);
+	temp = (uint8)ini.GetInt(_T("ChunksToFinish"),2);
+	m_uChunksToFinish = (uint8)((temp >= 2 && temp <=255) ? temp : 2);
+	temp = (uint8)ini.GetInt(_T("ChunksToUpload"),2);
+	m_uChunksToUpload = (uint8)((temp >= 2 && temp <=255) ? temp : 2);
+	// <== Multiple Part Transfer [Stulle] - Mephisto
+	// ==> Adjust max upload time [Stulle] - Mephisto
+	temp = ini.GetInt(_T("MaxUpMinutes"),120);
+	m_uMaxUpMinutes = (uint16)((temp >= 60 && temp <=300) ? temp : 120);
+	// <== Adjust max upload time [Stulle] - Mephisto
+
+	LoadStylePrefs(ini); // Design Settings [eWombat/Stulle] - Stulle
 }
+
+//Xman Xtreme Upload
+void CPreferences::CheckSlotSpeed()
+{
+	if(m_slotspeed<1.5f)
+		m_slotspeed=1.5f;
+	float maxSlotSpeed=3.0f;
+	if (maxupload<6) maxSlotSpeed=2.0f;
+	if (maxupload>=10)
+		maxSlotSpeed=maxupload/(3+(maxupload-10)/20);
+
+	if (maxSlotSpeed>XTREME_MAX_SLOTSPEED)
+		maxSlotSpeed=XTREME_MAX_SLOTSPEED;
+	maxSlotSpeed*=1.25f; // Increase Slotspeed [Stulle] - Stulle
+	if(m_slotspeed>maxSlotSpeed)
+		m_slotspeed=maxSlotSpeed;
+	// ==> Alwasy maximize slot speed [Stulle] - Stulle
+	if(GetMaxSlotSpeed())
+		m_slotspeed=maxSlotSpeed;
+	// <== Alwasy maximize slot speed [Stulle] - Stulle
+
+	//Xman GlobalMaxHarlimit for fairness
+	m_uMaxGlobalSources=(uint32)(maxupload*400 - (maxupload-10.0f)*100);
+}
+//Xman end
 
 WORD CPreferences::GetWindowsVersion(){
 	static bool bWinVerAlreadyDetected = false;
@@ -2553,6 +4558,8 @@ void CPreferences::SaveCats()
 	(void)_tremove(strCatIniFilePath);
 	CIni ini(strCatIniFilePath);
 	ini.WriteInt(L"Count", catMap.GetCount() - 1, L"General");
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	for (int i = 0; i < catMap.GetCount(); i++)
 	{
 		CString strSection;
@@ -2571,9 +4578,57 @@ void CPreferences::SaveCats()
 		ini.WriteBool(L"AutoCatAsRegularExpression", catMap.GetAt(i)->ac_regexpeval);
         ini.WriteBool(L"downloadInAlphabeticalOrder", catMap.GetAt(i)->downloadInAlphabeticalOrder!=FALSE);
 		ini.WriteBool(L"Care4All", catMap.GetAt(i)->care4all);
+	*/
+	ini.WriteInt(_T("CategoryVersion"), 2, _T("General"));
+	for (int i = 0; i < catMap.GetCount(); i++)
+	{
+		CString strSection;
+		strSection.Format(L"Cat#%i", i);
+		ini.SetSection(strSection);
+		ini.WriteStringUTF8(L"Title",catMap.GetAt(i)->strTitle);
+		ini.WriteStringUTF8(L"Incoming",catMap.GetAt(i)->strIncomingPath);
+		ini.WriteStringUTF8(L"Comment",catMap.GetAt(i)->strComment);
+		ini.WriteInt(L"Color", catMap.GetAt(i)->color);
+		ini.WriteInt(_T("a4afPriority"),catMap.GetAt(i)->prio);
+		ini.WriteInt(_T("ResumeMode"), catMap.GetAt(i)->m_iDlMode);
+//      ini.WriteBool(_T("downloadInAlphabeticalOrder"), catMap.GetAt(i)->downloadInAlphabeticalOrder!=FALSE, ixStr);
+
+		// Save View Filters
+		ini.WriteInt(_T("vfFromCats"), catMap.GetAt(i)->viewfilters.nFromCats);
+		ini.WriteBool(_T("vfVideo"), catMap.GetAt(i)->viewfilters.bVideo!=FALSE);
+		ini.WriteBool(_T("vfAudio"), catMap.GetAt(i)->viewfilters.bAudio!=FALSE);
+		ini.WriteBool(_T("vfArchives"), catMap.GetAt(i)->viewfilters.bArchives!=FALSE);
+		ini.WriteBool(_T("vfImages"), catMap.GetAt(i)->viewfilters.bImages!=FALSE);
+		ini.WriteBool(_T("vfWaiting"), catMap.GetAt(i)->viewfilters.bWaiting!=FALSE);
+		ini.WriteBool(_T("vfTransferring"), catMap.GetAt(i)->viewfilters.bTransferring!=FALSE);
+		ini.WriteBool(_T("vfPaused"), catMap.GetAt(i)->viewfilters.bPaused!=FALSE);
+		ini.WriteBool(_T("vfStopped"), catMap.GetAt(i)->viewfilters.bStopped!=FALSE);
+		ini.WriteBool(_T("vfComplete"), catMap.GetAt(i)->viewfilters.bComplete!=FALSE);
+		ini.WriteBool(_T("vfHashing"), catMap.GetAt(i)->viewfilters.bHashing!=FALSE);
+		ini.WriteBool(_T("vfErrorUnknown"), catMap.GetAt(i)->viewfilters.bErrorUnknown!=FALSE);
+		ini.WriteBool(_T("vfCompleting"), catMap.GetAt(i)->viewfilters.bCompleting!=FALSE);
+		ini.WriteBool(_T("vfSeenComplet"), catMap.GetAt(i)->viewfilters.bSeenComplet!=FALSE); //MORPH - Added by SiRoB, Seen Complet filter
+		ini.WriteUInt64(_T("vfFSizeMin"), catMap.GetAt(i)->viewfilters.nFSizeMin);
+		ini.WriteUInt64(_T("vfFSizeMax"), catMap.GetAt(i)->viewfilters.nFSizeMax);
+		ini.WriteUInt64(_T("vfRSizeMin"), catMap.GetAt(i)->viewfilters.nRSizeMin);
+		ini.WriteUInt64(_T("vfRSizeMax"), catMap.GetAt(i)->viewfilters.nRSizeMax);
+		ini.WriteInt(_T("vfTimeRemainingMin"), catMap.GetAt(i)->viewfilters.nTimeRemainingMin);
+		ini.WriteInt(_T("vfTimeRemainingMax"), catMap.GetAt(i)->viewfilters.nTimeRemainingMax);
+		ini.WriteInt(_T("vfSourceCountMin"), catMap.GetAt(i)->viewfilters.nSourceCountMin);
+		ini.WriteInt(_T("vfSourceCountMax"), catMap.GetAt(i)->viewfilters.nSourceCountMax);
+		ini.WriteInt(_T("vfAvailSourceCountMin"), catMap.GetAt(i)->viewfilters.nAvailSourceCountMin);
+		ini.WriteInt(_T("vfAvailSourceCountMax"), catMap.GetAt(i)->viewfilters.nAvailSourceCountMax);
+		ini.WriteString(_T("vfAdvancedFilterMask"), catMap.GetAt(i)->viewfilters.sAdvancedFilterMask);
+		// Save Selection Criteria
+		ini.WriteBool(_T("scFileSize"), catMap.GetAt(i)->selectioncriteria.bFileSize!=FALSE);
+		ini.WriteBool(_T("scAdvancedFilterMask"), catMap.GetAt(i)->selectioncriteria.bAdvancedFilterMask!=FALSE);
+		ini.WriteBool(_T("ResumeFileOnlyInSameCat"), catMap.GetAt(i)->bResumeFileOnlyInSameCat!=FALSE); //MORPH - Added by SiRoB, Resume file only in the same category
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 	}
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CPreferences::LoadCats()
 {
 	CString strCatIniFilePath;
@@ -2593,8 +4648,13 @@ void CPreferences::LoadCats()
 		{
 			newcat->strIncomingPath = ini.GetStringUTF8(L"Incoming");
 			MakeFoldername(newcat->strIncomingPath);
+			// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+			/*
 			if (!IsShareableDirectory(newcat->strIncomingPath)
 				|| (!PathFileExists(newcat->strIncomingPath) && !::CreateDirectory(newcat->strIncomingPath, 0)))
+			*//*
+			if(!PathFileExists(newcat->strIncomingPath) && !::CreateDirectory(newcat->strIncomingPath, 0))
+			// SLUGFILLER: SafeHash remove - removed installation dir unsharing
 			{
 				newcat->strIncomingPath = GetMuleDirectory(EMULE_INCOMINGDIR);
 				MakeFoldername(newcat->strIncomingPath);
@@ -2615,6 +4675,136 @@ void CPreferences::LoadCats()
 		AddCat(newcat);
 	}
 }
+*/
+void CPreferences::LoadCats() {
+	CString strCatIniFilePath;
+	strCatIniFilePath.Format(L"%sCategory.ini", GetMuleDirectory(EMULE_CONFIGDIR));
+	CIni ini(strCatIniFilePath);
+	
+	bool bCreateDefault = false;
+	bool bSkipLoad = false;
+	if (!PathFileExists(strCatIniFilePath))
+	{
+		bCreateDefault = true;
+		bSkipLoad = true;
+	}
+	else
+	{
+		//ini.SetFileName(strCatIniFilePath);
+		if (ini.GetInt(_T("CategoryVersion"), 0, L"General") == 0)
+			bCreateDefault = true;
+	}
+
+	if (bCreateDefault)
+	{
+		Category_Struct* defcat=new Category_Struct;
+
+		defcat->strTitle = _T("Default");
+    	defcat->prio=PR_NORMAL; // ZZ:DownloadManager
+		defcat->m_iDlMode = 0;
+		defcat->strIncomingPath = GetMuleDirectory(EMULE_INCOMINGDIR);
+		defcat->strComment = _T("The default category.  It can't be merged or deleted.");
+		defcat->color = 0;
+		defcat->viewfilters.bArchives = true;
+		defcat->viewfilters.bAudio = true;
+		defcat->viewfilters.bComplete = true;
+		defcat->viewfilters.bCompleting = true;
+		defcat->viewfilters.bSeenComplet = true; //MORPH - Added by SiRoB, Seen Complet filter
+		defcat->viewfilters.bErrorUnknown = true;
+		defcat->viewfilters.bHashing = true;
+		defcat->viewfilters.bImages = true;
+		defcat->viewfilters.bPaused = true;
+		defcat->viewfilters.bStopped = true;
+		defcat->viewfilters.bSuspendFilters = false;
+		defcat->viewfilters.bTransferring = true;
+		defcat->viewfilters.bVideo = true;
+		defcat->viewfilters.bWaiting = true;
+		defcat->viewfilters.nAvailSourceCountMax = 0;
+		defcat->viewfilters.nAvailSourceCountMin = 0;
+		defcat->viewfilters.nFromCats = 2;
+		defcat->viewfilters.nFSizeMax = 0;
+		defcat->viewfilters.nFSizeMin = 0;
+		defcat->viewfilters.nRSizeMax = 0;
+		defcat->viewfilters.nRSizeMin = 0;
+		defcat->viewfilters.nSourceCountMax = 0;
+		defcat->viewfilters.nSourceCountMin = 0;
+		defcat->viewfilters.nTimeRemainingMax = 0;
+		defcat->viewfilters.nTimeRemainingMin = 0;
+		defcat->viewfilters.sAdvancedFilterMask = "";
+		defcat->selectioncriteria.bAdvancedFilterMask = true;
+		defcat->selectioncriteria.bFileSize = true;
+		defcat->bResumeFileOnlyInSameCat = false; //MORPH - Added by SiRoB, Resume file only in the same category
+		AddCat(defcat);
+		if (bSkipLoad)
+		{
+			SaveCats();
+			return;
+		}
+	}
+
+	int iNumCategories = ini.GetInt(L"Count", 0, L"General");
+	for (int i = bCreateDefault ? 1 : 0; i <= iNumCategories; i++)
+	{
+		CString strSection;
+		strSection.Format(L"Cat#%i", i);
+		ini.SetSection(strSection);
+
+		Category_Struct* newcat = new Category_Struct;
+		newcat->strTitle = ini.GetStringUTF8(L"Title");
+		newcat->strIncomingPath = ini.GetStringUTF8(L"Incoming");
+		MakeFoldername(newcat->strIncomingPath);
+		// SLUGFILLER: SafeHash remove - removed installation dir unsharing
+		newcat->strComment = ini.GetStringUTF8(L"Comment");
+		newcat->prio =ini.GetInt(_T("a4afPriority"),PR_NORMAL); // ZZ:DownloadManager
+		newcat->color = ini.GetInt(L"Color", (DWORD)-1 );
+		/*
+		newcat->autocat=catini.GetString(_T("Autocat"),_T(""),ixStr);
+		*/
+//      newcat->downloadInAlphabeticalOrder = ini.GetBool(_T("downloadInAlphabeticalOrder"), FALSE, ixStr); // ZZ:DownloadManager
+
+		newcat->m_iDlMode = ini.GetInt(_T("ResumeMode"), 0);
+		//newcat->autocat = ini.GetString(_T("AutoCatString"),_T(""),ixStr);
+		// Load View Filters
+		newcat->viewfilters.nFromCats = ini.GetInt(_T("vfFromCats"), i==0?0:2);
+		newcat->viewfilters.bSuspendFilters = false;
+		newcat->viewfilters.bVideo = ini.GetBool(_T("vfVideo"), true);
+		newcat->viewfilters.bAudio = ini.GetBool(_T("vfAudio"), true);
+		newcat->viewfilters.bArchives = ini.GetBool(_T("vfArchives"), true);
+		newcat->viewfilters.bImages = ini.GetBool(_T("vfImages"), true);
+		newcat->viewfilters.bWaiting = ini.GetBool(_T("vfWaiting"), true);
+		newcat->viewfilters.bTransferring = ini.GetBool(_T("vfTransferring"), true);
+		newcat->viewfilters.bPaused = ini.GetBool(_T("vfPaused"), true);
+		newcat->viewfilters.bStopped = ini.GetBool(_T("vfStopped"), true);
+		newcat->viewfilters.bComplete = ini.GetBool(_T("vfComplete"), true);
+		newcat->viewfilters.bHashing = ini.GetBool(_T("vfHashing"), true);
+		newcat->viewfilters.bErrorUnknown = ini.GetBool(_T("vfErrorUnknown"), true);
+		newcat->viewfilters.bCompleting = ini.GetBool(_T("vfCompleting"), true);
+		newcat->viewfilters.bSeenComplet = ini.GetBool(_T("vfSeenComplet"), true); //MORPH - Added by SiRoB, Seen Complet filter
+		newcat->viewfilters.nFSizeMin = ini.GetInt(_T("vfFSizeMin"), 0);
+		newcat->viewfilters.nFSizeMax = ini.GetInt(_T("vfFSizeMax"), 0);
+		newcat->viewfilters.nRSizeMin = ini.GetInt(_T("vfRSizeMin"), 0);
+		newcat->viewfilters.nRSizeMax = ini.GetInt(_T("vfRSizeMax"), 0);
+		newcat->viewfilters.nTimeRemainingMin = ini.GetInt(_T("vfTimeRemainingMin"), 0);
+		newcat->viewfilters.nTimeRemainingMax = ini.GetInt(_T("vfTimeRemainingMax"), 0);
+		newcat->viewfilters.nSourceCountMin = ini.GetInt(_T("vfSourceCountMin"), 0);
+		newcat->viewfilters.nSourceCountMax = ini.GetInt(_T("vfSourceCountMax"), 0);
+		newcat->viewfilters.nAvailSourceCountMin = ini.GetInt(_T("vfAvailSourceCountMin"), 0);
+		newcat->viewfilters.nAvailSourceCountMax = ini.GetInt(_T("vfAvailSourceCountMax"), 0);
+		newcat->viewfilters.sAdvancedFilterMask = ini.GetString(_T("vfAdvancedFilterMask"), _T(""));
+		// Load Selection Criteria
+		newcat->selectioncriteria.bFileSize = ini.GetBool(_T("scFileSize"), true);
+		newcat->selectioncriteria.bAdvancedFilterMask = ini.GetBool(_T("scAdvancedFilterMask"), true);
+		newcat->bResumeFileOnlyInSameCat = ini.GetBool(_T("ResumeFileOnlyInSameCat"), false); //MORPH - Added by SiRoB, Resume file only in the same category
+
+		AddCat(newcat);
+		if (!PathFileExists(newcat->strIncomingPath))
+			if (::CreateDirectory(newcat->strIncomingPath, 0)!= 0 ){
+				newcat->strIncomingPath = GetMuleDirectory(EMULE_INCOMINGDIR); // MORPH
+				theApp.QueueLogLine(true,L"incoming directory  %s of category %s not found " , newcat->strIncomingPath, newcat->strTitle );  // Note that  queue need to be used because logwindow is not initialized (logged time is wrong)
+			}
+	}
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 void CPreferences::RemoveCat(int index)
 {
@@ -2626,6 +4816,8 @@ void CPreferences::RemoveCat(int index)
 	}
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 bool CPreferences::SetCatFilter(int index, int filter)
 {
 	if (index >= 0 && index < catMap.GetCount())
@@ -2655,6 +4847,8 @@ void CPreferences::SetCatFilterNeg(int index, bool val)
 	if (index >= 0 && index < catMap.GetCount())
 		catMap.GetAt(index)->filterNeg = val;
 }
+*/
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 bool CPreferences::MoveCat(UINT from, UINT to)
 {
@@ -2686,7 +4880,8 @@ DWORD CPreferences::GetCatColor(int index, int nDefault) {
 
 
 ///////////////////////////////////////////////////////
-
+// SLUGFILLER: SafeHash remove - global form of IsInstallationDirectory unnececery
+/*
 bool CPreferences::IsInstallationDirectory(const CString& rstrDir)
 {
 	CString strFullPath;
@@ -2709,7 +4904,11 @@ bool CPreferences::IsInstallationDirectory(const CString& rstrDir)
 
 	return false;
 }
+*/
+// SLUGFILLER: SafeHash remove - global form of IsInstallationDirectory unnececery
 
+// SLUGFILLER: SafeHash remove - global form of IsShareableDirectory unnececery
+/*
 bool CPreferences::IsShareableDirectory(const CString& rstrDir)
 {
 	if (IsInstallationDirectory(rstrDir))
@@ -2728,12 +4927,22 @@ bool CPreferences::IsShareableDirectory(const CString& rstrDir)
 
 	return true;
 }
+*/
+// SLUGFILLER: SafeHash remove - global form of IsShareableDirectory unnececery
 
 void CPreferences::UpdateLastVC()
 {
 	struct tm tmTemp;
 	versioncheckLastAutomatic = safe_mktime(CTime::GetCurrentTime().GetLocalTm(&tmTemp));
 }
+
+//Xman versions check
+void CPreferences::UpdateLastMVC()
+{
+	struct tm tmTemp;
+	mversioncheckLastAutomatic = safe_mktime(CTime::GetCurrentTime().GetLocalTm(&tmTemp));
+}
+//Xman end
 
 void CPreferences::SetWSPass(CString strNewPass)
 {
@@ -2750,6 +4959,8 @@ void CPreferences::SetMMPass(CString strNewPass)
 	m_strMMPassword = MD5Sum(strNewPass).GetHash();
 }
 
+//Xman
+/*
 void CPreferences::SetMaxUpload(UINT in)
 {
 	uint16 oldMaxUpload = (uint16)in;
@@ -2761,6 +4972,8 @@ void CPreferences::SetMaxDownload(UINT in)
 	uint16 oldMaxDownload = (uint16)in;
 	maxdownload = (oldMaxDownload) ? oldMaxDownload : (uint16)UNLIMITED;
 }
+*/
+//Xman end
 
 void CPreferences::SetNetworkKademlia(bool val)
 {
@@ -2847,6 +5060,8 @@ bool CPreferences::GetUseReBarToolbar()
 	return GetReBarToolbar() && theApp.m_ullComCtrlVer >= MAKEDLLVERULL(5,8,0,0);
 }
 
+//Xman
+/*
 int	CPreferences::GetMaxGraphUploadRate(bool bEstimateIfUnlimited){
 	if (maxGraphUploadRate != UNLIMITED || !bEstimateIfUnlimited){
 		return maxGraphUploadRate;
@@ -2875,6 +5090,8 @@ void CPreferences::SetMaxGraphUploadRate(int in){
 bool CPreferences::IsDynUpEnabled()	{
 	return m_bDynUpEnabled || maxGraphUploadRate == UNLIMITED;
 }
+*/
+//Xman end
 
 bool CPreferences::CanFSHandleLargeFiles(int nForCat)	{
 	bool bResult = false;
@@ -3330,3 +5547,1057 @@ bool CPreferences::IsRunningAeroGlassTheme(){
 	}
 	return m_bIsRunningAeroGlass == TRUE ? true : false;
 }
+
+// SLUGFILLER: SafeHash
+bool CPreferences::IsConfigFile(const CString& rstrDirectory, const CString& rstrName)
+{
+	if (CompareDirectories(rstrDirectory, GetMuleDirectory(EMULE_CONFIGDIR)))
+		return false;
+
+	// do not share a file from the config directory, if it contains one of the following extensions
+	static const LPCTSTR _apszNotSharedExts[] = { L".met.bak", L".ini.old" };
+	for (int i = 0; i < _countof(_apszNotSharedExts); i++){
+		int iLen = _tcslen(_apszNotSharedExts[i]);
+		if (rstrName.GetLength()>=iLen && rstrName.Right(iLen).CompareNoCase(_apszNotSharedExts[i])==0)
+			return true;
+	}
+
+	// do not share following files from the config directory
+	static const LPCTSTR _apszNotSharedFiles[] = 
+	{
+		L"AC_SearchStrings.dat",
+		L"AC_ServerMetURLs.dat",
+		L"addresses.dat",
+		L"cancelled.met", //MORPH
+		L"category.ini",
+		L"clients.met",
+		L"cryptkey.dat",
+		L"emfriends.met",
+		L"fileinfo.ini",
+		L"ipfilter.dat",
+		L"known.met",
+		L"known2_64.met", //MORPH
+		L"preferences.dat",
+		L"preferences.ini",
+		L"server.met",
+		L"server.met.new",
+		L"server_met.download",
+		L"server_met.old",
+		L"shareddir.dat",
+		L"staticservers.dat",
+		L"StoredSearches.met", //MORPH
+		L"webservices.dat"
+	};
+	for (int i = 0; i < _countof(_apszNotSharedFiles); i++){
+		if (rstrName.CompareNoCase(_apszNotSharedFiles[i])==0)
+			return true;
+	}
+
+	return false;
+}
+// SLUGFILLER: SafeHash
+
+// ==> UPnP support [MoNKi] - leuk_he
+/*
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+//ACAT UPnP
+uint16 CPreferences::GetPort(){
+	if (m_bUseACATUPnPCurrent && (m_iUPnPTCPExternal != 0))
+		return m_iUPnPTCPExternal;
+	else
+		return port;
+}
+
+uint16 CPreferences::GetUDPPort(){
+	if (udpport == 0)
+		return 0;
+
+	if(m_bUseACATUPnPCurrent && (m_iUPnPUDPExternal != 0))
+		return m_iUPnPUDPExternal;
+	else
+		return udpport;
+}
+#endif //zz_fly :: dual upnp
+*/
+// <== UPnP support [MoNKi] - leuk_he
+
+//Xman NAFC -> Statisticgraph
+void CPreferences::SetNAFCFullControl(bool flag)
+{
+	if(NAFCFullControl!=flag && theApp.emuledlg && theApp.emuledlg->m_hWnd && theApp.m_app_state == APP_STATE_RUNNING)
+	{
+		NAFCFullControl = flag;
+		theApp.emuledlg->statisticswnd->RepaintMeters();
+	}
+	else
+		NAFCFullControl = flag;
+}
+//Xman end
+
+// ==> ScarAngel Version Check - Stulle
+void CPreferences::UpdateLastSVC()
+{
+	struct tm tmTemp;
+	m_uScarVerCheckLastAutomatic = safe_mktime(CTime::GetCurrentTime().GetLocalTm(&tmTemp));
+}
+// <== ScarAngel Version Check - Stulle
+
+// ==> Design Settings [eWombat/Stulle] - Stulle
+void CPreferences::InitStyles()
+{
+	// client styles
+	for (int i=0;i<style_c_count;i++)
+	{
+		nClientStyleFlags[i] = 0;
+		nClientStyleFontColor[i]	= CLR_DEFAULT;
+		nClientStyleBackColor[i]	= CLR_DEFAULT;
+		nClientStyleOnOff[i] = 0;
+	}
+
+	// download styles
+	for (int i=0;i<style_d_count;i++)
+	{
+		nDownloadStyleFlags[i] = 0;
+		nDownloadStyleFontColor[i]	= CLR_DEFAULT;
+		nDownloadStyleBackColor[i]	= CLR_DEFAULT;
+		nDownloadStyleOnOff[i] = 0;
+	}
+
+	// share styles
+	for (int i=0;i<style_s_count;i++)
+	{
+		nShareStyleFlags[i] = 0;
+		nShareStyleFontColor[i]	= CLR_DEFAULT;
+		nShareStyleBackColor[i]	= CLR_DEFAULT;
+		nShareStyleOnOff[i] = 0;
+	}
+
+	// server styles
+	for (int i=0;i<style_se_count;i++)
+	{
+		nServerStyleFlags[i] = 0;
+		nServerStyleFontColor[i]	= CLR_DEFAULT;
+		nServerStyleBackColor[i]	= CLR_DEFAULT;
+		nServerStyleOnOff[i] = 0;
+	}
+
+	// background styles
+	for (int i=0;i<style_b_count;i++)
+	{
+		nBackgroundStyleFlags[i] = 0;
+		nBackgroundStyleFontColor[i]	= CLR_DEFAULT;
+		nBackgroundStyleBackColor[i]	= CLR_DEFAULT;
+		nBackgroundStyleOnOff[i] = 0;
+	}
+
+	// window styles
+	for (int i=0;i<style_w_count;i++)
+	{
+		nWindowStyleFlags[i] = 0;
+		nWindowStyleFontColor[i]	= CLR_DEFAULT;
+		nWindowStyleBackColor[i]	= CLR_DEFAULT;
+		nWindowStyleOnOff[i] = 0;
+	}
+
+	// ==> Feedback personalization [Stulle] - Stulle
+	// feedback styles
+	for (int i=0;i<style_f_count;i++)
+	{
+		nFeedBackStyleFlags[i] = 0;
+		nFeedBackStyleFontColor[i]	= CLR_DEFAULT;
+		nFeedBackStyleBackColor[i]	= CLR_DEFAULT;
+		nFeedBackStyleOnOff[i] = 0;
+	}
+	// <== Feedback personalization [Stulle] - Stulle
+}
+
+DWORD CPreferences::GetStyleFlags(int nMaster, int nStyle)
+{
+	DWORD dwTemp = 0;
+	switch(nMaster)
+	{
+		case client_styles:
+			dwTemp = nClientStyleFlags[nStyle];
+			break;
+		case download_styles:
+			dwTemp = nDownloadStyleFlags[nStyle];
+			break;
+		case share_styles:
+			dwTemp = nShareStyleFlags[nStyle];
+			break;
+		case server_styles:
+			dwTemp = nServerStyleFlags[nStyle];
+			break;
+		case background_styles:
+			dwTemp = nBackgroundStyleFlags[nStyle];
+			break;
+		case window_styles:
+			dwTemp = nWindowStyleFlags[nStyle];
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			dwTemp = nFeedBackStyleFlags[nStyle];
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+	return dwTemp;
+}
+
+COLORREF CPreferences::GetStyleFontColor(int nMaster, int nStyle)
+{
+	COLORREF crTemp = CLR_DEFAULT;
+	switch(nMaster)
+	{
+		case client_styles:
+			crTemp = nClientStyleFontColor[nStyle];
+			break;
+		case download_styles:
+			crTemp = nDownloadStyleFontColor[nStyle];
+			break;
+		case share_styles:
+			crTemp = nShareStyleFontColor[nStyle];
+			break;
+		case server_styles:
+			crTemp = nServerStyleFontColor[nStyle];
+			break;
+		case background_styles:
+			crTemp = nBackgroundStyleFontColor[nStyle];
+			break;
+		case window_styles:
+			crTemp = nWindowStyleFontColor[nStyle];
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			crTemp = nFeedBackStyleFontColor[nStyle];
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+	return crTemp;
+}
+
+COLORREF CPreferences::GetStyleBackColor(int nMaster, int nStyle)
+{
+	COLORREF crTemp = CLR_DEFAULT;
+	switch(nMaster)
+	{
+		case client_styles:
+			crTemp = nClientStyleBackColor[nStyle];
+			break;
+		case download_styles:
+			crTemp = nDownloadStyleBackColor[nStyle];
+			break;
+		case share_styles:
+			crTemp = nShareStyleBackColor[nStyle];
+			break;
+		case server_styles:
+			crTemp = nServerStyleBackColor[nStyle];
+			break;
+		case background_styles:
+			crTemp = nBackgroundStyleBackColor[nStyle];
+			break;
+		case window_styles:
+			crTemp = nWindowStyleBackColor[nStyle];
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			crTemp = nFeedBackStyleOnOff[nStyle];
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+	return crTemp;
+}
+
+short CPreferences::GetStyleOnOff(int nMaster, int nStyle)
+{
+	short sTemp = 0;
+	switch(nMaster)
+	{
+		case client_styles:
+			sTemp = nClientStyleOnOff[nStyle];
+			break;
+		case download_styles:
+			sTemp = nDownloadStyleOnOff[nStyle];
+			break;
+		case share_styles:
+			sTemp = nShareStyleOnOff[nStyle];
+			break;
+		case server_styles:
+			sTemp = nServerStyleOnOff[nStyle];
+			break;
+		case background_styles:
+			sTemp = nBackgroundStyleOnOff[nStyle];
+			break;
+		case window_styles:
+			sTemp = nWindowStyleOnOff[nStyle];
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			sTemp = nFeedBackStyleOnOff[nStyle];
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+	return sTemp;
+}
+
+bool CPreferences::GetStyle(int nMaster, int nStyle, StylesStruct *style)
+{
+	if (!style)
+		return false;
+	if (nMaster >= client_styles && nMaster < master_count)
+	{
+		style->nFlags = GetStyleFlags(nMaster,nStyle);
+		style->nFontColor = GetStyleFontColor(nMaster,nStyle);
+		style->nBackColor = GetStyleBackColor(nMaster,nStyle);
+		style->nOnOff = GetStyleOnOff(nMaster,nStyle);
+	}
+	else
+	{
+		style->nFlags = 0;
+		style->nFontColor = CLR_DEFAULT;
+		style->nBackColor = CLR_DEFAULT;
+		style->nOnOff = 0;
+	}
+	return true;
+}
+
+void CPreferences::SetStyleFlags(int nMaster, int nStyle, DWORD dwNew)
+{
+	switch(nMaster)
+	{
+		case client_styles:
+			nClientStyleFlags[nStyle] = dwNew;
+			break;
+		case download_styles:
+			nDownloadStyleFlags[nStyle] = dwNew;
+			break;
+		case share_styles:
+			nShareStyleFlags[nStyle] = dwNew;
+			break;
+		case server_styles:
+			nServerStyleFlags[nStyle] = dwNew;
+			break;
+		case background_styles:
+			nBackgroundStyleFlags[nStyle] = dwNew;
+			break;
+		case window_styles:
+			nWindowStyleFlags[nStyle] = dwNew;
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			nFeedBackStyleFlags[nStyle] = dwNew;
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+}
+
+void CPreferences::SetStyleFontColor(int nMaster, int nStyle, COLORREF crNew)
+{
+	switch(nMaster)
+	{
+		case client_styles:
+			nClientStyleFontColor[nStyle] = crNew;
+			break;
+		case download_styles:
+			nDownloadStyleFontColor[nStyle] = crNew;
+			break;
+		case share_styles:
+			nShareStyleFontColor[nStyle] = crNew;
+			break;
+		case server_styles:
+			nServerStyleFontColor[nStyle] = crNew;
+			break;
+		case background_styles:
+			nBackgroundStyleFontColor[nStyle] = crNew;
+			break;
+		case window_styles:
+			nWindowStyleFontColor[nStyle] = crNew;
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			nFeedBackStyleFontColor[nStyle] = crNew;
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+}
+
+void CPreferences::SetStyleBackColor(int nMaster, int nStyle, COLORREF crNew)
+{
+	switch(nMaster)
+	{
+		case client_styles:
+			nClientStyleBackColor[nStyle] = crNew;
+			break;
+		case download_styles:
+			nDownloadStyleBackColor[nStyle] = crNew;
+			break;
+		case share_styles:
+			nShareStyleBackColor[nStyle] = crNew;
+			break;
+		case server_styles:
+			nServerStyleBackColor[nStyle] = crNew;
+			break;
+		case background_styles:
+			nBackgroundStyleBackColor[nStyle] = crNew;
+			break;
+		case window_styles:
+			nWindowStyleBackColor[nStyle] = crNew;
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			nFeedBackStyleBackColor[nStyle] = crNew;
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+}
+
+void CPreferences::SetStyleOnOff(int nMaster, int nStyle, short sNew)
+{
+	switch(nMaster)
+	{
+		case client_styles:
+			nClientStyleOnOff[nStyle] = sNew;
+			break;
+		case download_styles:
+			nDownloadStyleOnOff[nStyle] = sNew;
+			break;
+		case share_styles:
+			nShareStyleOnOff[nStyle] = sNew;
+			break;
+		case server_styles:
+			nServerStyleOnOff[nStyle] = sNew;
+			break;
+		case background_styles:
+			nBackgroundStyleOnOff[nStyle] = sNew;
+			break;
+		case window_styles:
+			nWindowStyleOnOff[nStyle] = sNew;
+			break;
+		// ==> Feedback personalization [Stulle] - Stulle
+		case feedback_styles:
+			nFeedBackStyleOnOff[nStyle] = sNew;
+			break;
+		// <== Feedback personalization [Stulle] - Stulle
+		default:
+			break;
+	}
+}
+
+bool CPreferences::SetStyle(int nMaster, int nStyle, StylesStruct *style)
+{
+	if (nMaster >= client_styles && nMaster < master_count)
+	{
+		if (style == NULL)
+		{
+			SetStyleFlags(nMaster, nStyle, STYLE_USED);
+			SetStyleFontColor(nMaster, nStyle, CLR_DEFAULT);
+			SetStyleBackColor(nMaster, nStyle, CLR_DEFAULT);
+			SetStyleOnOff(nMaster, nStyle, 0);
+		}
+		else
+		{
+			SetStyleFlags(nMaster, nStyle, style->nFlags|STYLE_USED);
+			SetStyleFontColor(nMaster, nStyle, style->nFontColor);
+			SetStyleBackColor(nMaster, nStyle, style->nBackColor);
+			SetStyleOnOff(nMaster, nStyle, style->nOnOff);
+		}
+		return true;
+	}
+	return false;
+}
+
+void CPreferences::SaveStylePrefs(CIni &ini)
+{
+	ini.SetSection(L"STYLES");
+	ini.WriteInt(L"Version",STYLE_VERSION);
+
+	// client styles
+	ini.SerGet(false, nClientStyleFlags,		ELEMENT_COUNT(nClientStyleFlags), L"ClientStyleFlags");
+	ini.SerGet(false, nClientStyleFontColor,	ELEMENT_COUNT(nClientStyleFontColor), L"ClientStyleFontColor");
+	ini.SerGet(false, nClientStyleBackColor,	ELEMENT_COUNT(nClientStyleBackColor), L"ClientStyleBackColor");
+	ini.SerGet(false, nClientStyleOnOff,		ELEMENT_COUNT(nClientStyleOnOff), L"ClientStyleOnOff");
+
+	// download styles
+	ini.SerGet(false, nDownloadStyleFlags,		ELEMENT_COUNT(nDownloadStyleFlags), L"DownloadStyleFlags");
+	ini.SerGet(false, nDownloadStyleFontColor,	ELEMENT_COUNT(nDownloadStyleFontColor), L"DownloadStyleFontColor");
+	ini.SerGet(false, nDownloadStyleBackColor,	ELEMENT_COUNT(nDownloadStyleBackColor), L"DownloadStyleBackColor");
+	ini.SerGet(false, nDownloadStyleOnOff,		ELEMENT_COUNT(nDownloadStyleOnOff), L"DownloadStyleOnOff");
+
+	// share styles
+	ini.SerGet(false, nShareStyleFlags,		ELEMENT_COUNT(nShareStyleFlags), L"ShareStyleFlags");
+	ini.SerGet(false, nShareStyleFontColor,	ELEMENT_COUNT(nShareStyleFontColor), L"ShareStyleFontColor");
+	ini.SerGet(false, nShareStyleBackColor,	ELEMENT_COUNT(nShareStyleBackColor), L"ShareStyleBackColor");
+	ini.SerGet(false, nShareStyleOnOff,		ELEMENT_COUNT(nShareStyleOnOff), L"ShareStyleOnOff");
+
+	// server styles
+	ini.SerGet(false, nServerStyleFlags,		ELEMENT_COUNT(nServerStyleFlags), L"ServerStyleFlags");
+	ini.SerGet(false, nServerStyleFontColor,	ELEMENT_COUNT(nServerStyleFontColor), L"ServerStyleFontColor");
+	ini.SerGet(false, nServerStyleBackColor,	ELEMENT_COUNT(nServerStyleBackColor), L"ServerStyleBackColor");
+	ini.SerGet(false, nServerStyleOnOff,		ELEMENT_COUNT(nServerStyleOnOff), L"ServerStyleOnOff");
+
+	// background styles
+	ini.SerGet(false, nBackgroundStyleFlags,		ELEMENT_COUNT(nBackgroundStyleFlags), L"BackgroundStyleFlags");
+	ini.SerGet(false, nBackgroundStyleBackColor,	ELEMENT_COUNT(nBackgroundStyleBackColor), L"BackgroundStyleBackColor");
+
+	// window styles
+	ini.SerGet(false, nWindowStyleFlags,		ELEMENT_COUNT(nWindowStyleFlags), L"WindowStyleFlags");
+	ini.SerGet(false, nWindowStyleBackColor,	ELEMENT_COUNT(nWindowStyleBackColor), L"WindowStyleBackColor");
+
+	// ==> Feedback personalization [Stulle] - Stulle
+	// feedback styles
+	ini.SerGet(false, nFeedBackStyleFlags,		ELEMENT_COUNT(nFeedBackStyleFlags), L"FeedBackStyleFlags");
+	ini.SerGet(false, nFeedBackStyleFontColor,	ELEMENT_COUNT(nFeedBackStyleFontColor), L"FeedBackStyleFontColor");
+	// <== Feedback personalization [Stulle] - Stulle
+}
+
+void CPreferences::LoadStylePrefs(CIni &ini)
+{
+	ini.SetSection(L"STYLES");
+	int iVersion = ini.GetInt(L"Version");
+
+	// import v2 settings for new font mask
+	if(iVersion == 2)
+	{
+		LoadStylePrefsV2(ini);
+		return;
+	}
+
+	// client styles
+	ini.SerGet(true, nClientStyleFlags,		ELEMENT_COUNT(nClientStyleFlags), L"ClientStyleFlags");
+	ini.SerGet(true, nClientStyleFontColor,	ELEMENT_COUNT(nClientStyleFontColor), L"ClientStyleFontColor");
+	ini.SerGet(true, nClientStyleBackColor,	ELEMENT_COUNT(nClientStyleBackColor), L"ClientStyleBackColor");
+	ini.SerGet(true, nClientStyleOnOff,		ELEMENT_COUNT(nClientStyleOnOff), L"ClientStyleOnOff");
+
+	for (int i=0;i<style_c_count;i++)
+	{
+		if ((nClientStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+			switch(i)
+			{
+				case style_c_powerrelease:
+					nClientStyleFlags[i] = STYLE_USED;
+		            nClientStyleFontColor[i]	= CLR_DEFAULT;
+					nClientStyleBackColor[i]	= COLORREF(RGB(255,210,210));
+					nClientStyleOnOff[i] = 1;
+					break;
+				case style_c_downloading:
+					nClientStyleFlags[i] = STYLE_BOLD|STYLE_USED;
+		            nClientStyleFontColor[i]	= COLORREF(RGB(50,205,50));
+					nClientStyleBackColor[i]	= CLR_DEFAULT;
+					nClientStyleOnOff[i] = 1;
+					break;
+				case style_c_leecher:
+					nClientStyleFlags[i] = STYLE_USED;
+					nClientStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+		            nClientStyleBackColor[i]	= CLR_DEFAULT;
+					nClientStyleOnOff[i] = 1;
+					break;
+				case style_c_lowid:
+					nClientStyleFlags[i] = STYLE_USED;
+		            nClientStyleFontColor[i]	= CLR_DEFAULT;
+					nClientStyleBackColor[i]	= COLORREF(RGB(255,250,200));
+					nClientStyleOnOff[i] = 1;
+					break;
+				default:
+		            nClientStyleFontColor[i]	= CLR_DEFAULT;
+		            nClientStyleBackColor[i]	= CLR_DEFAULT;
+					break;
+			}
+		}
+	}
+
+	// download styles
+	ini.SerGet(true, nDownloadStyleFlags,		ELEMENT_COUNT(nDownloadStyleFlags), L"DownloadStyleFlags");
+	ini.SerGet(true, nDownloadStyleFontColor,	ELEMENT_COUNT(nDownloadStyleFontColor), L"DownloadStyleFontColor");
+	ini.SerGet(true, nDownloadStyleBackColor,	ELEMENT_COUNT(nDownloadStyleBackColor), L"DownloadStyleBackColor");
+	ini.SerGet(true, nDownloadStyleOnOff,		ELEMENT_COUNT(nDownloadStyleOnOff), L"DownloadStyleOnOff");
+
+	for (int i=0;i<style_d_count;i++)
+	{
+		if ((nDownloadStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+			switch(i)
+			{
+				case style_d_downloading:
+					nDownloadStyleFlags[i] = STYLE_BOLD|STYLE_USED;
+					nDownloadStyleFontColor[i]	= COLORREF(RGB(50,205,50));
+		            nDownloadStyleBackColor[i]	= CLR_DEFAULT;
+					nDownloadStyleOnOff[i] = 1;
+					break;
+				default:
+		            nDownloadStyleFontColor[i]	= CLR_DEFAULT;
+		            nDownloadStyleBackColor[i]	= CLR_DEFAULT;
+					break;
+			}
+		}
+	}
+
+	// share styles
+	ini.SerGet(true, nShareStyleFlags,		ELEMENT_COUNT(nShareStyleFlags), L"ShareStyleFlags");
+	ini.SerGet(true, nShareStyleFontColor,	ELEMENT_COUNT(nShareStyleFontColor), L"ShareStyleFontColor");
+	ini.SerGet(true, nShareStyleBackColor,	ELEMENT_COUNT(nShareStyleBackColor), L"ShareStyleBackColor");
+	ini.SerGet(true, nShareStyleOnOff,		ELEMENT_COUNT(nShareStyleOnOff), L"ShareStyleOnOff");
+
+	for (int i=0;i<style_s_count;i++)
+	{
+		if ((nShareStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+			switch(i)
+			{
+				case style_s_incomplete:
+					nShareStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+					nShareStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+		            nShareStyleBackColor[i]	= CLR_DEFAULT;
+					nShareStyleOnOff[i] = 1;
+					break;
+				case style_s_powershare:
+					nShareStyleFlags[i] = STYLE_USED;
+					nShareStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+		            nShareStyleBackColor[i]	= CLR_DEFAULT;
+					nShareStyleOnOff[i] = 1;
+					break;
+				case style_s_powerrelease:
+					nShareStyleFlags[i] = STYLE_USED;
+		            nShareStyleFontColor[i]	= CLR_DEFAULT;
+					nShareStyleBackColor[i]	= COLORREF(RGB(255,210,210));
+					nShareStyleOnOff[i] = 1;
+					break;
+				default:
+		            nShareStyleFontColor[i]	= CLR_DEFAULT;
+		            nShareStyleBackColor[i]	= CLR_DEFAULT;
+					break;
+			}
+		}
+	}
+
+	// server styles
+	ini.SerGet(true, nServerStyleFlags,		ELEMENT_COUNT(nServerStyleFlags), L"ServerStyleFlags");
+	ini.SerGet(true, nServerStyleFontColor,	ELEMENT_COUNT(nServerStyleFontColor), L"ServerStyleFontColor");
+	ini.SerGet(true, nServerStyleBackColor,	ELEMENT_COUNT(nServerStyleBackColor), L"ServerStyleBackColor");
+	ini.SerGet(true, nServerStyleOnOff,		ELEMENT_COUNT(nServerStyleOnOff), L"ServerStyleOnOff");
+
+	for (int i=0;i<style_se_count;i++)
+	{
+		if ((nServerStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+			switch(i)
+			{
+				case style_se_connected:
+					nServerStyleFlags[i] = STYLE_BOLD|STYLE_USED;
+		            nServerStyleFontColor[i]	= COLORREF(RGB(0,0,192));
+					nServerStyleBackColor[i]	= CLR_DEFAULT;
+					nServerStyleOnOff[i] = 1;
+					break;
+				case style_se_filtered:
+					nServerStyleFlags[i] = STYLE_USED;
+		            nServerStyleFontColor[i]	= COLORREF(RGB(192,192,192));
+					nServerStyleBackColor[i]	= CLR_DEFAULT;
+					nServerStyleOnOff[i] = 1;
+					break;
+				case style_se_dead:
+					nServerStyleFlags[i] = STYLE_USED;
+		            nServerStyleFontColor[i]	= COLORREF(RGB(192,192,192));
+					nServerStyleBackColor[i]	= CLR_DEFAULT;
+					nServerStyleOnOff[i] = 1;
+					break;
+				case style_se_unreliable:
+					nServerStyleFlags[i] = STYLE_USED;
+		            nServerStyleFontColor[i]	= COLORREF(RGB(128,128,128));
+					nServerStyleBackColor[i]	= CLR_DEFAULT;
+					nServerStyleOnOff[i] = 1;
+					break;
+				default:
+		            nServerStyleFontColor[i]	= CLR_DEFAULT;
+		            nServerStyleBackColor[i]	= CLR_DEFAULT;
+					break;
+			}
+		}
+	}
+
+	// background styles
+	ini.SerGet(true, nBackgroundStyleFlags,		ELEMENT_COUNT(nBackgroundStyleFlags), L"BackgroundStyleFlags");
+	ini.SerGet(true, nBackgroundStyleBackColor,	ELEMENT_COUNT(nBackgroundStyleBackColor), L"BackgroundStyleBackColor");
+
+	for (int i=0;i<style_b_count;i++)
+	{
+		if ((nBackgroundStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+//			switch(i)
+			{
+//				default:
+		            nBackgroundStyleBackColor[i]	= CLR_DEFAULT;
+//					break;
+			}
+		}
+	}
+
+	// window styles
+	ini.SerGet(true, nWindowStyleFlags,	ELEMENT_COUNT(nWindowStyleFlags), L"WindowStyleFlags");
+	ini.SerGet(true, nWindowStyleBackColor,	ELEMENT_COUNT(nWindowStyleBackColor), L"WindowStyleBackColor");
+
+	for (int i=0;i<style_w_count;i++)
+	{
+		if ((nWindowStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+//			switch(i)
+			{
+//				default:
+		            nWindowStyleBackColor[i]	= CLR_DEFAULT;
+//					break;
+			}
+		}
+	}
+
+	// ==> Feedback personalization [Stulle] - Stulle
+	// feedback styles
+	ini.SerGet(true, nFeedBackStyleFlags,	ELEMENT_COUNT(nFeedBackStyleFlags), L"FeedBackStyleFlags");
+	ini.SerGet(true, nFeedBackStyleFontColor,	ELEMENT_COUNT(nFeedBackStyleFontColor), L"FeedBackStyleFontColor");
+
+	for (int i=0;i<style_f_count;i++)
+	{
+		if ((nFeedBackStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+			switch(i)
+			{
+				case style_f_names:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+					break;
+				case style_f_fileinfo:
+					nFeedBackStyleFlags[i] = STYLE_BOLD|STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+					break;
+				case style_f_filestate:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,128,0));
+					break;
+				case style_f_transferred:
+					nFeedBackStyleFlags[i] = STYLE_BOLD|STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+					break;
+				case style_f_requests:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,128,0));
+					break;
+				case style_f_sources:
+					nFeedBackStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+					break;
+				case style_f_clientsonqueue:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+					break;
+				case style_f_compeltesrc:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+					break;
+				default:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= CLR_DEFAULT;
+					break;
+			}
+		}
+	}
+	// <== Feedback personalization [Stulle] - Stulle
+
+	// import v1 settings
+	if(iVersion == 0)
+	{
+		DWORD nStyleFlags[33];
+		COLORREF nStyleFontColor[33];
+		COLORREF nStyleBackColor[33];
+		short nStyleOnOff[33];
+
+		ini.SerGet(true, nStyleFlags,		ELEMENT_COUNT(nStyleFlags), L"StyleFlags");
+		ini.SerGet(true, nStyleFontColor,	ELEMENT_COUNT(nStyleFontColor), L"StyleFontColor");
+		ini.SerGet(true, nStyleBackColor,	ELEMENT_COUNT(nStyleBackColor), L"StyleBackColor");
+		ini.SerGet(true, nStyleOnOff,		ELEMENT_COUNT(nStyleOnOff), L"StyleOnOff");
+
+		int iMaster = client_styles;
+		int iSub = style_c_default;
+		for (int i=0;i<33;i++)
+		{
+			if((nStyleFlags[i] & STYLE_USED) == STYLE_USED)
+			{
+				SetStyleFlags(iMaster, iSub, nStyleFlags[i]);
+				SetStyleFontColor(iMaster, iSub, nStyleFontColor[i]);
+				SetStyleOnOff(iMaster, iSub, nStyleOnOff[i]);
+				SetStyleBackColor(iMaster, iSub, nStyleBackColor[i]);
+			}
+
+			iSub++;
+			if(i == 8)
+			{
+				iSub = style_d_default;
+				iMaster = download_styles;
+			}
+			else if(i == 16)
+			{
+				iSub = style_s_default;
+				iMaster = share_styles;
+			}
+			else if(i == 26)
+			{
+				iSub = style_b_clientlist;
+				iMaster = background_styles;
+			}
+		}
+	}
+}
+
+// import v2 settings
+// this will ensure the new font mask is set properly
+// Note: The old font mask was 0x0003, the new is 0x0007. So basically the old one was the last two bits
+// while the new one is the last 3 bits. The result of the following will be equivalent! The STYLE_USED
+// bit will be removed for the check so only those two bits at the end set to 1 will be regarded
+#define STYLE_ITALIC_OLD	0x0003
+void CPreferences::LoadStylePrefsV2(CIni &ini)
+{
+	// client styles
+	ini.SerGet(true, nClientStyleFlags,		ELEMENT_COUNT(nClientStyleFlags), L"ClientStyleFlags");
+	ini.SerGet(true, nClientStyleFontColor,	ELEMENT_COUNT(nClientStyleFontColor), L"ClientStyleFontColor");
+	ini.SerGet(true, nClientStyleBackColor,	ELEMENT_COUNT(nClientStyleBackColor), L"ClientStyleBackColor");
+	ini.SerGet(true, nClientStyleOnOff,		ELEMENT_COUNT(nClientStyleOnOff), L"ClientStyleOnOff");
+
+	for (int i=0;i<style_c_count;i++)
+	{
+		if ((nClientStyleFlags[i] & STYLE_FONTMASK) == STYLE_ITALIC_OLD)
+			nClientStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+	}
+
+	// download styles
+	ini.SerGet(true, nDownloadStyleFlags,		ELEMENT_COUNT(nDownloadStyleFlags), L"DownloadStyleFlags");
+	ini.SerGet(true, nDownloadStyleFontColor,	ELEMENT_COUNT(nDownloadStyleFontColor), L"DownloadStyleFontColor");
+	ini.SerGet(true, nDownloadStyleBackColor,	ELEMENT_COUNT(nDownloadStyleBackColor), L"DownloadStyleBackColor");
+	ini.SerGet(true, nDownloadStyleOnOff,		ELEMENT_COUNT(nDownloadStyleOnOff), L"DownloadStyleOnOff");
+
+	for (int i=0;i<style_d_count;i++)
+	{
+		if ((nDownloadStyleFlags[i] & STYLE_FONTMASK) == STYLE_ITALIC_OLD)
+			nDownloadStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+	}
+
+	// share styles
+	ini.SerGet(true, nShareStyleFlags,		ELEMENT_COUNT(nShareStyleFlags), L"ShareStyleFlags");
+	ini.SerGet(true, nShareStyleFontColor,	ELEMENT_COUNT(nShareStyleFontColor), L"ShareStyleFontColor");
+	ini.SerGet(true, nShareStyleBackColor,	ELEMENT_COUNT(nShareStyleBackColor), L"ShareStyleBackColor");
+	ini.SerGet(true, nShareStyleOnOff,		ELEMENT_COUNT(nShareStyleOnOff), L"ShareStyleOnOff");
+
+	for (int i=0;i<style_s_count;i++)
+	{
+		if ((nShareStyleFlags[i] & STYLE_FONTMASK) == STYLE_ITALIC_OLD)
+			nShareStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+	}
+
+	// server styles
+	ini.SerGet(true, nServerStyleFlags,		ELEMENT_COUNT(nServerStyleFlags), L"ServerStyleFlags");
+	ini.SerGet(true, nServerStyleFontColor,	ELEMENT_COUNT(nServerStyleFontColor), L"ServerStyleFontColor");
+	ini.SerGet(true, nServerStyleBackColor,	ELEMENT_COUNT(nServerStyleBackColor), L"ServerStyleBackColor");
+	ini.SerGet(true, nServerStyleOnOff,		ELEMENT_COUNT(nServerStyleOnOff), L"ServerStyleOnOff");
+
+	for (int i=0;i<style_se_count;i++)
+	{
+		if ((nServerStyleFlags[i] & STYLE_FONTMASK) == STYLE_ITALIC_OLD)
+			nServerStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+	}
+
+	// background styles
+	ini.SerGet(true, nBackgroundStyleFlags,		ELEMENT_COUNT(nBackgroundStyleFlags), L"BackgroundStyleFlags");
+	ini.SerGet(true, nBackgroundStyleBackColor,	ELEMENT_COUNT(nBackgroundStyleBackColor), L"BackgroundStyleBackColor");
+
+	// window styles
+	ini.SerGet(true, nWindowStyleFlags,	ELEMENT_COUNT(nWindowStyleFlags), L"WindowStyleFlags");
+	ini.SerGet(true, nWindowStyleBackColor,	ELEMENT_COUNT(nWindowStyleBackColor), L"WindowStyleBackColor");
+
+	// ==> Feedback personalization [Stulle] - Stulle
+	// get us the defaults
+	// feedback styles
+	for (int i=0;i<style_f_count;i++)
+	{
+		if ((nFeedBackStyleFlags[i] & STYLE_USED) != STYLE_USED)
+		{
+			switch(i)
+			{
+				case style_f_names:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+					break;
+				case style_f_fileinfo:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+					break;
+				case style_f_filestate:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,128,0));
+					break;
+				case style_f_transferred:
+					nFeedBackStyleFlags[i] = STYLE_BOLD|STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+					break;
+				case style_f_requests:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,128,0));
+					break;
+				case style_f_sources:
+					nFeedBackStyleFlags[i] = STYLE_ITALIC|STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(0,0,255));
+					break;
+				case style_f_clientsonqueue:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+					break;
+				case style_f_compeltesrc:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= COLORREF(RGB(255,0,0));
+					break;
+				default:
+					nFeedBackStyleFlags[i] = STYLE_USED;
+		            nFeedBackStyleFontColor[i]	= CLR_DEFAULT;
+					break;
+			}
+		}
+	}
+	// <== Feedback personalization [Stulle] - Stulle
+}
+// <== Design Settings [eWombat/Stulle] - Stulle
+
+// ==> Invisible Mode [TPT/MoNKi] - Stulle
+void CPreferences::SetInvisibleMode(bool on, UINT keymodifier, char key) 
+{
+	m_bInvisibleMode = on;
+	m_iInvisibleModeHotKeyModifier = keymodifier;
+	m_cInvisibleModeHotKey = key;
+	if(theApp.emuledlg!=NULL){
+		//Always unregister, the keys could be different.
+		theApp.emuledlg->UnRegisterInvisibleHotKey();
+		if(m_bInvisibleMode)	theApp.emuledlg->RegisterInvisibleHotKey();
+	}
+}
+// <== Invisible Mode [TPT/MoNKi] - Stulle
+
+// ==> UPnP support [MoNKi] - leuk_he
+void CPreferences::SetUpnpDetect(int on)//autodetect upnp in wizard
+{
+	m_iDetectuPnP=on; 
+	if (theApp.emuledlg->GetSafeHwnd()!= NULL)
+		PostMessage(theApp.emuledlg->GetSafeHwnd(),WEB_GUI_INTERACTION,WEBGUIIA_UPDATEMYINFO,0); // update myinfo if device detected. (from different thread!)
+} 
+
+void CPreferences::SetUpnpBindAddr(DWORD bindip)
+{
+	if ( GetBindAddrA() != NULL || bindip== ntohl(inet_addr(GetBindAddrA())))
+		m_dwUpnpBindAddr =0;
+	else 
+	m_dwUpnpBindAddr= bindip;
+}
+// <== UPnP support [MoNKi] - leuk_he
+
+// ==> Random Ports [MoNKi] - Stulle
+uint16	CPreferences::GetPort(bool newPort, bool original, bool reset)
+{
+	if(original)
+		return port;
+
+	if(reset){
+		m_iCurrentTCPRndPort = 0;
+	}
+
+	if (m_iCurrentTCPRndPort == 0 || newPort){
+		if(GetUseRandomPorts())
+			do{
+				m_iCurrentTCPRndPort = GetMinRandomPort() + (uint16)((((float)rand() / RAND_MAX) * (GetMaxRandomPort() - GetMinRandomPort())));
+			}while(m_iCurrentTCPRndPort==GetUDPPort() && ((GetMaxRandomPort() - GetMinRandomPort())>0));
+		else
+			m_iCurrentTCPRndPort = port;
+	}
+	return m_iCurrentTCPRndPort;
+}
+
+uint16	CPreferences::GetUDPPort(bool newPort, bool original, bool reset)
+{
+	if(original)
+		return udpport;
+
+	if(reset){
+		m_iCurrentUDPRndPort = 0;
+	}
+
+	if(udpport == 0)
+		return 0;
+	
+	if (m_iCurrentUDPRndPort == 0 || newPort){
+		if(GetUseRandomPorts())
+			do{
+				m_iCurrentUDPRndPort = GetMinRandomPort() + (uint16)(((float)rand() / RAND_MAX) * (GetMaxRandomPort() - GetMinRandomPort()));
+			}while(m_iCurrentUDPRndPort==GetPort() && ((GetMaxRandomPort() - GetMinRandomPort())>0));
+		else
+			m_iCurrentUDPRndPort = udpport;
+	}
+	return m_iCurrentUDPRndPort;
+}
+// <== Random Ports [MoNKi] - Stulle
+
+// ==> Advanced Updates [MorphXT/Stulle] - Stulle
+bool CPreferences::IsIPFilterViaDynDNS(CString strURL)
+{
+	if(strURL.IsEmpty())
+		strURL = _T("http://downloads.sourceforge.net/scarangel/ipfilter.rar");
+
+	if(StrStr(GetAutoUpdateIPFilter_URL(),strURL)!=0)
+		return true;
+	return false;
+}
+// <== Advanced Updates [MorphXT/Stulle] - Stulle
+
+// ==> Advanced Options [Official/MorphXT] - Stulle
+void CPreferences::SetBindAddr(CStringW bindip)
+{
+	m_strBindAddrW = bindip;
+	m_strBindAddrW.Trim();
+	m_pszBindAddrW = m_strBindAddrW.IsEmpty() ? NULL : (LPCWSTR)m_strBindAddrW;
+	m_strBindAddrA = m_strBindAddrW;
+	m_pszBindAddrA = m_strBindAddrA.IsEmpty() ? NULL : (LPCSTR)m_strBindAddrA;
+}
+// <== Advanced Options [Official/MorphXT] - Stulle
+
+// ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+int CPreferences::GetServiceStartupMode()
+{
+	// ==> Adjustable NT Service Strings [Stulle] - Stulle
+	if (m_strServiceName.IsEmpty()) // may be called before LoadPreferences() 
+		m_strServiceName = theApp.GetProfileStringW(L"ScarAngel", L"ServiceName",NULL); 
+	// <== Adjustable NT Service Strings [Stulle] - Stulle
+		m_iServiceStartupMode=theApp.GetProfileInt(L"ScarAngel", L"ServiceStartupMode",2); // default = stop service and start
+	return m_iServiceStartupMode;
+}
+
+uint16	CPreferences::GetWSPort()							
+{
+	if (m_nWebPort==0)
+		m_nWebPort=(WORD) theApp.GetProfileInt(L"WebServer", L"Port",4711);
+	return m_nWebPort; 
+}
+// <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+
+// ==> Adjustable NT Service Strings [Stulle] - Stulle
+CString CPreferences::GetServiceName()
+{
+	// if the strings have not been loaded yet we need to load the name directly from the .ini
+	if (!m_bServiceStringsLoaded)
+		m_strServiceName = theApp.GetProfileString(L"ScarAngel", L"ServiceName", NULL);
+	return m_strServiceName;
+}
+// <== Adjustable NT Service Strings [Stulle] - Stulle

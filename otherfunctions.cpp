@@ -92,6 +92,8 @@ static byte base16Lookup[BASE16_LOOKUP_MAX][2] = {
     { 'F', 0xF }
 };
 
+// ==> added flag to return US Text [SiRoB] - Stulle
+/*
 CString CastItoXBytes(uint16 count, bool isK, bool isPerSec, uint32 decimal){
 	return CastItoXBytes((double)count, isK, isPerSec, decimal);
 }
@@ -137,34 +139,177 @@ CString CastItoXBytes(double count, bool isK, bool isPerSec, uint32 decimal){
 	CString buffer;
 	if( isPerSec )
 	{
-		if (thePrefs.GetForceSpeedsToKB())
-			buffer.Format(_T("%.*f %s"), decimal, count/1024.0, GetResString(IDS_KBYTESPERSEC));
-		else if (count < 1024.0)
-			buffer.Format(_T("%.0f %s"), count, GetResString(IDS_BYTESPERSEC));
-		else if (count < 1024000.0)
-			buffer.Format(_T("%.*f %s"), decimal, count/1024.0, GetResString(IDS_KBYTESPERSEC));
-		else if (count < 1048576000.0)
-			buffer.Format(_T("%.*f %s"), decimal, count/1048576.0, GetResString(IDS_MBYTESPERSEC));
-		else if (count < 1073741824000.0)
-			buffer.Format(_T("%.*f %s"), decimal, count/1073741824.0, GetResString(IDS_GBYTESPERSEC));
-		else 
-			buffer.Format(_T("%.*f %s"), decimal, count/1099511627776.0, GetResString(IDS_TBYTESPERSEC));
+		//Xman Xtreme Mod
+		//use other system if decimal=99 (standard)
+		if(decimal==99)
+		{
+			if (count < 1024000.0)
+				buffer.Format(_T("%.1f %s"), count/1024.0, GetResString(IDS_KBYTESPERSEC));
+			else if (count < 1048576000.0)
+				buffer.Format(_T("%.2f %s"), count/1048576.0, GetResString(IDS_MBYTESPERSEC));
+			else
+				buffer.Format(_T("%.3f %s"), count/1073741824.0, GetResString(IDS_GBYTESPERSEC));
+		}
+		else
+		{
+			if (thePrefs.GetForceSpeedsToKB())
+				buffer.Format(_T("%.*f %s"), decimal, count/1024.0, GetResString(IDS_KBYTESPERSEC));
+			else if (count < 1024.0)
+				buffer.Format(_T("%.0f %s"), count, GetResString(IDS_BYTESPERSEC));
+			else if (count < 1024000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1024.0, GetResString(IDS_KBYTESPERSEC));
+			else if (count < 1048576000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1048576.0, GetResString(IDS_MBYTESPERSEC));
+			else if (count < 1073741824000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1073741824.0, GetResString(IDS_GBYTESPERSEC));
+			else 
+				buffer.Format(_T("%.*f %s"), decimal, count/1099511627776.0, GetResString(IDS_TBYTESPERSEC));
+		}
+		//Xman end
 	}
 	else
 	{
-		if (count < 1024.0)
-			buffer.Format(_T("%.0f %s"), count, GetResString(IDS_BYTES));
-		else if (count < 1024000.0)
-			buffer.Format(_T("%.*f %s"), decimal, count/1024.0, GetResString(IDS_KBYTES));
-		else if (count < 1048576000.0)
-			buffer.Format(_T("%.*f %s"), decimal, count/1048576.0, GetResString(IDS_MBYTES));
-		else if (count < 1073741824000.0)
-			buffer.Format(_T("%.*f %s"), decimal, count/1073741824.0, GetResString(IDS_GBYTES));
-		else 
-			buffer.Format(_T("%.*f %s"), decimal, count/1099511627776.0, GetResString(IDS_TBYTES));
+		//Xman Xtreme Mod
+		//use other system if decimal=99 (standard)
+		if(decimal==99)
+		{
+			if (count < 1024)
+				buffer.Format(_T("%.0f %s"),count, GetResString(IDS_BYTES));
+			else if (count < 1048576)
+				buffer.Format(_T("%.0f %s"),count/1024.0f, GetResString(IDS_KBYTES));
+			else if (count < 1073741824)
+				buffer.Format(_T("%.2f %s"),count/1048576.0f, GetResString(IDS_MBYTES));
+			else if (count < 1099511627776)
+				buffer.Format(_T("%.2f %s"),count/1073741824.0f, GetResString(IDS_GBYTES));
+			else 
+				buffer.Format(_T("%.3f %s"),count/1099511627776.0f, GetResString(IDS_TBYTES));
+		}
+		else
+		{
+			if (count < 1024.0)
+				buffer.Format(_T("%.0f %s"), count, GetResString(IDS_BYTES));
+			else if (count < 1024000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1024.0, GetResString(IDS_KBYTES));
+			else if (count < 1048576000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1048576.0, GetResString(IDS_MBYTES));
+			else if (count < 1073741824000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1073741824.0, GetResString(IDS_GBYTES));
+			else 
+				buffer.Format(_T("%.*f %s"), decimal, count/1099511627776.0, GetResString(IDS_TBYTES));
+		}
+		//Xman end
 	}
 	return buffer;
 }
+*/
+CString CastItoXBytes(uint16 count, bool isK, bool isPerSec, uint32 decimal, bool isUS){
+	return CastItoXBytes((double)count, isK, isPerSec, decimal, isUS);
+}
+
+CString CastItoXBytes(uint32 count, bool isK, bool isPerSec, uint32 decimal, bool isUS){
+	return CastItoXBytes((double)count, isK, isPerSec, decimal, isUS);
+}
+
+CString CastItoXBytes(uint64 count, bool isK, bool isPerSec, uint32 decimal, bool isUS){
+	return CastItoXBytes((double)count, isK, isPerSec, decimal, isUS);
+}
+
+#if defined(_DEBUG) && defined(USE_DEBUG_EMFILESIZE)
+CString CastItoXBytes(EMFileSize count, bool isK, bool isPerSec, uint32 decimal, bool isUS){
+	return CastItoXBytes((double)count, isK, isPerSec, decimal, isUS);
+}
+#endif
+
+CString CastItoXBytes(float count, bool isK, bool isPerSec, uint32 decimal, bool isUS){
+	return CastItoXBytes((double)count, isK, isPerSec, decimal, isUS);
+}
+
+CString CastItoXBytes(double count, bool isK, bool isPerSec, uint32 decimal, bool isUS){
+	if( count <= 0.0 )
+	{
+		if(isPerSec)
+		{
+			if (thePrefs.GetForceSpeedsToKB())
+				return isUS?_T("0 KB/s"):_T("0 ") + GetResString(IDS_KBYTESPERSEC);
+			else
+				return isUS?_T("0 B/s"):_T("0 ") + GetResString(IDS_BYTESPERSEC);
+		}
+		else
+			return isUS?_T("0 Bytes"):_T("0 ") + GetResString(IDS_BYTES);
+	}
+	else if( isK )
+	{
+		if( count >  1.7E+300 )
+			count =  1.7E+300;
+		else
+			count *= 1024.0;
+	}
+	CString buffer;
+	if( isPerSec )
+	{
+		//Xman Xtreme Mod
+		//use other system if decimal=99 (standard)
+		if(decimal==99)
+		{
+			if (count < 1024000.0)
+				buffer.Format(_T("%.1f %s"), count/1024.0, isUS?_T("KB/s"):GetResString(IDS_KBYTESPERSEC));
+			else if (count < 1048576000.0)
+				buffer.Format(_T("%.2f %s"), count/1048576.0, isUS?_T("MB/s"):GetResString(IDS_MBYTESPERSEC));
+			else
+				buffer.Format(_T("%.3f %s"), count/1073741824.0, isUS?_T("GB/s"):GetResString(IDS_GBYTESPERSEC));
+		}
+		else
+		{
+			if (thePrefs.GetForceSpeedsToKB())
+				buffer.Format(_T("%.*f %s"), decimal, count/1024.0, isUS?_T("KB/s"):GetResString(IDS_KBYTESPERSEC));
+			else if (count < 1024.0)
+				buffer.Format(_T("%.0f %s"), count, isUS?_T("B/s"):GetResString(IDS_BYTESPERSEC));
+			else if (count < 1024000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1024.0, isUS?_T("KB/s"):GetResString(IDS_KBYTESPERSEC));
+			else if (count < 1048576000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1048576.0, isUS?_T("MB/s"):GetResString(IDS_MBYTESPERSEC));
+			else if (count < 1073741824000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1073741824.0, isUS?_T("GB/s"):GetResString(IDS_GBYTESPERSEC));
+			else 
+				buffer.Format(_T("%.*f %s"), decimal, count/1099511627776.0, isUS?_T("TB/s"):GetResString(IDS_TBYTESPERSEC));
+			//Xman end
+		}
+	}
+	else
+	{
+		//Xman Xtreme Mod
+		//use other system if decimal=99 (standard)
+		if(decimal==99)
+		{
+			if (count < 1024)
+				buffer.Format(_T("%.0f %s"),count, isUS?_T("Bytes"):GetResString(IDS_BYTES));
+			else if (count < 1048576)
+				buffer.Format(_T("%.0f %s"),count/1024.0f, isUS?_T("KB"):GetResString(IDS_KBYTES));
+			else if (count < 1073741824)
+				buffer.Format(_T("%.2f %s"),count/1048576.0f, isUS?_T("MB"):GetResString(IDS_MBYTES));
+			else if (count < 1099511627776)
+				buffer.Format(_T("%.2f %s"),count/1073741824.0f, isUS?_T("GB"):GetResString(IDS_GBYTES));
+			else 
+				buffer.Format(_T("%.3f %s"),count/1099511627776.0f, isUS?_T("TB"):GetResString(IDS_TBYTES));
+		}
+		else
+		{
+			if (count < 1024.0)
+				buffer.Format(_T("%.0f %s"), count, isUS?_T("Bytes"):GetResString(IDS_BYTES));
+			else if (count < 1024000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1024.0, isUS?_T("KB"):GetResString(IDS_KBYTES));
+			else if (count < 1048576000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1048576.0, isUS?_T("MB"):GetResString(IDS_MBYTES));
+			else if (count < 1073741824000.0)
+				buffer.Format(_T("%.*f %s"), decimal, count/1073741824.0, isUS?_T("GB"):GetResString(IDS_GBYTES));
+			else 
+				buffer.Format(_T("%.*f %s"), decimal, count/1099511627776.0, isUS?_T("TB"):GetResString(IDS_TBYTES));
+		}
+		//Xman end
+	}
+	return buffer;
+}
+// <== added flag to return US Text [SiRoB] - Stulle
 
 CString CastItoIShort(uint16 count, bool isK, uint32 decimal){
 	return CastItoIShort((double)count, isK, decimal);
@@ -356,6 +501,8 @@ CString ShellGetFolderPath(int iCSIDL)
 
 namespace {
 	bool IsHexDigit(int c) {
+		//zz_fly :: Optimizations :: DolphinX :: Start
+		/*
 		switch (c) {
 		case '0': return true;
 		case '1': return true;
@@ -381,8 +528,42 @@ namespace {
 		case 'f': return true;
 		default: return false;
 		}
+		*/
+		return( (c>='0' && c<='9') || (c>='A' && c<='F') || (c>='a' && c<='f') );
+		//zz_fly :: Optimizations :: DolphinX :: End
 	}
 }
+
+//Xman: netfinity: P2PThreat - Detect worms that could be harmful to the network or eMule
+bool IsHexDigit(TCHAR c)
+{
+	switch (c) {
+	case _T('0'): return true;
+	case _T('1'): return true;
+	case _T('2'): return true;
+	case _T('3'): return true;
+	case _T('4'): return true;
+	case _T('5'): return true;
+	case _T('6'): return true;
+	case _T('7'): return true;
+	case _T('8'): return true;
+	case _T('9'): return true;
+	case _T('A'): return true;
+	case _T('B'): return true;
+	case _T('C'): return true;
+	case _T('D'): return true;
+	case _T('E'): return true;
+	case _T('F'): return true;
+	case _T('a'): return true;
+	case _T('b'): return true;
+	case _T('c'): return true;
+	case _T('d'): return true;
+	case _T('e'): return true;
+	case _T('f'): return true;
+	default: return false;
+	}
+}
+//Xman end
 
 CString URLDecode(const CString& inStr, bool bKeepNewLine)
 {
@@ -2860,6 +3041,17 @@ CString ipstr(uint32 nIP)
 	return strIP;
 }
 
+// ==> IP Filter White List [Stulle] - Stulle
+CString ipstr_rev(uint32 nIP)
+{
+	// following gives the same string as 'inet_ntoa(*(in_addr*)&nIP)' but is not restricted to ASCII strings
+	const BYTE* pucIP = (BYTE*)&nIP;
+	CString strIP;
+	strIP.ReleaseBuffer(_stprintf(strIP.GetBuffer(3+1+3+1+3+1+3), _T("%u.%u.%u.%u"), pucIP[3], pucIP[2], pucIP[1], pucIP[0]));
+	return strIP;
+}
+// <== IP Filter White List [Stulle] - Stulle
+
 CString ipstr(uint32 nIP, uint16 nPort)
 {
 	// following gives the same string as 'inet_ntoa(*(in_addr*)&nIP)' but is not restricted to ASCII strings
@@ -3022,7 +3214,12 @@ bool IsAutoDaylightTimeSetActive()
 	return true; // default to 'Automatically adjust clock for daylight saving changes'
 }
 
+// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+/*
 bool AdjustNTFSDaylightFileTime(uint32& ruFileDate, LPCTSTR pszFilePath)
+*/
+bool AdjustNTFSDaylightFileTime(time_t& ruFileDate, LPCTSTR pszFilePath)
+// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 {
 	if (!thePrefs.GetAdjustNTFSDaylightFileTime())
 		return false;
@@ -3303,9 +3500,8 @@ void TriggerPortTest(uint16 tcp, uint16 udp) {
 
 	// the portcheck will need to do an obfuscated callback too if obfuscation is requested, so we have to provide our userhash so it can create the key
 	if (thePrefs.IsClientCryptLayerRequested())
-		m_sTestURL += _T("&obf=1&clienthash=") + md4str(thePrefs.GetUserHash());
-	else
-		m_sTestURL += _T("&obf=0");
+		m_sTestURL += _T("&obfuscated_test=") + md4str(thePrefs.GetUserHash());
+
 	ShellOpenFile(m_sTestURL);
 }
 
@@ -3384,11 +3580,8 @@ void AddAutoStart()
 		_T("Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
 		REG_NONE,REG_OPTION_NON_VOLATILE,
 		KEY_ALL_ACCESS,	NULL,NULL);
-	if (mKey != NULL)
-	{
-		mKey.SetStringValue(strKeyName, sFullExeCommand);
-		mKey.Close();
-	}
+	mKey.SetStringValue(strKeyName, sFullExeCommand);
+	mKey.Close();
 #endif
 }
 
@@ -3401,11 +3594,8 @@ void RemAutoStart()
 		_T("Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
 		REG_NONE,REG_OPTION_NON_VOLATILE,
 		KEY_ALL_ACCESS,	NULL,NULL);
-	if (mKey != NULL)
-	{
-		mKey.DeleteValue(strKeyName);
-		mKey.Close();
-	}
+	mKey.DeleteValue(strKeyName);
+	mKey.Close();
 }
 
 int FontPointSizeToLogUnits(int nPointSize)
@@ -4030,3 +4220,277 @@ bool AddIconGrayscaledToImageList(CImageList& rList, HICON hIcon)
 	}
 	return bResult;
 }
+
+// ==> Show in MSN7 [TPT] - Stulle
+//TODO: cycle around different informations: speed, server name,...
+// done some of it! :) - Stulle
+/* This code is based in toaster winamp plugin code by shaneh
+http://forums.msnfanatic.com/index.php?showtopic=11311*/
+void UpdateMSN(float upRate, float upOvRate, float downRate, float downOvRate, bool killMSN)
+{
+	COPYDATASTRUCT msndata;
+	bool bshow = !killMSN;//with bshow=false(0), we can clear the information
+	
+	CStringW MSNStr;
+	CStringW MSNFormat = L"{0} [ {1} ]";
+	CStringW MSNTemplateString = L"\\0Music\\0%d\\0%s\\0%s\\0";
+
+	if(thePrefs.ShowOverhead())
+	{
+		MSNTemplateString += GetResString(IDS_UPDOWN) + L"\\0";
+		MSNStr.Format(MSNTemplateString, bshow, MSNFormat, theApp.m_strModLongVersion, upRate, upOvRate, downRate, downOvRate);
+	}
+	else
+	{
+		MSNTemplateString += GetResString(IDS_UPDOWNSMALL) + L"\\0";
+		MSNStr.Format(MSNTemplateString, bshow, MSNFormat, theApp.m_strModLongVersion, upRate, downRate);
+	}
+
+	HWND msnui = NULL;
+	msndata.dwData = 0x547;
+	msndata.lpData = MSNStr.GetBuffer();
+	msndata.cbData = (MSNStr.GetLength()*2)+2;
+	if((msnui = (HWND)FindWindowEx(NULL, msnui, _T("MsnMsgrUIManager"), NULL)) != NULL)
+	{
+		SendMessage(msnui, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&msndata);
+	}
+	MSNStr.ReleaseBuffer();
+}
+
+void UpdateMSN1(uint64 Received, uint64 Sent, uint64 Src)
+{
+	COPYDATASTRUCT msndata;
+	
+	CStringW MSNStr;
+	CStringW MSNFormat = L"{0} [ {1} ]";
+	CStringW MSNTemplateString = L"\\0Music\\0%d\\0%s\\0%s\\0";
+	CString buffer;
+
+	if ( Received>0 && Sent>0 ) 
+	{
+		if (Received<Sent)
+		{
+			buffer.Format(_T("UL: DL = %.2f : 1"),(float)Sent/Received);
+		} 
+		else 
+		{
+			buffer.Format(_T("UL: DL = 1 : %.2f"),(float)Received/Sent);
+		}
+	}
+	else 
+	{
+		buffer.Format(_T("UL: DL = 0 : 0"));
+	}
+
+	MSNTemplateString += _T("%s || Src: %u");
+	MSNTemplateString += L"\\0";
+	MSNStr.Format(MSNTemplateString, true, MSNFormat, theApp.m_strModLongVersion, buffer, Src);
+
+	HWND msnui = NULL;
+	msndata.dwData = 0x547;
+	msndata.lpData = MSNStr.GetBuffer();
+	msndata.cbData = (MSNStr.GetLength()*2)+2;
+	if((msnui = (HWND)FindWindowEx(NULL, msnui, _T("MsnMsgrUIManager"), NULL)) != NULL)
+	{
+		SendMessage(msnui, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&msndata);
+	}
+	MSNStr.ReleaseBuffer();
+}
+
+void UpdateMSN2(CString Connection)
+{
+	COPYDATASTRUCT msndata;
+	
+	CStringW MSNStr;
+	CStringW MSNFormat = L"{0} [ {1} ]";
+	CStringW MSNTemplateString = L"\\0Music\\0%d\\0%s\\0%s\\0";
+
+	MSNTemplateString += _T("%s");
+	MSNTemplateString += L"\\0";
+	MSNStr.Format(MSNTemplateString, true, MSNFormat, theApp.m_strModLongVersion, Connection);
+
+	HWND msnui = NULL;
+	msndata.dwData = 0x547;
+	msndata.lpData = MSNStr.GetBuffer();
+	msndata.cbData = (MSNStr.GetLength()*2)+2;
+	if((msnui = (HWND)FindWindowEx(NULL, msnui, _T("MsnMsgrUIManager"), NULL)) != NULL)
+	{
+		SendMessage(msnui, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&msndata);
+	}
+	MSNStr.ReleaseBuffer();
+}
+// <== Show in MSN7 [TPT] - Stulle
+
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+// Compares strings using wildcards * and ?.
+// Credited To: Jack Handy
+int wildcmp(TCHAR *wild, TCHAR *string)
+{
+	TCHAR *cp = NULL, *mp = NULL;
+
+	while ((*string) && (*wild != '*'))
+	{
+		if ((*wild != *string) && (*wild != '?'))
+			return 0;
+		wild++;
+		string++;
+	}
+
+	while (*string)
+	{
+		if (*wild == '*')
+		{
+			if (!*++wild)
+				return 1;
+			mp = wild;
+			cp = string+1;
+		}
+		else if ((*wild == *string) || (*wild == '?'))
+		{
+			wild++;
+			string++;
+		}
+		else
+		{
+			wild = mp;
+			string = cp++;
+		}
+	}
+
+	while (*wild == '*')
+		wild++;
+	return !*wild;
+}
+
+ULONG CastXBytesToI(const CString& strExpr)
+{
+	ULONG ulNum;
+	TCHAR szUnit[40];
+	int iArgs = _stscanf(strExpr, _T("%u%s"), &ulNum, szUnit);
+	if (iArgs <= 0)
+		return 0;
+	if (iArgs == 2){
+		CString strUnits(szUnit);
+		strUnits.Trim();
+		if (!strUnits.IsEmpty()){
+			//MORPH START - Fixed by SiRoB, Now Right For multilanguage
+			CString strBytes = GetResString(IDS_BYTES);
+			if (strUnits.CompareNoCase(strBytes.Left(1)) == 0 || strUnits.CompareNoCase(strBytes) == 0)
+				return ulNum * 1U; // Bytes
+			else if (strUnits.CompareNoCase(_T("k")) == 0 || strUnits.CompareNoCase(GetResString(IDS_KBYTES)) == 0 || strUnits.CompareNoCase(_T("k")+strBytes) == 0)
+				return ulNum * 1024U; // KBytes
+			else if (strUnits.CompareNoCase(_T("m")) == 0 || strUnits.CompareNoCase(GetResString(IDS_MBYTES)) == 0 || strUnits.CompareNoCase(_T("m")+strBytes) == 0)
+				return ulNum * 1024U*1024; // MBytes
+			else if (strUnits.CompareNoCase(_T("g")) == 0 || strUnits.CompareNoCase(GetResString(IDS_GBYTES)) == 0 || strUnits.CompareNoCase(_T("g")+strBytes) == 0)
+				return ulNum * 1024U*1024U*1024U; // GBytes
+			else{
+				AfxMessageBox(GetResString(IDS_SEARCH_EXPRERROR) + _T("\n\n") + GetResString(IDS_SEARCH_INVALIDMINMAX));
+				return 0;
+			}
+			//MORPH END - Fixed by SiRoB, Now Right For multilanguage
+		}
+	}
+
+	return ulNum * 1024U*1024U; // Default = MBytes
+}
+
+CString CastItoUIXBytes(uint64 count)
+{
+	CString buffer;
+	if (count < 1024)
+		buffer.Format(_T("%I64u%s"), count, GetResString(IDS_BYTES));
+	else if (count < 1048576)
+		buffer.Format(_T("%I64u%s"), (uint64)(count/1024), GetResString(IDS_KBYTES));
+	else if (count < 1073741824)
+		buffer.Format(_T("%I64u%s"), (uint64)(count/1048576), GetResString(IDS_MBYTES));
+	else
+		buffer.Format(_T("%I64u%s"), (uint64)(count/1073741824), GetResString(IDS_GBYTES));
+	return buffer;
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+// ==> Feedback personalization [Stulle] - Stulle
+CString GetColorHex(COLORREF clr)
+{
+	CString strRes,tmp;
+	tmp.Format(_T("%X"),GetRValue(clr));
+	if(tmp.GetLength() < 2)
+		strRes.AppendFormat(_T("0%s"),tmp);
+	else
+		strRes.Append(tmp);
+
+	tmp.Format(_T("%X"),GetGValue(clr));
+	if(tmp.GetLength() < 2)
+		strRes.AppendFormat(_T("0%s"),tmp);
+	else
+		strRes.Append(tmp);
+
+	tmp.Format(_T("%X"),GetBValue(clr));
+	if(tmp.GetLength() < 2)
+		strRes.AppendFormat(_T("0%s"),tmp);
+	else
+		strRes.Append(tmp);
+	return strRes;
+}
+
+CString GetColoredText(UINT in, int iStyle)
+{
+	CString strRes;
+	strRes.Format(_T("%u"),in);
+	return GetColoredText(strRes,iStyle);
+}
+
+CString GetColoredText(CString str, int iStyle)
+{
+	// just give the string back if we don't use personalized settings
+	if(thePrefs.GetColorFeedback() == false)
+		return str;
+
+	// Get styles
+	StylesStruct style, defaultStyle;
+	thePrefs.GetStyle(feedback_styles, abs(iStyle), &style);
+	thePrefs.GetStyle(feedback_styles, style_f_default, &defaultStyle);
+
+	// Merge styles
+	DWORD nFlags = 0;
+	COLORREF nFontColor = CLR_DEFAULT;
+	nFlags = style.nFlags;
+	if((nFlags & STYLE_FONTMASK) == 0)
+		nFlags = defaultStyle.nFlags;
+	nFontColor = style.nFontColor;
+	if(nFontColor == CLR_DEFAULT)
+		nFontColor = defaultStyle.nFontColor;
+
+	// Create resulting string and empty it for sure
+	CString strRes;
+	strRes.Empty();
+
+	if(iStyle != -style_f_label)
+	{
+		if(nFontColor != CLR_DEFAULT)
+			strRes.AppendFormat(_T("[color=#%s]"),GetColorHex(nFontColor));
+		if(nFlags & STYLE_BOLD)
+			strRes.Append(_T("[b]"));
+		if(nFlags & STYLE_UNDERLINE)
+			strRes.Append(_T("[u]"));
+		if(nFlags & STYLE_ITALIC)
+			strRes.Append(_T("[i]"));
+
+		strRes.Append(str);
+	}
+
+	if(iStyle != style_f_label)
+	{
+		if(nFlags & STYLE_ITALIC)
+			strRes.Append(_T("[/i]"));
+		if(nFlags & STYLE_UNDERLINE)
+			strRes.Append(_T("[/u]"));
+		if(nFlags & STYLE_BOLD)
+			strRes.Append(_T("[/b]"));
+		if(nFontColor != CLR_DEFAULT)
+			strRes.Append(_T("[/color]"));
+	}
+
+	return strRes;
+}
+// <== Feedback personalization [Stulle] - Stulle

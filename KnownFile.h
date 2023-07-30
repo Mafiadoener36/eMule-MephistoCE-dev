@@ -28,6 +28,7 @@ class CAICHHashTree;
 class CAICHRecoveryHashSet;
 class CCollection;
 class CAICHHashAlgo;
+class CSafeMemFile;		//Xman PowerRelease
 
 typedef CTypedPtrList<CPtrList, CUpDownClient*> CUpDownClientPtrList;
 
@@ -49,7 +50,12 @@ public:
 	// last file modification time in (DST corrected, if NTFS) real UTC format
 	// NOTE: this value can *not* be compared with NT's version of the UTC time
 	CTime	GetUtcCFileDate() const										{ return CTime(m_tUtcLastModified); }
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	uint32	GetUtcFileDate() const										{ return m_tUtcLastModified; }
+	*/
+	time_t	GetUtcFileDate() const										{ return m_tUtcLastModified; }
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 
 	// Did we not see this file for a long time so that some information should be purged?
 	bool	ShouldPartiallyPurgeFile() const;
@@ -65,6 +71,7 @@ public:
 
 	// file upload priority
 	uint8	GetUpPriority(void) const									{ return m_iUpPriority; }
+	uint8	GetUpPriorityEx(void) const {return  m_iUpPriority+1 == 5 ? 0 : m_iUpPriority+1;} //Xman Close Backdoor v2
 	void	SetUpPriority(uint8 iNewUpPriority, bool bSave = true);
 	bool	IsAutoUpPriority(void) const								{ return m_bAutoUpPriority; }
 	void	SetAutoUpPriority(bool NewAutoUpPriority)					{ m_bAutoUpPriority = NewAutoUpPriority; }
@@ -73,10 +80,38 @@ public:
 	// This has lost it's meaning here.. This is the total clients we know that want this file..
 	// Right now this number is used for auto priorities..
 	// This may be replaced with total complete source known in the network..
+	//Xman see on uploadqueue don't need it:
+	/*
 	uint32	GetQueuedCount() { return m_ClientUploadList.GetCount();}
+	*/
+	//Xman end
 
 	void	AddUploadingClient(CUpDownClient* client);
 	void	RemoveUploadingClient(CUpDownClient* client);
+
+	bool	HideOvershares(CSafeMemFile* file, CUpDownClient* client); //Xman PowerRelease
+
+	//Xman advanced upload-priority
+	double CalculateUploadPriorityPercent();
+	void CalculateAndSetUploadPriority();
+	void CalculateAndSetUploadPriority2(); //Xman the debug version
+	uint64 GetWantedUpload();
+	float pushfaktor;
+	void UpdateVirtualUploadSources();
+	UINT m_nVirtualUploadSources;
+	uint32 GetVirtualSourceIndicator() const;
+	void CheckAUPFilestats(bool allowUpdatePrio);
+	//Xman end
+
+	//Xman show virtual sources (morph)
+	UINT m_nVirtualCompleteSourcesCount;
+
+	//Xman see OnUploadqueue
+	void AddOnUploadqueue()				{onuploadqueue++;UpdateAutoUpPriority();}
+	void RemoveOnUploadqueue()			{if(onuploadqueue!=0) onuploadqueue--;UpdateAutoUpPriority();}
+	uint16 GetOnUploadqueue() const		{return onuploadqueue;}
+	//Xman end
+
 	virtual void	UpdatePartsInfo();
 	virtual	void	DrawShareStatusBar(CDC* dc, LPCRECT rect, bool onlygreyrect, bool bFlat) const;
 
@@ -122,13 +157,22 @@ public:
 	void	SetAICHRecoverHashSetAvailable(bool bVal)			{ m_bAICHRecoverHashSetAvailable = bVal; }
 	bool	IsAICHRecoverHashSetAvailable() const				{ return m_bAICHRecoverHashSetAvailable; }						
 
+	//Xman Nice Hash
+	/*
 	static bool	CreateHash(const uchar* pucData, uint32 uSize, uchar* pucHash, CAICHHashTree* pShaHashOut = NULL);
+	*/
+	//Xman end
 
 
 
 	// last file modification time in (DST corrected, if NTFS) real UTC format
 	// NOTE: this value can *not* be compared with NT's version of the UTC time
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	uint32	m_tUtcLastModified;
+	*/
+	time_t	m_tUtcLastModified;
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 
 	CStatisticFile statistic;
 	time_t m_nCompleteSourcesTime;
@@ -145,16 +189,50 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	//MORPH START - Added by SiRoB, Import Parts [SR13]
+	bool	SR13_ImportParts();
+	static bool	CreateHash(const uchar* pucData, uint32 uSize, uchar* pucHash, CAICHHashTree* pShaHashOut = NULL, bool slowdown=false); //Xman Nice Hash
+	//MORPH END   - Added by SiRoB, Import Parts [SR13]
+
 protected:
 	//preview
 	bool	GrabImage(CString strFileName, uint8 nFramesToGrab, double dStartTime, bool bReduceColor, uint16 nMaxWidth, void* pSender);
 	bool	LoadTagsFromFile(CFileDataIO* file);
 	bool	LoadDateFromFile(CFileDataIO* file);
+	//Xman Nice Hash
+	/*
 	static void	CreateHash(CFile* pFile, uint64 uSize, uchar* pucHash, CAICHHashTree* pShaHashOut = NULL);
 	static bool	CreateHash(FILE* fp, uint64 uSize, uchar* pucHash, CAICHHashTree* pShaHashOut = NULL);
+	*/
+	static void	CreateHash(CFile* pFile, uint64 uSize, uchar* pucHash, CAICHHashTree* pShaHashOut = NULL, bool slowdown=false);
+	static bool	CreateHash(FILE* fp, uint64 uSize, uchar* pucHash, CAICHHashTree* pShaHashOut = NULL, bool slowdown=false);
+	//Xman end
+
 	virtual void	UpdateFileRatingCommentAvail(bool bForceUpdate = false);
 
+	// ==> Removed Dynamic Hide OS [SlugFiller/Xman] - Stulle
+	/*
+	uint32	*CalcPartSpread();	//Xman PowerRelease
+	*/
+	// <== Removed Dynamic Hide OS [SlugFiller/Xman] - Stulle
+
+// Maella -One-queue-per-file- (idea bloodymad)
+public:
+	uint32 GetFileScore(uint32 downloadingTime);
+	uint32 GetStartUploadTime() const {return m_startUploadTime;}
+	void   UpdateStartUploadTime() {m_startUploadTime = GetTickCount();}
+
 private:
+	uint32 m_startUploadTime;
+// Maella end
+
+private:
+	uint16 onuploadqueue;	//Xman see OnUploadqueue
+	// ==> Removed Dynamic Hide OS [SlugFiller/Xman] - Stulle
+	/*
+	uint16 hideos;			//Xman PowerRelease
+	*/
+	// <== Removed Dynamic Hide OS [SlugFiller/Xman] - Stulle
 	static CBarShader s_ShareStatusBar;
 	uint16	m_iPartCount;
 	uint16	m_iED2KPartCount;
@@ -169,4 +247,58 @@ private:
 	UINT	m_uMetaDataVer;
 	time_t	m_timeLastSeen; // we only "see" files when they are in a shared directory
 	bool	m_bAICHRecoverHashSetAvailable;
+
+public:
+	float	GetFileRatio() /*const*/; // push rare file - Stulle
+
+	bool	IsPushSmallFile(); // push small files [sivka] - Stulle
+
+	CString GetFeedback(bool isUS = false); // Copy feedback feature [MorphXT] - Stulle
+
+	// ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+	CArray<uint64> m_PartSentCount;
+	void	SetHideOS(int newValue) {m_iHideOS = newValue;}
+	int		GetHideOS() const {return m_iHideOS;}
+	void	SetSelectiveChunk(int newValue) {m_iSelectiveChunk = newValue;}
+	int		GetSelectiveChunk() const {return m_iSelectiveChunk;}
+	UINT	HideOSInWork() const;
+	void	SetShareOnlyTheNeed(int newValue) {m_iShareOnlyTheNeed = newValue;}
+	int		GetShareOnlyTheNeed() const {return m_iShareOnlyTheNeed;}
+protected:
+	void	CalcPartSpread(CArray<uint64>& partspread, CUpDownClient* client);	// SLUGFILLER: hideOS
+private:
+	int		m_iHideOS;
+	int		m_iSelectiveChunk;
+	int		m_iShareOnlyTheNeed;
+	// <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+
+	// ==> PowerShare [ZZ/MorphXT] - Stulle
+	int		m_powershared;
+	bool	m_bPowerShareAuthorized;
+	bool	m_bPowerShareAuto;
+	bool	m_bpowershared;
+	int		m_iPowerShareLimit;
+	bool	m_bPowerShareLimited;
+public:
+	int		GetPowerSharedMode() const {return m_powershared;}
+	bool	GetPowerShareAuthorized() const {return m_bPowerShareAuthorized;}
+	bool	GetPowerShareAuto() const {return m_bPowerShareAuto;}
+	void	SetPowerShareLimit(int newValue) {m_iPowerShareLimit = newValue;}
+	int		GetPowerShareLimit() const {return m_iPowerShareLimit;}
+	bool	GetPowerShareLimited() const {return m_bPowerShareLimited;}
+	void	UpdatePowerShareLimit(bool authorizepowershare,bool autopowershare, bool limitedpowershare);
+	void    SetPowerShared(int newValue);
+	bool    GetPowerShared() const;
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	int		GetKnownStyle() const;
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
+	// ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+	void	SetPsAmountLimit(int newValue) {m_iPsAmountLimit = newValue;}
+	int		GetPsAmountLimit() const {return m_iPsAmountLimit;}
+protected:
+	int		m_iPsAmountLimit;
+	// <== Limit PS by amount of data uploaded [Stulle] - Stulle
 };

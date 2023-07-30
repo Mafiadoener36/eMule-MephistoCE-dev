@@ -24,8 +24,12 @@
 #include "Statistics.h"
 #include "ListenSocket.h"
 #include "ClientUDPSocket.h"
+// ==> UPnP support [MoNKi] - leuk_he
+/*
 #include "UPnPImpl.h"
 #include "UPnPImplWrapper.h"
+*/
+// <== UPnP support [MoNKi] - leuk_he
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -263,20 +267,31 @@ public:
 	virtual ~CPPgWiz1Ports();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnStartConTest();
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	afx_msg void OnStartUPnP();
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 	afx_msg void OnEnChangeUDPDisable();
 
 	afx_msg void OnEnChangeUDP();
 	afx_msg void OnEnChangeTCP();
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	afx_msg void OnTimer(UINT nIDEvent);
 	
 	BOOL	OnKillActive();
 	void	OnOK();
 	void	OnCancel();
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 
 	void OnPortChange();
 
 	CString m_sTestURL,m_sUDP,m_sTCP;
+	// ==> UPnP support [MoNKi] - leuk_he
+	int   uPnPNAT; 
+	// <== UPnP support [MoNKi] - leuk_he
 	uint16 GetTCPPort();
 	uint16 GetUDPPort();
 
@@ -288,11 +303,19 @@ public:
 protected:
 	CString			lastudp;
 	virtual void	DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	void			ResetUPnPProgress();
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 
 	DECLARE_MESSAGE_MAP()
 
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	int m_nUPnPTicks;
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 };
 
 IMPLEMENT_DYNAMIC(CPPgWiz1Ports, CDlgPageWizard)
@@ -300,10 +323,18 @@ IMPLEMENT_DYNAMIC(CPPgWiz1Ports, CDlgPageWizard)
 BEGIN_MESSAGE_MAP(CPPgWiz1Ports, CDlgPageWizard)
 	ON_BN_CLICKED(IDC_STARTTEST, OnStartConTest)
 	ON_BN_CLICKED(IDC_UDPDISABLE, OnEnChangeUDPDisable)
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	ON_BN_CLICKED(IDC_UPNPSTART, OnStartUPnP)
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 	ON_EN_CHANGE(IDC_TCP, OnEnChangeTCP)
 	ON_EN_CHANGE(IDC_UDP, OnEnChangeUDP)
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	ON_WM_TIMER()
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 END_MESSAGE_MAP()
 
 CPPgWiz1Ports::CPPgWiz1Ports()
@@ -321,6 +352,7 @@ void CPPgWiz1Ports::DoDataExchange(CDataExchange* pDX)
 	CDlgPageWizard::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_TCP, m_sTCP);
 	DDX_Text(pDX, IDC_UDP, m_sUDP);
+	DDX_Check(pDX, IDC_ENABLE_PNP  , uPnPNAT); // UPnP support [MoNKi] - leuk_he
 }
 
 void CPPgWiz1Ports::OnEnChangeTCP() {
@@ -360,6 +392,8 @@ void CPPgWiz1Ports::OnPortChange() {
 	GetDlgItem(IDC_STARTTEST)->EnableWindow(flag);
 }
 
+// ==> UPnP support [MoNKi] - leuk_he
+/*
 BOOL CPPgWiz1Ports::OnKillActive(){
 	ResetUPnPProgress();
 	return CDlgPageWizard::OnKillActive();
@@ -377,6 +411,11 @@ void CPPgWiz1Ports::OnCancel(){
 
 // ** UPnP Button stuff
 void CPPgWiz1Ports::OnStartUPnP() {
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	if (thePrefs.m_bUseACATUPnPCurrent)
+		return;
+#endif //zz_fly :: dual upnp
+
 	CDlgPageWizard::OnApply();
 	theApp.emuledlg->StartUPnP(true, GetTCPPort(), GetUDPPort());
 
@@ -387,7 +426,7 @@ void CPPgWiz1Ports::OnStartUPnP() {
 	VERIFY( SetTimer(1, 1000, NULL) );
 }
 
-void CPPgWiz1Ports::OnTimer(UINT /*nIDEvent*/){
+void CPPgWiz1Ports::OnTimer(UINT /*nIDEvent*//*){
 	m_nUPnPTicks++;
 	if (theApp.m_pUPnPFinder && theApp.m_pUPnPFinder->GetImplementation()->ArePortsForwarded() == TRIS_UNKNOWN)
 	{
@@ -415,8 +454,15 @@ void CPPgWiz1Ports::OnTimer(UINT /*nIDEvent*/){
 void CPPgWiz1Ports::ResetUPnPProgress(){
 	KillTimer(1);
 	((CProgressCtrl*)GetDlgItem(IDC_UPNPPROGRESS))->SetPos(0);
-	GetDlgItem(IDC_UPNPSTART)->EnableWindow(TRUE);
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	if (thePrefs.m_bUseACATUPnPCurrent)
+		GetDlgItem(IDC_UPNPSTART)->EnableWindow(FALSE);
+	else
+#endif //zz_fly :: dual upnp
+		GetDlgItem(IDC_UPNPSTART)->EnableWindow(TRUE);
 }
+*/
+// <== UPnP support [MoNKi] - leuk_he
 
 // **
 
@@ -425,6 +471,9 @@ void CPPgWiz1Ports::OnStartConTest() {
 	uint16 tcp=GetTCPPort();
 	uint16 udp=GetUDPPort();
 
+    // ==> UPnP support [MoNKi] - leuk_he
+	theApp.m_UPnP_IGDControlPoint->SetUPnPNat(IsDlgButtonChecked(IDC_ENABLE_PNP)==BST_CHECKED); // add upnpnat to startup wizard [leuk_he]
+    // <== UPnP support [MoNKi] - leuk_he
 	if (tcp==0)
 		return;
 
@@ -451,7 +500,11 @@ BOOL CPPgWiz1Ports::OnInitDialog()
 	CDlgPageWizard::OnInitDialog();
 	CheckDlgButton(IDC_UDPDISABLE, m_sUDP.IsEmpty() || m_sUDP == _T("0"));
 	GetDlgItem(IDC_UDP)->EnableWindow(IsDlgButtonChecked(IDC_UDPDISABLE) == 0);
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	((CProgressCtrl*)GetDlgItem(IDC_UPNPPROGRESS))->SetRange(0, 40);
+	*/
+	// <== UPnP support [MoNKi] - leuk_he
 	InitWindowStyles(this);
 	
 	lastudp = m_sUDP;
@@ -461,9 +514,35 @@ BOOL CPPgWiz1Ports::OnInitDialog()
 	SetDlgItemText(IDC_TESTFRAME , GetResString(IDS_CONNECTIONTEST) );
 	SetDlgItemText(IDC_TESTINFO , GetResString(IDS_TESTINFO) );
 	SetDlgItemText(IDC_STARTTEST, GetResString(IDS_STARTTEST) );
+	// ==> UPnP support [MoNKi] - leuk_he
+	/*
 	SetDlgItemText(IDC_UDPDISABLE, GetResString(IDS_UDPDISABLED));
 	SetDlgItemText(IDC_UPNPSTART, GetResString(IDS_UPNPSTART));
 	SetDlgItemText(IDC_UPNPSTATUS, _T(""));
+#ifdef DUAL_UPNP //zz_fly :: dual upnp
+	if (thePrefs.m_bUseACATUPnPCurrent){
+		GetDlgItem(IDC_UPNPPROGRESS)->EnableWindow(FALSE);
+		GetDlgItem(IDC_UPNPSTART)->EnableWindow(FALSE);
+	}
+#endif //zz_fly :: dual upnp
+	*/
+	SetDlgItemText(IDC_ENABLE_PNP, GetResString(IDS_CN_UPNPNAT)); // enable upnpnat
+
+	switch(thePrefs.GetUpnpDetect()) {
+	    case   UPNP_DO_AUTODETECT :
+		case   UPNP_NOT_DETECTED :
+		case   UPNP_NO_DETECTEDTION:
+			      CheckDlgButton(IDC_ENABLE_PNP,thePrefs.IsUPnPEnabled());
+                    break; // let the user decide, disabled by def. 
+		case UPNP_DETECTED:
+			        CheckDlgButton(IDC_ENABLE_PNP,1);/* enable since a upnp device is available */
+			        break;
+		case UPNP_NOT_NEEDED :
+ 			        CheckDlgButton(IDC_ENABLE_PNP,0);// faulty upnp config: direct internt ip
+			        GetDlgItem(IDC_ENABLE_PNP)->EnableWindow(0); // disable window
+				break;
+	}
+	// <== UPnP support [MoNKi] - leuk_he
 
 	return TRUE;
 }
@@ -846,17 +925,28 @@ BOOL FirstTimeWizard()
 	page3.m_pbUDPDisabled = &bUDPDisabled;
 	page6.m_pbUDPDisabled = &bUDPDisabled;
 
+	// ==> Random Ports [MoNKi] - Stulle
+	/*
 	uint16 oldtcpport=thePrefs.GetPort();
 	uint16 oldudpport=thePrefs.GetUDPPort();
+	*/
+	uint16 oldtcpport=thePrefs.GetPort(false,true);
+	uint16 oldudpport=thePrefs.GetUDPPort(false,true);
+	// <== Random Ports [MoNKi] - Stulle
 
 	int iResult = sheet.DoModal();
 	if (iResult == IDCANCEL) {
 
 		// restore port settings?
+		// ==> Random Ports [MoNKi] - Stulle
+		if (thePrefs.GetPort(false,true)!=oldtcpport || thePrefs.GetUDPPort(false,true)!=oldudpport)
+		{
+		// <== Random Ports [MoNKi] - Stulle
 		thePrefs.port=oldtcpport;
 		thePrefs.udpport=oldudpport;
 		theApp.listensocket->Rebind() ;
 		theApp.clientudp->Rebind();
+		} // Random Ports [MoNKi] - Stulle
 
 		return FALSE;
 	}
@@ -880,6 +970,10 @@ BOOL FirstTimeWizard()
 	thePrefs.SetSafeServerConnectEnabled(page6.m_iSafeServerConnect!=0);
 	thePrefs.SetNetworkKademlia(page6.m_iKademlia!=0);
 	thePrefs.SetNetworkED2K(page6.m_iED2K!=0);
+	// ==> UPnP support [MoNKi] - leuk_he
+	theApp.m_UPnP_IGDControlPoint->SetUPnPNat(page3.uPnPNAT!=0); // leuk_he add upnp to startup wizard
+	thePrefs.SetUpnpDetect(UPNP_NO_DETECTEDTION);// leuk_he add upnp to startup wizard no more detecion next time.
+	// <== UPnP support [MoNKi] - leuk_he
 
 	// set ports
 	thePrefs.port=(uint16)_tstoi(page3.m_sTCP);

@@ -106,4 +106,10 @@ protected:
 	afx_msg LONG OnSelEndCancel(UINT lParam, LONG wParam);
 	afx_msg void OnEnRequestResizeTitle(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+	// ==> Design Settings [eWombat/Stulle] - Max
+public:
+	void OnBackcolor();
+protected:
+	CBrush m_brMyBrush;
+	// <== Design Settings [eWombat/Stulle] - Max
 };

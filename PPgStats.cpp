@@ -42,6 +42,13 @@ BEGIN_MESSAGE_MAP(CPPgStats, CPropertyPage)
 	ON_WM_HELPINFO()
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_FILL_GRAPHS, OnBnClickedFillGraphs)
+	ON_BN_CLICKED(IDC_ACCURATE_RADIO, OnBnClickedSmoothAccurateRadio) //Xman smooth-accurate-graph
+	ON_BN_CLICKED(IDC_SMOOTH_RADIO, OnBnClickedSmoothAccurateRadio) //Xman smooth-accurate-graph
+	// ==> Source Graph - Stulle
+	ON_BN_CLICKED(IDC_SRCGRAPH, OnBnClickedSrcGraph)
+	ON_EN_CHANGE(IDC_STATSHL_MIN, OnEnChangeStatsHL)
+	ON_EN_CHANGE(IDC_STATSHL_MAX, OnEnChangeStatsHL)
+	// <== Source Graph - Stulle
 END_MESSAGE_MAP()
 
 CPPgStats::CPPgStats()
@@ -75,6 +82,7 @@ void CPPgStats::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SLIDER, m_ctlGraphsUpdate);
 	DDX_Control(pDX, IDC_SLIDER2, m_ctlStatsUpdate);
 	DDX_Control(pDX, IDC_SLIDER3, m_ctlGraphsAvgTime);
+	DDX_Control(pDX, IDC_ZOOMSLIDER, m_zoomSlider); //Xman Xtreme Mod
 }
 
 void CPPgStats::SetModified(BOOL bChanged)
@@ -97,6 +105,18 @@ BOOL CPPgStats::OnInitDialog()
 	m_ctlStatsUpdate.SetPos(thePrefs.GetStatsInterval());
 	m_ctlStatsUpdate.SetTicFreq(10);
 	m_ctlStatsUpdate.SetPageSize(10);
+
+	//Xman Xtreme Mod
+	m_zoomSlider.SetRange(1,10);
+	m_zoomSlider.SetPos(thePrefs.GetZoomFactor());
+	//Xman end
+
+	//Xman smooth-accurate-graph
+	if(thePrefs.usesmoothgraph)
+		CheckDlgButton(IDC_SMOOTH_RADIO, true);
+	else
+		CheckDlgButton(IDC_ACCURATE_RADIO, true);
+	//Xman end
 
 	m_ctlGraphsAvgTime.SetRange(0, 99);
 	m_ctlGraphsAvgTime.SetPos(thePrefs.GetStatsAverageMinutes() - 1);
@@ -123,6 +143,15 @@ BOOL CPPgStats::OnInitDialog()
 	m_cratio.AddString(_T("1:20"));
 	int n = thePrefs.GetStatsConnectionsGraphRatio();
 	m_cratio.SetCurSel((n == 10) ? 5: ((n == 20) ? 6 : n - 1));
+
+	// ==> Source Graph - Stulle
+	if(thePrefs.GetSrcGraph())
+		CheckDlgButton(IDC_SRCGRAPH,1);
+	else
+		CheckDlgButton(IDC_SRCGRAPH,0);
+	SetDlgItemInt(IDC_STATSHL_MIN, thePrefs.GetStatsHLMin(), FALSE);
+	SetDlgItemInt(IDC_STATSHL_MAX, thePrefs.GetStatsHLMax(), FALSE);
+	// <== Source Graph - Stulle
 
 	m_iStatsColors = thePrefs.GetNumStatsColors();
 	m_pdwStatsColors = new DWORD[m_iStatsColors];
@@ -159,6 +188,16 @@ BOOL CPPgStats::OnApply()
 			thePrefs.SetStatsAverageMinutes(m_iStatsUpdate);
 			bInvalidateGraphs = true;
 		}
+		//Xman Xtreme Mod
+		if (thePrefs.GetZoomFactor() != m_zoomSlider.GetPos()){
+			thePrefs.SetZoomFactor((uint8)m_zoomSlider.GetPos());
+			bInvalidateGraphs = true;
+		}
+		//Xman end
+
+		//Xman smooth-accurate-graph
+		thePrefs.usesmoothgraph=IsDlgButtonChecked(IDC_SMOOTH_RADIO)!=0;
+		//Xman end
 
 		TCHAR buffer[20];
 		GetDlgItem(IDC_CGRAPHSCALE)->GetWindowText(buffer, _countof(buffer));
@@ -193,6 +232,25 @@ BOOL CPPgStats::OnApply()
 			bInvalidateGraphs = true;
 		}
 
+		// ==> Source Graph - Stulle
+		bool m_bSrcGraph = IsDlgButtonChecked(IDC_SRCGRAPH)!=0;
+		if(thePrefs.GetSrcGraph() != m_bSrcGraph){
+			thePrefs.m_bSrcGraph = m_bSrcGraph;
+			bInvalidateGraphs = true;
+		}
+		if(GetDlgItem(IDC_STATSHL_MIN)->GetWindowTextLength())
+		{
+			GetDlgItem(IDC_STATSHL_MIN)->GetWindowText(buffer,20);
+			thePrefs.m_iStatsHLMin = (uint16)((_tstoi(buffer)) ? _tstoi(buffer) : 1);
+		}
+		if(GetDlgItem(IDC_STATSHL_MAX)->GetWindowTextLength())
+		{
+			GetDlgItem(IDC_STATSHL_MAX)->GetWindowText(buffer,20);
+			thePrefs.m_iStatsHLMax = (uint16)((_tstoi(buffer)) ? _tstoi(buffer) : 1);
+		}
+		thePrefs.m_iStatsHLDif = thePrefs.GetStatsHLMax()-thePrefs.GetStatsHLMin();
+		// <== Source Graph - Stulle
+
 		if (bInvalidateGraphs){
 			theApp.emuledlg->statisticswnd->UpdateConnectionsGraph(); // Set new Y upper bound and Y ratio for active connections.
 			theApp.emuledlg->statisticswnd->Localize();
@@ -217,6 +275,18 @@ void CPPgStats::Localize(void)
 		GetDlgItem(IDC_PREFCOLORS)->SetWindowText(GetResString(IDS_COLORS));
 		SetDlgItemText(IDC_FILL_GRAPHS, GetResString(IDS_FILLGRAPHS) );
 
+		//Xman smooth-accurate-graph
+		GetDlgItem(IDC_SMOOTH_RADIO)->SetWindowText(GetResString(IDS_SMOOTHGRAPH));
+		GetDlgItem(IDC_ACCURATE_RADIO)->SetWindowText(GetResString(IDS_ACCURATEGRAPH));
+		//Xman end
+
+		// ==> Source Graph - Stulle
+		GetDlgItem(IDC_SRCGRAPH_GRP)->SetWindowText(GetResString(IDS_SP_SRCGRAPH));
+		GetDlgItem(IDC_SRCGRAPH)->SetWindowText(GetResString(IDS_SRCGRAPH));
+		GetDlgItem(IDC_STATIC_STATSHL)->SetWindowText(GetResString(IDS_STATIC_STATSHL));
+		GetDlgItem(IDC_SRCGRAPH_GRP)->SetWindowText(GetResString(IDS_SP_SRCGRAPH));
+		// <== Source Graph - Stulle
+
 		m_colors.ResetContent();
 		int iItem;
 		iItem = m_colors.AddString(GetResString(IDS_SP_BACKGROUND));		m_colors.SetItemData(iItem, 0);
@@ -229,14 +299,28 @@ void CPPgStats::Localize(void)
 		iItem = m_colors.AddString(GetResString(IDS_SP_UL3));				m_colors.SetItemData(iItem, 7);
 		iItem = m_colors.AddString(GetResString(IDS_SP_UL2));				m_colors.SetItemData(iItem, 6);
 		iItem = m_colors.AddString(GetResString(IDS_SP_UL1));				m_colors.SetItemData(iItem, 5);
+		//Xman Xtreme Upload: this graph isn't shown at xtreme
+		//Maella Bandwidth control
+		/*
 		iItem = m_colors.AddString(GetResString(IDS_SP_ULSLOTSNOOVERHEAD));	m_colors.SetItemData(iItem, 14);
 		iItem = m_colors.AddString(GetResString(IDS_SP_ULFRIENDS));			m_colors.SetItemData(iItem, 13);
+		*/
+		//Xman end
 
 		iItem = m_colors.AddString(GetResString(IDS_SP_ACTCON));			m_colors.SetItemData(iItem, 8);
 		iItem = m_colors.AddString(GetResString(IDS_SP_ACTUL));				m_colors.SetItemData(iItem, 10);
+		//Xman Xtreme Upload: this graph isn't shown at xtreme
+		//Maella Bandwidth control
+		/*
 		iItem = m_colors.AddString(GetResString(IDS_SP_TOTALUL));			m_colors.SetItemData(iItem, 9);
 		iItem = m_colors.AddString(GetResString(IDS_SP_ACTDL));				m_colors.SetItemData(iItem, 12);
+		*/
+		iItem = m_colors.AddString(GetResString(IDS_SP_ACTDL));				m_colors.SetItemData(iItem, 9);
+		iItem = m_colors.AddString(GetResString(IDS_EMULE_CTRL_DATA));		m_colors.SetItemData(iItem, 12);
+		iItem = m_colors.AddString(GetResString(IDS_NETWORK_ADAPTER));		m_colors.SetItemData(iItem, 13);
+		//Xman end
 		iItem = m_colors.AddString(GetResString(IDS_SP_ICONBAR));			m_colors.SetItemData(iItem, 11);
+		iItem = m_colors.AddString(GetResString(IDS_SP_SRCGRAPH));			m_colors.SetItemData(iItem, 14); // Source Graph - Stulle
 
 		m_ctlColor.CustomText = GetResString(IDS_COL_MORECOLORS);
 		m_ctlColor.DefaultText = NULL;
@@ -266,6 +350,12 @@ void CPPgStats::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 			SetModified(TRUE);
 		}
 	}
+	//Xman Xtreme Mod
+	else if (pScrollBar->GetSafeHwnd() == m_zoomSlider.m_hWnd)
+	{
+			SetModified(TRUE);
+	}
+	//Xman end
 	else
 	{
 		ASSERT( pScrollBar->GetSafeHwnd() == m_ctlGraphsAvgTime.m_hWnd );
@@ -299,6 +389,11 @@ void CPPgStats::ShowInterval()
 
 	strLabel.Format(GetResString(IDS_STATS_AVGLABEL), m_iStatsUpdate);
 	GetDlgItem(IDC_SLIDERINFO3)->SetWindowText(strLabel);
+
+	//Xman Xtreme Mod
+	strLabel.Format(GetResString(IDS_ZOOMSTATIC),m_zoomSlider.GetPos());
+	GetDlgItem(IDC_ZOOMSTATIC)->SetWindowText(strLabel);
+	//Xman end
 }
 
 void CPPgStats::OnCbnSelChangeColorSelector()
@@ -356,3 +451,9 @@ BOOL CPPgStats::OnHelpInfo(HELPINFO* /*pHelpInfo*/)
 	OnHelp();
 	return TRUE;
 }
+//Xman smooth-accurate-graph
+void CPPgStats::OnBnClickedSmoothAccurateRadio()
+{
+	SetModified(true);
+}
+//Xman end

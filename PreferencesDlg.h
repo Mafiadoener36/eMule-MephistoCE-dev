@@ -14,6 +14,11 @@
 #include "PPgScheduler.h"
 #include "PPgProxy.h"
 #include "PPgMessages.h"
+#include "PPgXtreme.h" //Xman Xtreme Mod
+#include "PPgXtreme2.h" //Xman Xtreme Mod
+#include "KCSideBannerWnd.h" //Xman Preferences Banner 
+#include "PPgScar.h" // ScarAngel Preferences window - Stulle
+
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 #include "PPgDebug.h"
 #endif
@@ -43,12 +48,19 @@ public:
 	CPPgScheduler	m_wndScheduler;
 	CPPgProxy		m_wndProxy;
 	CPPgMessages	m_wndMessages;
+	CPPgXtreme		m_wndXtreme; //Xman Xtreme Mod
+	CPPgXtreme2		m_wndXtreme2; //Xman Xtreme Mod
+	CKCSideBannerWnd m_banner; //Xman Preferences Banner
+	CPPgScar		m_wndScar; // ScarAngel Preferences window - Stulle
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 	CPPgDebug		m_wndDebug;
 #endif
 
 	void Localize();
 	void SetStartPage(UINT uStartPageID);
+
+	CPPgWebServer::eTab m_WebServerTab; // Tabbed WebInterface settings panel [Stulle] - Stulle
+	CPPgScar::eTab m_ScarTab; // Tabbed Preferences [TPT] - Stulle
 
 protected:
 	LPCTSTR m_pPshStartPage;

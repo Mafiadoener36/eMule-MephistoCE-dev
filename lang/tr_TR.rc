@@ -261,7 +261,7 @@ BEGIN
     IDS_QL_RATING           "Derecelendirme"
     IDS_CONNECTINGTO        "%s (%s:%u) sunucusuna baðlanýyor ..."
     IDS_CLIENTS             "Kullanýcýlar"
-    IDS_SEARCH_ANY          "Herhangi"
+    IDS_SEARCH_ANY          "Hepsi"
     IDS_SEARCH_AUDIO        "Ses"
 END
 
@@ -269,7 +269,7 @@ STRINGTABLE
 BEGIN
     IDS_SEARCH_PICS         "Resim"
     IDS_SEARCH_PRG          "Program" //!
-    IDS_SEARCH_VIDEO        "Görüntü"
+    IDS_SEARCH_VIDEO        "Film"
     IDS_SEARCH_CDIMG        "CD-Ýmajý"
     IDS_SEARCH_ARC          "Arþiv"
     IDS_ERR_INVALIDLINK     "Bu ed2k baðlantýsý geçersiz (%s)"
@@ -764,8 +764,8 @@ BEGIN
     IDS_DOWNLOAD_ALPHABETICAL "Alfabetik Sýrada Ýndir"
     IDS_IRC_HASQUIT         "* %s çýktý (%s)"
     IDS_IRC_NOWKNOWNAS      "* %s artýk %s olarak biliniyor"
-    IDS_IRC_SETSMODE        "* %s kipi ayarlýyor: %s %s"
-    IDS_IRC_NOTSUPPORTED    "** Bazý desteklenmeyen kipler ayarlandý. Kullanýcý listesini yenilemek için kanaldan çýkýp yeniden girmeniz gerekebilir."
+    IDS_IRC_SETSMODE        "* %s modu ayarlýyor: %s %s"
+    IDS_IRC_NOTSUPPORTED    "** Bazý desteklenmeyen modlar ayarlandý. Kullanýcý listesini yenilemek için kanaldan çýkýp yeniden girmeniz gerekebilir."
     IDS_IRC_CHANNEL         "Kanal"
     IDS_IRC_NICK            "Takma Ad"
     IDS_IRC_SEND            "Gönder"
@@ -932,9 +932,9 @@ BEGIN
     IDS_IRC_EMULEPROTO_IGNOREINFOMESSAGE "eMule Protokol Mesajlarýný Yoksay"
     IDS_SMARTLOWIDCHECK     "Baðlantýda akýllý DüþükID kontrolü kullan"
     IDS_SF_SRVOCC           "Sunucu Doluluðu: %.2f%%"
-    IDS_3DDEP               "Ýlerleme çubuðu biçemi"
+    IDS_3DDEP               "Ýlerleme çubuðu stili"
     IDS_AUTOTAKEED2KLINKS   "ED2K Baðlantýlarýný sadece çalýþýrken otomatik al"
-    IDS_ADDNEWFILESPAUSED   "Dosyalarý duraklat kipinde indirmeye ekle"
+    IDS_ADDNEWFILESPAUSED   "Dosyalarý duraklat modunda indirmeye ekle"
 END
 
 STRINGTABLE 
@@ -1310,12 +1310,12 @@ BEGIN
     IDS_ERR_DUPL_FILES      "Kopya paylaþýlmýþ dosyalar: ""%s"" ve ""%s"""
     IDS_USS_TRACEROUTEOFTENFAILED 
                             "Gönderme Hýzý Algýlama: Yönlendirerek Ýzleme bir çok kez baþarýsýz oldu. Gönderme Hýzý Algýlama Etkisizleþtiriliyor."
-    IDS_USS_STARTING        "Gönderme Hýzý Algýlama: Hazýrlanma bitti. Gönderme hýzý denetimi baþlatýlýyor. (Ýlk 60 saniye hýzlý tepki kipinde olacaktýr)"
+    IDS_USS_STARTING        "Gönderme Hýzý Algýlama: Hazýrlanma bitti. Gönderme hýzý denetimi baþlatýlýyor. (Ýlk 60 saniye hýzlý tepki modunda olacaktýr)"
     IDS_A4AF                "Kaynak Saptama"
     IDS_MOBILEMULE          "MobileMule" //!
     IDS_ENABLEMM            "MobileMule etkin"
     IDS_AUTOCAT_LABEL       "Otomatik Kat-Belirleme (örnek, | ile ayýrýn)"
-    IDS_SHOWEXTSETTINGS     "Daha fazla denetim göster (Geliþmiþ Denetim kipi)"
+    IDS_SHOWEXTSETTINGS     "Daha fazla denetim göster (Geliþmiþ Denetim modu)"
     IDS_TREEOPTIONS_TRUE    "Doðru"
     IDS_TREEOPTIONS_FALSE   "Yanlýþ"
     IDS_TREEOPTIONS_OK      "TAMAM"
@@ -1350,7 +1350,7 @@ BEGIN
                             "Deðiþtirilen ayarlarýn etkili olmasý için, lütfen eMule'u yeniden baþlatýn!"
     IDS_CREDITSEXPIRED      ", %u istemci silindi (5 ay içinde görülmemiþ)"
     IDS_SOURCESINFO         "%u (Kullanýþlý: %u, NNP: %u); A4AF: %u"
-    IDS_META_DATA           "Üst Veri"
+    IDS_META_DATA           "Meta Verisi"
     IDS_TIMEBEFORE          "(%s önce)"
     IDS_FD_TIMEDATE         "Tarihler"
     IDS_FILEINFORMATION     "Dosya Bilgisi"
@@ -1423,9 +1423,9 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_DYNUP_PINGTOLERANCE "Ping toleransý (en düþük ping yüzdesi)"
-    IDS_DYNUP_GOINGUPDIVIDER "Artýþ yavaþlýðý"
-    IDS_DYNUP_GOINGDOWNDIVIDER "Düþüþ yavaþlýðý"
+    IDS_DYNUP_PINGTOLERANCE "Ping toleransý (en düþük ping %)"
+    IDS_DYNUP_GOINGUPDIVIDER "Yavaþlýðý arttýr"
+    IDS_DYNUP_GOINGDOWNDIVIDER "Yavaþlýðý düþür"
     IDS_DYNUP_NUMBEROFPINGS "Ortalama için azami ping sayýsý"
     IDS_DYNUP_MINUPLOAD     "Ýzin verilmiþ en düþük gönderme hýzý"
     IDS_ESTTIMELEFT         "Tahmini kalan süre:"
@@ -1532,7 +1532,7 @@ BEGIN
     IDS_RAU_FAILED          "eMule'u yetkisiz ""eMule_Güvenli"" kullanýcýsý olarak baþlatma baþarýsýz. Þu anki (""%s"") kullanýcýsýnýn yetkileri saklanýyor."
     IDS_KADCONTACTSREAD     "Dosyadan %u adet baðlantý okundu."
     IDS_ERR_KADCONTACTS     "Baðlantý bulunamadý, lütfen önyükleme yapýn veya nodes.dat dosyasýný indirin."
-    IDS_METATAGS            "Üst etiket sayýsý:"
+    IDS_METATAGS            "Meta Etiket Sayýsý:"
     IDS_FILEFORMAT          "Biçim"
     IDS_UDPREASKS           "UDP Dosya Tkr.Sormasý"
     IDS_DYNUP_PINGTOLERANCE_MS "Ping toleransý (ms)"
@@ -1698,7 +1698,7 @@ BEGIN
     IDS_THELOAD             "Yükleme"
     IDS_PACKSENT            "Gönderilmiþ Paket"
     IDS_RESPONSES           "Cevap"
-    IDS_EXTRACT_META_DATA   "Üst veriyi çýkart"
+    IDS_EXTRACT_META_DATA   "Meta Verisini Çýkart"
     IDS_META_DATA_MEDIADET  "DirectShow (tüm diðer ses/görüntü dosyalarý için)"
     IDS_META_DATA_ID3LIB    "ID3 Kütüphanesi (sadece MPEG ses dosyalarý için)"
 END
@@ -1799,7 +1799,7 @@ BEGIN
     IDS_COLL_TEXTFORMAT     "Koleksiyonu Basit Metin Biçiminde Kaydet"
     IDS_RUNNINGRESTRICTED   "eMule azaltýlmýþ yetkiler ile çalýþýyor"
     IDS_USS_MANUALUPLOADLIMITDETECTED 
-                            "Gönderme Hýzý Algýlama: Seçeneklerde arttýrýlmýþ gönderme sýnýrý saptandý. 60 saniye için hýzlý tepki kipine gidilecek."
+                            "Gönderme Hýzý Algýlama: Seçeneklerde arttýrýlmýþ gönderme sýnýrý saptandý. 60 saniye için hýzlý tepki moduna gidilecek."
     IDS_USS_STATE_PREPARING "Hazýrlanýyor..."
     IDS_USS_STATE_WAITING   "Bekliyor..."
     IDS_USS_STATE_ERROR     "Hata!"
@@ -1867,7 +1867,7 @@ BEGIN
 	IDS_MEDIAINFO_DLLMISSING 
                             "Kurulu MediaInfo kütüphanesi yok. Eðer bu iletide ses/görüntü dosyalarý hakkýnda daha fazla bilgi görmek istiyorsanýz,\r\nhttp://sourceforge.net/projects/mediainfo/ adresinden MediaInfo kütüphane dosyasýný indirin ve eMule'un kurulum\r\nklasörü ""%s"" içine MediaInfo.dll dosyasýný kopyalayýn.\r\n"
 	IDS_WARNING_WRONGFILEEXTENTION 
-                            "Uyarý: ""%s"" dosyasýnýn uzantýsý,\r\ngenellikle bu dosya biçimi için kullanýlan dosya uzantýsýna uymuyor. Bu dosya biçiminin düzgün olarak görüntülenmesi\r\nya da kullanýmý ve de bu ""%s"" dosya uzantýlarýndan birini kullanmak için dosya ismini yeniden adlandýrmak\r\nisteyebilirsiniz.\r\n"
+                            "Uyarý: ""%s"" dosyasýnýn uzantýsý,\r\ngenellikle bu dosya biçimi için kullanýlan dosya uzantýsý ile uyuþmuyor. Bu dosya biçiminin düzgün olarak görüntülenmesi\r\nya da kullanýmý, ve de bu ""%s"" dosya uzantýlarýndan birini kullanmak için dosya ismini yeniden adlandýrmak\r\nisteyebilirsiniz.\r\n"
     IDS_MEDIAINFO_DRMWARNING 
                             "Uyarý: ""%s"" dosyasýnýn Dijital Haklar Yönetimi ile korunduðu görünüyor.\r\nBüyük ihtimalle üreticisinden lisansýný almadan bu dosyayý kullanamayacaksýnýz.\r\n"
     IDS_LOADFILTER_EMTOOLBAR "eMule Araç Çubuðu Bitmap Dosyalarý"
@@ -1906,18 +1906,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_UPNPSTART           "Baðlantý noktalarýný ayarlamak için UPnP kullan"
-    IDS_UPNPSETUP           "UPnP ile baðlantý noktasý yönlendirme ayarlamalarý deneniyor..."
-    IDS_UPNPFAILED          "Baðlantý noktasý yönlendirme ayarlamasý için UPnP baþarýsýz oldu, eðer gerekliyse lütfen baðlantý noktalarýný elle yönlendirin!"
-    IDS_UPNPSUCCESS         "UPnP, %u (TCP) ve %u (UDP) nolu baðlantý noktalarý için yönlendirmeyi baþarýlý olarak ayarladý"
     IDS_FO_PREFBUTTON_NEW   "WinXP SP1 güvenlik duvarýnda baðlantý noktalarýný aç"
-    IDS_UPNP_NOSERVICE      "UPnP Aygýtý Anamakine hizmeti çalýþmýyor, UPnP ayarlamasý atlanýyor"
-    IDS_DELAYEDBYUPNP       "Aða baðlantý gecikiyor çünkü UPnP baðlantý noktasý yönlendirmelerini yapýlandýrýrken hala meþgul."
-    IDS_DELAYEDBYUPNP2      "Lütfen biraz bekleyin, UPnP biter bitmez eMule baðlanacaktýr."
-    IDS_UPNP                "UPnP" //!
-    IDS_UPNPCLOSEONEXIT     "Çýkýþta UPnP baðlantý noktasý yönlendirmelerini kaldýr"
-    IDS_UPNPSKIPWANIP       "WAN IP ayarlamasýný atla"
-    IDS_UPNPSKIPWANPPP      "WAN PPP ayarlamasýný atla"
     IDS_SHAREEMULELABEL     "Diðer bilgisayar kullanýcýlarý ile eMule paylaþýmý"
     IDS_SHAREEMULEMULTI     "Her kullanýcý kendi yapýlandýrmasýna ve indirmelerine sahiptir"
     IDS_SHAREEMULEPUBLIC    "Herkes ayný yapýlandýrmaya ve indirmelere sahiptir"
@@ -1994,9 +1983,913 @@ BEGIN
     IDS_DONOTASKAGAIN       "Bana tekrar sorma"
     IDS_POPULARITY          "Popülerlik Derecesi"
     IDS_SHOWWIN7TASKBARGOODIES "Windows 7 görev çubuðu efektleri etkin"
-    IDS_LANMODE             "LAN Kipi"
-    IDS_OPENPREFINI         "Preferences.ini'yi aç"
+    IDS_LANMODE             "LAN Modu"
+    IDS_OPENPREFINI         "Open preferences.ini"
 END
+
+STRINGTABLE 
+BEGIN
+    IDS_DROPNONEEDEDSRCS    """NNS"" Düþür"
+    IDS_DROPQUEUEFULLSRCS   """FullQ"" Düþür"
+    IDS_DROPQUEUETOOMANY    """Çok Fazla Bað."" Düþür"
+    IDS_DROPQUEUEUNKNOWN    "Bilinmeyenleri Düþür"
+    IDS_DROP_ASKING         """Soruyor"" Düþür"
+    IDS_DROPCONNECTING      """Baðlanýyor"" Düþür"
+    IDS_STOP_CLIENT         "Bu istemciden vazgeç"
+    IDS_SubMenu_Drop        "Düþür"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_13RATIO             "GÖN < 11 olduðunda 1:3 oturum oraný kullan"
+    IDS_PPG_MAELLA_MTU_STATIC "MTU (500..1500, varsayýlan 1340)"
+    IDS_PPG_MAELLA_NAFC_CHECK02 "GÖN/ÝND Sýnýrlarýný NAFC Denetlesin"
+    IDS_OPENMORESLOTS       "Gerekirse daha fazla slot aç (önerilir)"
+    IDS_AVG_DATARATE_TIME   "Saniyelik Ortalama Veri Hýzý: %u"
+    IDS_XTREMESETTINGS      "Xtreme"
+    IDS_ZOOMSTATIC          "Yakýnlaþtýr: %u"
+    IDS_AVGQR               "OrtSýra"
+    IDS_USEDOUBLESENDSIZE   "Ýki kat yollama boyutu kullan"
+    IDS_LOGDROP             "Düþürme iþlemlerini günlükle"
+    IDS_ANTILEECHER_GROUP   "Sülük-Korumasý"
+    IDS_ANTILEECHER_CHECK   "Sülük-Korumasý Etkin"
+    IDS_ANTILEECHERNAME_CHECK "Kullanýcý Adýndan Sapta"
+    IDS_POWERRELEASE        "PowerRelease"
+    IDS_DONTREMOVESTATICSERVER "Sabit sunucularý kaldýrma"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_LISTREQUESTED       "Talep edilen dosyalarý listele"
+    IDS_HIGHPRIOPROCESS     "Yüksek"
+    IDS_ABOVENORMALPROCESS  "Normalin Üstünde"
+    IDS_NORMALPROCESS       "Normal"
+    IDS_PROCESSGROUP        "Ýþlem Önceliði"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_COUNTRYNAME_SHORT   "2 harf göster"
+    IDS_COUNTRYNAME_MID     "3 harf göster"
+    IDS_COUNTRYNAME_LONG    "Tam isim göster"
+    IDS_COUNTRYNAME_SHOWFLAG "Bayrak göster"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_IP2COUNTRY_MSG1     "IP2Country, WebHosting.Info tarafýndan saðlanan IP-to-Country Veritabanýný kullanmaktadýr"
+    IDS_IP2COUNTRY_MSG2     "(http://www.webhosting.info), http://ip-to-country.webhosting.info adresinden edinilebilir"
+    IDS_IP2COUNTRY_LOADED   "IP2Country yüklendi"
+    IDS_IP2COUNTRY_UNLOADED "IP2Country kaldýrýldý"
+    IDS_IP2COUNTRY_ERROR1   "Hata satýrý numarasý : %i"
+    IDS_IP2COUNTRY_ERROR3   "Yükleme hatasý"
+    IDS_IP2COUNTRY_ERROR4   "Ülke Bayraklarý, yüklenemediði icin devre dýþý býrakýldý"
+    IDS_IP2COUNTRY_ERROR5   "Geçersiz resID, flag icon Dll dosyanýzý güncellemeniz gerekli olabilir,"
+    IDS_IP2COUNTRY_INFO     "Ýncelenen satýr sayýsý:%u  Bulunan IPCountry aralýðý:%u  Eþler:%u  Birleþtirilen:%u"
+    IDS_IP2COUNTRY_FLAGLOAD "Ülke Bayraklari yüklendi"
+    IDS_IP2COUNTRY_FILELOAD "IP2Country dosyasý kaldýrýldý"
+    IDS_IP2COUNTRY_FLAGUNLD "Ülke Bayraklarý kaldýrýldý"
+    IDS_IP2COUNTRY_NALONG   "Uygulanamaz"
+    IDS_IP2COUNTRY_NASHORT  "N/A"
+    IDS_IP2COUNTRY_LOADED2  "IP2Country  ""%s"" konumundan %ums 'de yüklendi"
+    IDS_ACCURATEGRAPH       "Doðruluk"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_SMOOTHGRAPH         "Yumuþat"
+    IDS_MULTIQUEUE          "Her dosya için bir sýra (Multiqueue)"
+    IDS_RETRYCONNECTIONATTEMPTS "Baþarýsýz olan TCP baðlantýlarýný tekrar dene"
+    IDS_ANTIGHOST           "Ghost-Modlarý sapta"
+    IDS_REMEMBERAICH        "Kullanýlmayan AICH-Adreslemelerini (known2.met) hatýrla"
+    IDS_MARKCANCELLED       "Ýptal edilmiþ olarak iþaretle"
+    IDS_DOWNHISTORY_CHECK1  "eMule ayný kimlikli(ID) dosyayý daha önce indirdiðinizi tespit etti:\n"
+    IDS_DOWNHISTORY_CHECK2  "eMule daha önce %i adet ayný isimde indirilmiþ dosya buldu (%s):\n"
+    IDS_DOWNHISTORY_CHECK3  "Buna raðmen dosyayý indirmek istiyor musunuz?"
+    IDS_DOWNHISTORY_CHECK4  "eMule ayný kimlikli(ID) dosyayý daha önce iptal ettiðinizi tespit etti:\n"
+    IDS_DOWNHISTORY         "Ýndirme geçmiþi"
+    IDS_DOWNHISTORY_REMOVE  "Geçmiþten kaldýr"
+    IDS_DOWNHISTORY_REMOVE_QUESTION 
+                            """%s"" dosyasýný indirme geçmiþinden kaldýrmak istediðinize emin misiniz?"
+    IDS_DOWNHISTORY_REMOVE_QUESTION_MULTIPLE 
+                            "Seçili dosyalarý indirme geçmiþinden kaldýrmak istediðinize emin misinz?"
+    IDS_DOWNHISTORY_SHARED  "Paylaþýlan"
+    IDS_DOWNHISTORY_CLEAR   "Ýndirme geçmiþini temizle"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_DOWNHISTORY_SHOWSHARED "Paylaþýlan dosyalarý da göster"
+    IDS_DOWNHISTORY_ACTIONS "Eylemler"
+    IDS_DOWNHISTORY_CLEAR_QUESTION 
+                            "Ýndirme geçmiþini temizlemek istediðinize emin misiniz?"
+    IDS_SENDBUFFER          "Gön tampon bel."
+    IDS_LEERCHERLOGTITLE    "Sülük-Bildirimleri"
+    IDS_ALL_A4AF_TO_THIS    "Tüm Kaynaklarý Bu Dosyaya Yönlendir"
+    IDS_ALL_A4AF_TO_OTHER   "Tüm Kaynaklarý Farklý Herhangi Bir Dosyaya Yönlendir"
+    IDS_SWAP_A4AF_TO_THIS   "(A4AF) Kaynaklarý Bu Dosyaya Yönlendir"
+    IDS_SWAP_A4AF_TO_OTHER  "(A4AF) Kaynaklarý Farklý Herhangi Bir Dosyaya Yönlendir"
+    IDS_ALL_A4AF_AUTO       "Otomatik Olarak Tüm (A4AF) Kaynaklarýný Bu Dosyaya Yönlendir"
+    IDS_LEECHER_ACTION_BAN  "Yasakla"
+    IDS_LEECHER_ACTION_REDUCE "Skor düþür"
+    IDS_ANTILEECHERBADHELLO_CHECK "Yanlýþ Hello-Tag sapta"
+    IDS_ANTILEECHERSNAFU_CHECK "Kötü etiketleri sapta"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_ANTILEECHERMOD_CHECK "Modetiketi saptamasý"
+    IDS_ANTILEECHERTHIEF_CHECK "Ýsim- /Mod Hýrsýzlarýný sapta"
+    IDS_ANTILEECHERSPAMMER_CHECK "Spammer sapta"
+    IDS_ANTILEECHERXSEXPLOITER_CHECK "XS-Exploiter sapta"
+    IDS_STATIC_LEECHERCOMMUNITY "Grup Modlarý"
+    IDS_STATIC_LEECHERGHOST "Ghost-Modlar"
+    IDS_STATIC_LEECHERTHIEF "Ýsim- / Mod Hýrsýzlarý"
+    IDS_NEWXTREMEVERSION    "Yeni bir Xtreme sürümü mevcut"
+    IDS_NEWXTREMEVERSIONDOWNLOAD 
+                            "Yeni bir Xtreme sürümü mevcut \n Ýndirmek ister misiniz ?"
+    IDS_NEWDLP              "Yeni bir antiLeech.dll (DLP) mecvut"
+    IDS_NEWDLPDOWNLOAD      "Yeni bir antiLeech.dll (DLP) mecvut \n Ýndirmek ister misiniz ?"
+    IDS_DROPLEECHER         "Sülükleri düþür"
+    IDS_ACTIVEDOWNLOADSBOLD "Ýnmekte olan dosyalarý kalýnlaþtýr"
+    IDS_UPDOWNUPLOADLIST    "Gön / Ýnd"
+    IDS_MAXGLOBALSOURCES    "Toplam kaynak sýnýrý:"
+    IDS_ACCEPTSOURCES       "Toplam kaynak sýnýrýný kabul et"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_ACCEPTRATIO         "Bulunan kaynak, sýnýrý geçerse 1:3 oturum oranýný kullan"
+    IDS_SHOWADDITIONALGRAPH "Fazladan grafik satýrlarý göster"
+    IDS_CHECK4UPDATEMOD     "Baþlangýçta yeni Xtreme sürümü denetle"
+    IDS_ANTILEECHEREMCRYPT_CHECK "Emcrypt sapta"
+    IDS_UPLOADMANAGEMENT_FRAME "Gönderme Yönetimi"
+    IDS_UPLOADSLOTSPEED_LABEL "Gönderme Slot Hýzý"
+    IDS_USENARROWFONT       "Aktarým penceresinde dar yazý tipi kullan"
+    IDS_SHOWBLOCKINGRATIO   "Soket engelleme oranýný göster"
+    IDS_FUNNYNICK           "Komik Takma-Ad göster"
+    IDS_AUTOUPDATEIPFILTER  "IPFilter.dat dosyasýný otomatik güncelle"
+    IDS_DROPBLOCKINGSOCKETS "Çok sýk engellenen soketleri düþür"
+    IDS_LOGPARTMISMATCH     "Talep edilen dosyalarda boyut uyuþmazlýðý varsa günlükle"
+    IDS_CHUNKCHOOSER        "Parça seçim yöntemi"
+    IDS_UPLOADINSTABLE      "Uyarý: Gönderme ayarlarýnýz çok yüksek görünüyor. Lütfen ayarlarýnýzý gözden geçiriniz! \n Gönderme çizelgesinndeki beyaz veya sarý(NAFC ile) çizgi düz olmalýdýr. \n Bu uyarý mesajý sadece bir kerelik oluþturulur"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_CLIENTPERCENTAGE    "Ýstemci yüzdesini göster"
+    IDS_ONERELEASESLOT      "Her zaman tek yayým slotu"
+    IDS_A_UPPRIO            "Geliþmiþ otomatik gönderme önceliði kullan"
+    IDS_SHAREFACTOR         "Paylaþýmçarpaný"
+    IDS_MASSRENAME1         "Dosya isim kalýbý(buradaki deðiþiklikler aþaðýya yansýtýlacaktýr):"
+    IDS_FILENAMELEFT        "Dosya ismi sola dayalý"
+    IDS_FILENAMERIGHT       "Dosya ismi saða dayalý"
+    IDS_RESETFILENAMES      "&Sýfýrla"
+    IDS_SIMPLECLEANUP       "&Basit temizlik"
+    IDS_INSERTTEXTCOLUMN    "&Panodan metin yapýþtýr"
+    IDS_MASSRENAME2         "Özgün isimler:"
+    IDS_MASSRENAME3         "Yeni isimler:"
+    IDS_NOTENOUGHFILENAMES  "Yeni dosya isim bölümünde yeterli dosya ismi yok. Yeniden adlandýrma mümkün deðil."
+    IDS_IDENTICALFILENAMES  "Ayný dizin içerisinde iki veya daha fazla ayný isimde dosya olamaz (Satýr %d). Yeniden adlandýrma mümkün deðil."
+    IDS_MR                  "Çoklu ad deðiþtirme..."
+    IDS_MASSRENAME_TITLE    "Çoklu-ad deðiþtirme"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_STATIC_DOWNINFO     "Ýndirme 0 = Sýnýrsýz"
+    IDS_ANTILEECHERUSERHASH_CHECK "Kötü adreslemeleri sapta"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_IMPORTPARTS         "Ýçeri parça aktar..."
+    IDS_IMPORTPARTS_STOP    "Ýçeri parça aktarýmýný durdur"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_SR13_IMPORTPARTS_ERR_ALREADYCOMPLETE 	"Ýçe aktarma durduruldu: Tamamlanmýþ bir dosyaya içe aktarým yapýlamaz."
+    IDS_SR13_IMPORTPARTS_ERR_HASHSETINCOMPLETE	"Ýçe aktarma durduruldu: %s için eksik adresleme grubu (%i parça için %i adresleme)."
+    IDS_SR13_IMPORTPARTS_ERR_CANTOPENFILE	"Ýçe aktarma durduruldu: %s açýlamadý."
+    IDS_SR13_IMPORTPARTS_IMPORTSTART	"%i parça %s dosyasýna aktarýlýyor."
+    IDS_SR13_IMPORTPARTS_PARTIMPORTEDGOOD	"Parça %i: içe aktarýldý."
+    IDS_SR13_IMPORTPARTS_PARTIMPORTEDBAD	"Parça %i: ICH yönetimi için içe aktarýldý."
+    IDS_SR13_IMPORTPARTS_PARTSKIPPEDDONTMATCH	"Parça %i: atlandý, kýsmen tamamlanmýþ blok ile uyuþmadý."
+    IDS_SR13_IMPORTPARTS_BADPARTSREHASH		"%i bozuk parça A/ICH yönetimi için içe aktarýlmýþtý. Adresleme iþlemi tekrar baþlatýlýyor."
+    IDS_SR13_IMPORTPARTS_ERR_FILETOOSMALL	"Dosya, AICH için gerekli azgari kurtarma boyutundan küçük - Ýçe aktarma yapýlmasý gereksiz."
+    IDS_SR13_IMPORTPARTS_IMPORTFINISH		"Ýçe aktarým tamamlandý. %i parça %s dosyasýna aktarýldý."
+    IDS_OBFUSCATION_PADDING_LENGTH "P.Gizleme-Takviye-Geniþliði [10-254]"
+//    IDS_PUSH_SMALL_FILE_SIZE "Küçük dosya boyut sýnýrý (KB) [1-2048]"
+    IDS_GETFRIENDED2KLINK   "Arkadaþ baðlantýsýný panoya kopyala"
+    IDS_GETHTMLFRIENDED2KLINK "Arkadaþ baðlantýsýný panoya kopyala (HTML)"
+    IDS_DOWNLOADEMFRIENDSMET "emfriends.met indir"
+    IDS_EMFRIENDSMETURL     "emfriends.met için URL giriniz:"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_ERR_FAILEDDOWNLOADEMFRIENDS "%s adresinden arkadaþ listesi indirme baþarýsýz"
+    IDS_GETMYFRIENDED2KLINK "Arkadaþ baðlantýmý panoya kopyala"
+    IDS_GETMYHTMLFRIENDED2KLINK "Arkadaþ baðlantýmý panoya kopyala (HTML)"
+    IDS_FRIENDLINKMENUTITLE "Arkadaþ Baðlantýlarý"
+    IDS_USER_ALREADY_FRIEND """%s"" kullanýcýsý zaten arkadaþ listenizde"
+    IDS_PROGRESSHASHDONE    "Adreslemesi tamamlanan: %s"
+    IDS_USEACATUPNPNEXTSTART1 "Yeniden baþlattýktan sonra ACAT UPnP kütüphanesini kullanmaya devam et"
+    IDS_USEACATUPNPNEXTSTART2 "Yeniden baþlattýktan sonra ACAT UPnP kütüphanesine geç"
+    IDS_RETRIEVEMTUFROMSOCKET "MTU deðerini sistemden tespit et"
+    IDS_ENABLEKNOWN2BUFFER  "AICH Adresleme Grubu tamponu (çoklu dosya adreslerken diskio deðerini azalt)"
+    IDS_ANTILEECHERFINCAN_CHECK "Fincan Grup Adreslemelerini sapta (CPU yükü!)"
+    IDS_ENABLEKNOWN2SPLIT   "Known2_64.met dosyasýný böl, paylaþýlmamýþ AICH Adresleme Gruplarýný ayrý dosyada tut"
+    IDS_EMULE_CTRL_DATA     "eMule control + data"
+    IDS_NETWORK_ADAPTER     "Network Adapter"
+END
+
+//STRINGTABLE 
+//BEGIN
+//    IDS_PUSH_SMALL          "Küçük dosya önceliði"
+//    IDS_SMALL               "Küçük"
+//    IDS_TRUSTEVERYHASH      "Her AICH adreslemesine güven (Oturum bazlýdýr, saklanmaz. Tavsiye edilmez)"
+//END
+
+STRINGTABLE 
+BEGIN
+    // ==> ScarAngel Preferences window - Stulle
+    IDS_CON_TWEAKS          "Baðlantý Ýnce Ayarlarý"
+	IDS_MISC                "Muhtelif Seçenekler"
+    // <== ScarAngel Preferences window - Stulle
+    // ==> Global Source Limit [Max/Stulle] - Stulle
+    IDS_GLOBAL_HL           "Genel SS"
+    IDS_GLOBAL_HL_LIMIT     "Genel Sabit Sýnýr"
+    IDS_GLOBAL_HL_ALL       "Tüm dosyalarý dahil et"
+    IDS_GLOBAL_HL_DEFAULT   "Genel SS tüm dosyalar için varsayýlan"
+    IDS_ENABLE              "Etkin"
+    // <== Global Source Limit [Max/Stulle] - Stulle
+    IDS_PUSH                "Öncelik ayarlarý" // push files - Stulle
+    // ==> push small files [sivka] - Stulle
+    IDS_PUSH_SMALL          "Küçük dosya önceliði"
+	IDS_SMALL               "Küçüklük"
+	IDS_PUSH_SMALL_BOOST    "Küçük dosya iteleme katsayýsý"
+    // <== push small files [sivka] - Stulle
+    // ==> push rare file - Stulle
+    IDS_PUSH_RARE           "Nadir dosya önceliði"
+    IDS_RARE                "Nadirlik"
+    IDS_RARE_RATIO          "Nadirlik oraný"
+    // <== push rare file - Stulle
+    IDS_SHOWINMSN7          "eMule durumunu MSN7(ya da yukarýsý) iletisine yansýt" //Show in MSN7 [TPT] - Stulle
+    // ==> Show sources on title - Stulle
+    IDS_SHOWSRCONTITLE      "Kaynaðý baþlýkta göster"
+    IDS_SHOWSRCSTRING       "Kaynak:"
+    // <== Show sources on title - Stulle
+    IDS_SHOWOVERHEADONTITLE "Ek-yük deðerini baþlýkta göster"// show overhead on title - Stulle
+    // ==> CreditSystems [EastShare/ MorphXT] - Stulle
+    IDS_CREDIT_SYSTEM       "Ödüllendirme Sistemleri"
+    IDS_OFFICIAL_CREDIT     "Official Credit"
+    IDS_LOVELACE_CREDIT     "lovelace Credit"
+    IDS_RATIO_CREDIT        "Ratio Credit"
+    IDS_PAWCIO_CREDIT       "Pawcio Credit"
+    IDS_EASTSHARE_CREDIT    "EastShare Credit"
+    IDS_SIVKA_CREDIT        "Sivka Credit"
+    IDS_SWAT_CREDIT         "S.W.A.T. Credit"
+    IDS_XMAN_CREDIT         "Xman Credit"
+    IDS_TK4_CREDIT          "TK4 Credit"
+    IDS_ZZUL_CREDIT         "ZZUL Credit"
+    // <== CreditSystems [EastShare/ MorphXT] - Stulle
+    // ==> SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+    IDS_SUQWT_LOAD          "Yükleniyor %s"
+    IDS_SUQWT               "Gönderme Sýrasý Bekleme Süresini Sakla (SUQWT)"
+    // <== SUQWT [Moonlight/EastShare/ MorphXT] - Stulle
+    IDS_SHOW_FILE_HL_CONST  "Dosya baþýna Sabit Sýnýrý sürekli göster" // show HL per file constantly - Stulle
+    IDS_SHOW_GLOBAL_HL      "Genel sabit sýnýrý göster" // show global HL - Stulle
+    // ==> File Settings [sivka/Stulle] - Stulle
+    IDS_NNS_TIMERLABEL      "OtomatikNNS Zamanlayýcý 0...60 sn"
+    IDS_REMOVENNSLIMITLABEL """NNS"" düþürmeye baþla, NNS > X%"
+    IDS_FQS_TIMERLABEL      "OtomatikFQS Zamanlayýcý 0...60 sn"
+    IDS_REMOVEFQSLIMITLABEL """FullQS"" düþürmeye baþla, FullQS > X%"
+    IDS_HQRS_TIMERLABEL     "OtomatikHQRS Zamanlayýcý 0...120 sn"
+    IDS_REMOVEQRSLABEL      "Ýzin verilen azami ""QR"" <= X"
+    IDS_REMOVEQRSLIMITLABEL """HighQRS"" düþürmeye baþla, HighQRS > X%"
+    IDS_AUTO_NNS            "Otomatik ""NNS"" düþürme etkin"
+    IDS_AUTO_FQS            "Otomatik ""FullQS"" düþürme etkin"
+    IDS_AUTO_QRS            "Otomatik ""HihgQS"" düþürme etkin"
+    IDS_SIVKAFILESETTINGS   "Sivka - Dosya(lar) Ayarlarý"
+    IDS_HARDLIMIT_LABEL     "Sabit Sýnýr (0=Varsayýlaný kullan)"
+    IDS_FILE_DEFAULTS       "Varsayýlan düþürme seçenekleri"
+    IDS_XMAN_DROPPING       "Xman düþürme metodu"
+    IDS_SIVKA_DROPPING      "Sivka düþürme metodu"
+    IDS_HQR_WAY             "Düþürme metodu"
+    // <== File Settings [sivka/Stulle] - Stulle
+    IDS_SHOW_DROPPED_SRC    "Düþürülmüþ Ýstemciler" // show # of dropped sources - Stulle
+    // ==> Source Graph - Stulle
+    IDS_SRCGRAPH            "Kaynak grafiðini göster"
+    IDS_STATIC_STATSHL      "Grafik için Asgari/ Azami kaynak deðerleri:"
+    IDS_SP_SRCGRAPH         "Kaynak Grafiði"
+    // <== Source Graph - Stulle
+    IDS_FD_AVGDL            "Ort. ÝND hýzý:" // Average download speed - Stulle
+    // ==> FunnyNick [SiRoB/Stulle] - Stulle
+    IDS_FN_TAG              "Komik takma-ad etiketi"
+    IDS_NO_TAG              "Etiket yok"
+    IDS_SHORT_TAG           "[FN]"
+    IDS_FULL_TAG            "[FunnyNick]"
+    IDS_CUSTOM_TAG          "Özel etiket"
+    IDS_SET_CUSTOM_TAG      "Özel etiket ayarla"
+    IDS_FN_TAG_AT_END       "Etiketi sonda göster"
+    // <== FunnyNick [SiRoB/Stulle] - Stulle
+    IDS_CLIENTQUEUEPROGRESSBAR "Sýra ilerleyiþi hakkýnda bilgi çubuðu göster" // Client queue progress bar [Commander] - Stulle
+    IDS_ACC                 "Aktif Baðlantý Denetimini Etkinleþtir" // ACC [Max/WiZaRd] - Max
+    // ==> Quick start [TPT] - Max
+    IDS_QUICK_START_GROUP   "Quickstart"
+    IDS_QUICK_START         "Enable Quickstart"
+    IDS_QUICK_START_MAX_TIME "Time for Quickstart [8-18 min.]"
+    IDS_QUICK_START_MAX_CONN_PER_FIVE "max. con./5sec"
+    IDS_QUICK_START_MAX_CONN "max. con."
+    IDS_QUICK_START_AFTER_IP_CHANGE "Enable Quickstart after IP Change"
+	IDS_QUICK_START_MAX_CONN_PER_FIVE_BACK "Return to max. con./5sec"
+    IDS_QUICK_START_MAX_CONN_BACK "Return to max. con."
+    // <== Quick start [TPT] - Max
+    // ==> CPU/MEM usage [$ick$/Stulle] - Stulle
+    IDS_SYS_INFO_GROUP      "Sistem bilgisi"
+    IDS_SYS_INFO_GLOBAL     "Genel bilgi"
+    // <== CPU/MEM usage [$ick$/Stulle] - Stulle
+    // ==> TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+    IDS_BACKUP_FILEFRAME    "Yedeklenecek Dosya Türlerini Seçiniz"
+    IDS_BACKUP_SELECTALL    "Hepsini Seç"
+    IDS_BACKUP_AUTOFRAME    "Otomatik Yedekleme"
+    IDS_BACKUP_AUTOBACKUP   "Her Kapanýþta Yedekle"
+    IDS_BACKUP_NOTE         "Not:"
+    IDS_BACKUP_BACKUPNOW    "Þimdi Yedekle"
+    IDS_BACKUP_MESSAGE      "Yedeklemeler için eMule ana dizininizde ""Backup"" adý altýnda bir klasör oluþturulacak."
+    IDS_BACKUP_AUTOBACKUP2  "Çift Yedek"
+    IDS_ABORT               "Vazgeç?"
+    IDS_CONTINUE            "&Devam"
+//    IDS_DONOTASKAGAIN       "Bir daha sorma"
+    IDS_DONOTSHOWAGAIN      "Bir daha gösterme"
+    IDS_DONOTTELLAGAIN      "Bir daha uyarma"
+    IDS_HELP                "&Yardým"
+    IDS_IGNORE              "&Yoksay"
+    IDS_IGNOREALL           "I&gnore All"
+    IDS_NOTOALL             "N&o to All"
+    IDS_OK                  "TAMAM"
+    IDS_REPORT              "Re&port"
+    IDS_RETRY               "&Yeniden Dene"
+    IDS_SKIP                "&Atla"
+    IDS_SKIPALL             "S&kip All"
+    IDS_TRYAGAIN            "&Yeniden Dene"
+    IDS_YESTOALL            "Y&es to All"
+    // <== TBH: Backup [TBH/EastShare/MorphXT] - Stulle
+    // ==> TBH: minimule - Max
+    IDS_MM_SHOW             "Use TBH Mini-Mule instead"
+    IDS_MM_LIVES            "Keep Mini-Mule updated"
+    IDS_MM_UPDATE_TIME      "Mini-Mule update Time (in sec)"
+    IDS_MM_TRANS            "Mini-Mule Transparency (1-255)"
+    IDS_MM_ACTDL            "Active Downloads: %i"
+    IDS_MM_DATA             "Up: %s | Down: %s"
+    IDS_MM_UPDOWN           "Up: %s(%.1f) | Down: %s(%.1f)"
+    IDS_MM_COMPL            "Show completed files in session"
+    IDS_MM_RATIO            "UL:DL :"
+    IDS_MM_OPEN             "Open Mini-Mule on minimize to tray"
+    IDS_MM_GROUP            "TBH Mini-Mule"
+    // <== TBH: minimule - Max
+    // ==> Copy feedback feature [MorphXT] - Stulle
+    IDS_COPYFEEDBACK        "Yayým raporunu panoya kopyala"
+    IDS_COPYFEEDBACK_US     "Copy feedback to clipboard (US)"
+    IDS_FEEDBACK_TRANSFERRED "Aktarýlmýþ"
+    IDS_FEEDBACK_REQUESTED  "Ýstekler"
+    IDS_FEEDBACK_ACCEPTED   "Kabul Olan Gönderme"
+    IDS_FEEDBACK_FROM       "%s kullanýcýsýnýn raporu, [%s]"
+    IDS_FEEDBACK_FILENAME   "Dosya ismi"
+    IDS_FEEDBACK_FILETYPE   "Dosya türü"
+    IDS_FEEDBACK_FILESIZE   "Boyut"
+    IDS_FEEDBACK_DOWNLOADED "Ýndirilmiþ"
+    IDS_FEEDBACK_TOTAL      "Toplam kaynak"
+    IDS_FEEDBACK_AVAILABLE  "Kullanýþlý kaynak"
+    IDS_FEEDBACK_NONEEDPART "Gereksiz parçalara sahip kaynak"
+    IDS_FEEDBACK_COMPLETE   "Tam kaynaklar"
+    IDS_FEEDBACK_ON_QUEUE   "Sýradaki"
+    IDS_FEEDBACK_ALL_TRANSFERRED "Transferred (all files)"
+    // <== Copy feedback feature [MorphXT] - Stulle
+    // ==> Simple cleanup [MorphXT] - Stulle
+    IDS_CHECKDOTTOSPACE     "Convert ""."" to "" """
+    IDS_CHECKUNDERLINETOSPACE "Convert ""_"" to "" """
+    IDS_CHECKCONVERTAPOSTROPHES 
+                            "Convert wrong apostrophes ""´"", ""`"" to standard apostrophes "" ' """
+    IDS_CHECKCONVERTHEX     "Convert hexadecimal numbers ""%xx"" back to characters"
+    IDS_CHECKSEARCHANDREPLACE "Search and Replace:"
+    IDS_SC_SEARCHFOR        "Search for:"
+    IDS_SC_REPLACEBY        "Replace by:"
+    IDS_CHECKCASESENSITIVE  "Case sensitive search"
+    IDS_CHECKCHARACTERREPLACE "Replace characters:"
+    IDS_REPLACECHAR         "Replace"
+    IDS_REPLACECHARBY       "by"
+    IDS_SC_ADD              "&Add"
+    IDS_SC_EDIT             "&Edit"
+    IDS_SC_DELETE           "&Delete"
+    IDS_SEARCHFORCHAR       "Search for"
+    IDS_REPLACEBYCHAR       "Replace by"
+    IDS_SC_HEADLINE         "Simple cleanup"
+    // <== Simple cleanup [MorphXT] - Stulle
+    // ==> Startupsound [Commander] - mav744
+    IDS_STARTUPSOUND        "Baþlangýç sesi"
+    IDS_MISSING_STARTUPSOUND 
+                            "startupsound.wav kayýp! Bilgi: 'startupsound.wav' dosyasý config dizininde olmalý"
+    // <== Startupsound [Commander] - mav744
+    IDS_COMPRESS_LVL        "SýkýþtýrmaDerecesi (1-9) (0 = kapalý)" // Adjust Compress Level [Stulle] - Stulle
+    // ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+    IDS_CAT_MINIMUM         "Asgari"
+    IDS_CAT_MAXIMUM         "Azami"
+    IDS_CAT_DLGHELP         "Seçili kutular, yeni indirmelerin atanacaðý kategorilerin hangi kýstaslara göre seçileceðini belirtir."
+    IDS_CAT_FILTERS         "Kategori süzgeçleri"
+    IDS_CAT_RS              "Kalan boyut (MB)"
+    IDS_CAT_FS              "     Dosya boyutu (MB)"
+    IDS_CAT_RT              "Kalan zaman (dk)"
+    IDS_CAT_SC              "Kaynak miktarý"
+    IDS_CAT_ASC             "Geçerli kaynak miktarý"
+    IDS_CAT_THISCAT         "Bu kategori"
+    IDS_CAT_SUSPENDFILTERS  "Görünüm filtreleri devre dýþý"
+    IDS_CAT_FROMCATSINFO    "You assign all of the files in this category to other categories before you can set this category to view All or All Unassigned!"
+    IDS_CAT_FROMCATSCAP     "Unassign files"
+    IDS_CAT_FILTERSACTIVE   "Filters active"
+    IDS_CAT_FILTERSSUSP     "Filters suspended"
+    IDS_CAT_SETORDER        "Doðrusal önceliði ayarla"
+    IDS_CAT_ORDER           "Sýfýr ya da sýfýrdan büyük bir tam sayý giriniz.  Düþük deðerler daha erken devam ettirilecektir."
+    IDS_CAT_PAUSEDSHOWN     " | Paused shown"
+    IDS_CAT_PAUSEDHIDDEN    " | Paused hidden"
+    IDS_CAT_COLCATEGORY     "Cat"
+    IDS_CAT_COLORDER        "LP"
+    IDS_CAT_MNUAUTOINC      "Seçilenleri otomatik sýrala"
+    IDS_CAT_MNUSTEPTHRU     "Seçilenleri adým adým ayarla"
+    IDS_CAT_MNUALLSAME      "Hepsini tek bir deðere ayarla"
+    IDS_CAT_EXPAUTOINC      "Negatif olamayan bir baþlangýç deðeri giriniz:"
+    IDS_CAT_EXPSTEPTHRU     "Negatif olmayan bir deðer giriniz, Düþük deðerler daha erken devam ettirilecektir.\nDosya:"
+    IDS_CAT_EXPALLSAME      "Seçili tüm dosyalara uygulanacak negatif olmayan bir deðer giriniz:"
+    IDS_CAT_ABORTSTEPTHRU   "Doðrusal öncelik adýmlarýný iptal etmek istiyor musunuz?"
+    IDS_CAT_SHOWPAUSED      "Show paused"
+    IDS_CAT_HIDEPAUSED      "Hide paused"
+    IDS_CAT_SELDLGTXT       "Listeden bir kategori seçin ya da yeni kategori için isim girin:"
+    IDS_CAT_SELDLGCAP       "Kategori Seçimi"
+    IDS_CAT_SHOWCATNAME     "Kategori sütunlarýnda tam isim göster"
+    IDS_CAT_SHOWSELCATDLG   "Kategori seçim ekranýný göster"
+    IDS_CAT_USEACTIVE       "Yeni indirmeleri otomatik olarak aktif kategoriye at"
+    IDS_CAT_AUTORESUMEORD   "Otomatik olarak doðrusal öncelik deðeri ata ve sýrala"
+    IDS_CAT_SMALLFILEDLPUSH "Önce küçük dosyalarý indir (< 150KB)"
+    IDS_CAT_AUTOCAT         "AGeliþmiþ süzgeç belirleyicisi (ayraç: | )"
+    IDS_CAT_USEAUTOCAT      "Yeni indirmeleri eklerken kategori süzgeçlerini kullan"
+    IDS_CAT_MERGE           "Kategoriyi birleþtir"
+    IDS_CAT_GROUP           "Group"
+    IDS_CAT_RESUMEFILEONLYINSAMECAT 
+                            "Duraklatýlmýþ dosyalarý sadece ayný kategoriden devam ettir"
+    IDS_CAT_RESUMENEXT      "Sýradakini devam ettir"
+    IDS_CAT_PAUSELAST       "Sonuncuyu duraklat"
+    IDS_CAT_STOPLAST        "Sonuncuyu durdur"
+    IDS_SCC                 "Akýllý Kategori Yönetimi (SCC)"
+    IDS_DL_MODE             "Devam ettirme biçimi"
+    IDS_LP                  "Doðrusal Öncelik"
+    IDS_CAT_STARTFILESONADD "# kadar dosyayý yeni bir kategoriye eklendiklerinde devam ettir"
+    IDS_DL_MODE_DEFAULT     "Varsayýlan devam ettirme biçimi"
+    IDS_DL_NONE             "Hiçbiri"
+    IDS_SEARCH_INVALIDMINMAX "Invalid units for Min/Max filesize specified"
+    IDS_KEEPCATINCSHARED    "Should incoming directory of removed category be added as share?"
+    IDS_KEEPCATINCSHARED_TITLE "Category removed"
+    IDS_ADD_REMOVED_INC     "Ask if incoming dir of removed cat should be added as share"
+    // <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+    IDS_SHARED_PREFS        "Paylaþýlanlar Yönetimi" // Shared Files Management [Stulle] - Stulle
+    // ==> Spread bars [Slugfiller/MorphXT] - Stulle
+    IDS_SPREAD_BARS         "Daðýtým Çubuðu etkin"
+    IDS_SF_UPLOADED_PARTS   "Daðýtým çubuðu (GÖN parça geçmiþi)"
+    IDS_SF_TURN_PART        "File UL (part)"
+    IDS_SF_TURN_SIMPLE      "File UL (simple)"
+    IDS_SF_FULLUPLOAD       "File UL (full)"
+    IDS_SPREAD_RESET        "Daðýtým Çubuðunu sýfýrla"
+	// <== Spread bars [Slugfiller/MorphXT] - Stulle
+    // ==> HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+    IDS_HIDEOS              "Paylaþtýktan Sonra Gizle"
+    IDS_SHAREONLYTHENEED    "Sadece Gerekeni Paylaþ"
+    IDS_HIDEOVERSHARES      "Parça gizlemeden evvel daðýtým sayýsý (0 = Kapalý)"
+    IDS_SELECTIVESHARE      "Seçmeli Parça Paylaþýmý"
+    IDS_ERR_HIDDENBLOCK     "Gizlenmiþ blok için sordu "
+    // <== HideOS & SOTN [Slugfiller/ MorphXT] - Stulle
+    // ==> PowerShare [ZZ/MorphXT] - Stulle
+    IDS_POWERSHARE_ACTIVATED "Aktif"
+    IDS_POWERSHARE_DISABLED "Pasif"
+    IDS_POWERSHARE_ON_LABEL "Açýk"
+    IDS_POWERSHARE_OFF_LABEL "Kapalý"
+    IDS_POWERSHARE_COLUMN_LABEL "Powershare"
+    IDS_POWERSHARE_PREFIX   "PS"
+    IDS_POWERSHARE          "Powershare"
+    IDS_POWERSHARE_DENIED_LABEL "Reddedildi"
+    IDS_POWERSHARE_ADVISED_LABEL "Önerilir"
+    IDS_POWERSHARE_AUTHORIZED_LABEL "Onaylandý"
+    IDS_POWERSHARE_ACTIVATED_LABEL "Aktif"
+    IDS_POWERSHARE_DISABLED_LABEL "Pasif"
+    IDS_POWERSHARE_AUTO_LABEL "Oto"
+    IDS_POWERSHARE_AUTO     "Otomatik"
+    IDS_POWERSHARE_LIMITED  "Sýnýrlý"
+    IDS_POWERSHARE_LIMIT    "Tam kaynakla sýnýrla"
+	// <== PowerShare [ZZ/MorphXT] - Stulle
+    // ==> Release Bonus [sivka] - Stulle
+    IDS_RELEASE_BONUS_GROUP "Yayým Teþviki"
+    IDS_RELEASE_BONUS_EDIT  "Gün olarak belirle"
+    IDS_RELEASE_BONUS_12    "12s"
+    // <== Release Bonus [sivka] - Stulle
+    IDS_RELEASE_SCORE_ASSURANCE "Assure default score for release files" // Release Score Assurance [Stulle] - Stulle
+    // ==> Design Settings [eWombat/Stulle] - Stulle
+    IDS_COLOR_MASTER1       "Ýstemci biçemi"
+    IDS_COLOR_MASTER2       "Ýndirilen dosya biçemi"
+    IDS_COLOR_MASTER3       "Paylaþýlan dosyalar biçemi"
+    IDS_COLOR_BOX           "Tasarým seçenekleri"
+    IDS_COLOR_FONT_LABEL    "Metin rengi"
+    IDS_COLOR_BACK_LABEL    "Arka plan rengi"
+    IDS_COLOR_B7            "Sunucu Listesi"
+    IDS_COLOR_C1            "Arkadaþlar"
+    IDS_COLOR_S1            "Hâlen indirilmekte"
+    IDS_COLOR_S2            "Powershare kipinde"
+    IDS_COLOR_C2            "PowerShare dosyasý talep eden"
+    IDS_COLOR_C3            "PowerRelease dosyasý talep eden"
+    IDS_COLOR_C4            "Ýndirmekte olduðumuz"
+    IDS_COLOR_C5            "Göndermekte olduðumuz"
+    IDS_COLOR_C6            "Sülük"
+    IDS_COLOR_B1            "Tanýnan Ýstemciler"
+    IDS_COLOR_MASTER5       "Arka plan renkleri"
+    IDS_COLOR_B2            "Ýndiren Ýstemciler"
+    IDS_COLOR_B3            "Beklemedeki Ýstemciler"
+    IDS_COLOR_B4            "Gönderilen Ýstemciler"
+    IDS_COLOR_B5            "Ýndirilen Dosyalar"
+    IDS_COLOR_B6            "Paylaþýlan Dosyalar"
+    IDS_COLOR_C7            "DüþükID"
+    IDS_COLOR_C8            "Positive Rating"
+    IDS_COLOR_ON            "Açýk"
+    IDS_COLOR_OFF           "Kapalý"
+    IDS_COLOR_MASTER4       "Sunucu biçemleri"
+    IDS_COLOR_SE1           "Þu an baðlý olunan"
+    IDS_COLOR_SE2           "Sabit sunucu"
+    IDS_COLOR_SE3           "Süzülmüþ sunucu"
+    IDS_COLOR_SE4           "Ölü sunucu"
+    IDS_COLOR_SE5           "Güvenilmez sunucu"
+    IDS_COLOR_W1            "Kademlia penceresi"
+    IDS_COLOR_W2            "Sunucu penceresi"
+    IDS_COLOR_W3            "Aktarýmlar penceresi"
+    IDS_COLOR_W4            "Arama penceresi"
+    IDS_COLOR_W5            "Paylaþýlanlar penceresi"
+    IDS_COLOR_W6            "Mesajlar penceresi"
+    IDS_COLOR_W7            "IRC penceresi"
+    IDS_COLOR_W8            "Ýstatistik penceresi"
+    IDS_COLOR_W9            "Statusbar"
+    IDS_COLOR_MASTER6       "Pencere biçemleri"
+    IDS_COLOR_W10           "Araç Çubuðu"
+    IDS_COLOR_WARNING       "You are using Windows XP or higher. The statusbar and the toolbar will only change colors when the classic style is enabled."
+    IDS_COLOR_S3            "Paylaþýlabilir"
+    // <== Design Settings [eWombat/Stulle] - Stulle
+    // ==> Limit PS by amount of data uploaded [Stulle] - Stulle
+    IDS_PS_AMOUNT_LIMIT         "Gönderilen veri miktarýyla sýnýrla"
+    IDS_PS_AMOUNT_LIMIT_LABEL   "Gönderilen veri miktarýyla sýnýrla (azami 10000%)"
+    IDS_PS_AMOUNT_LIMIT_WRONG   "Geçersiz deðer girildi."
+    // <== Limit PS by amount of data uploaded [Stulle] - Stulle
+    // ==> Enforce Ratio [Stulle] - Stulle
+    IDS_RATIO_GROUP             "GÖN:ÝND Oraný"
+    IDS_ENFORCE_RATIO           "Her zaman oraný korumaya zorla"
+    IDS_RATIO_VALUE             "Azami oran 1"
+    IDS_DL_SES_RATIO            "Session ratio based limit activated"
+    IDS_DL_LIMIT_DEF            "Configured download limit active"
+    IDS_DL_UNL_NOUL             "Download unrestricted (no upload possible)"
+    IDS_DL_UNL_13RATIO          "Download unlimited because ratio < 1:3"
+    IDS_DL_NAFC_LIMIT           "Download limited by NAFC"
+    IDS_DL_RATIO_SRC            "Global Max Hardlimit not accepted"
+    IDS_DL_RATIO_ENF            "Enforced ratio"
+    IDS_DL_RATIO_LIMIT          "Current UL:DL ratio is max. 1"
+    // <== Enforce Ratio [Stulle] - Stulle
+    // ==> Tabbed Preferences [TPT] - Stulle
+    IDS_BACKUP                  "Yedekleme"
+    // <== Tabbed Preferences [TPT] - Stulle
+    IDS_ERR_HIDDENSOURCE    "Ýhtiyacý olaný söylemeden gizlenmiþ bir blok için sordu" // Anti Anti HideOS & SOTN [SiRoB] - Stulle
+    // ==> Improved ICS-Firewall support [MoNKi] - Max
+    IDS_ICFSUPPORT          "ICF Desteði Etkin"
+    IDS_ICFSUPPORTFIRST     "eMule has detected Windows Internet Connection Firewall (ICF) running on your machine,\n\rDo you want eMule to automatically configure it? (Recomended)"
+    IDS_ICF                 "Windows Güvenlik Duvarý (ICF)"
+    IDS_ICF_SERVERUDP       """Sunucu UDP"" portu için kural ekle"
+    // <== Improved ICS-Firewall support [MoNKi] - Max
+    // ==> Invisible Mode [TPT/MoNKi] - Stulle
+    IDS_CTRLKEY             "CTRL"
+    IDS_ALTKEY              "ALT"
+    IDS_SHIFTKEY            "SHIFT"
+    IDS_INVMODE             "Görünmez Kipi Etkinleþtir"
+    IDS_INVMODE_MODKEY      "Tuþ kombinasyonu:"
+    IDS_INVMODE_VKEY        "Tuþ:"
+    IDS_INVMODE_GROUP       "Görünmez Kip"
+    IDS_INVMODE_START       "Görünmez olarak baþla"
+    // <== Invisible Mode [TPT/MoNKi] - Stulle
+    // ==> UPnP support [MoNKi] - leuk_he
+    IDS_UPNP_INIT           "UPnP: Baþlatýldý %s:%d, aygýtlar aranýyor..."
+    IDS_UPNP_FAILEDINIT     "UPnP: port %d [%s] için UPnP baþlatýlamadý"
+    IDS_UPNP_PUBLICIP       "UPnP: Your IP is a public internet IP, UPnP will be disabled"
+    IDS_UPNP_FAILEDREGISTER "UPnP: Failed registering control point [%s]"
+    IDS_UPNP_NEWDEVICE      "UPnP: Uyumlu yeni bir aygýt bulundu: %s"
+    IDS_UPNP_VERBOSELOG     "UPnP olaylarýný günlükle"
+    IDS_UPNP_NETSTATUS      "Upnp"
+    IDS_UPNP_GROUP          "Evrensel Tak ve Çalýþtýr (UPnP)"
+    IDS_UPNP_ENABLE         "UPnP Aktif"
+    IDS_UPNP_ENABLE_WEB     "Web arabirim portu için UPnP desteði etkin"
+    IDS_UPNPBINDADDR        "UPnP host address bind to"
+    IDS_UPNP_INFO_NONEED    "Baþarýsýz oldu ya da gerek duyulmadý"
+    IDS_UPNP_INFOUNINIT     ",baþlatýlmadý\r\n"
+    IDS_UPNP_INFOENABLED    ",açýk\r\n"
+    IDS_UPNP_INFODISABLED   ",kapalý\r\n"
+    IDS_UPNP_INFOSTANDBY    "Aygýt bulunamadý\r\n"
+    IDS_UPNFORCEUPDATE      "Düzenli olarak güncellemeye zorla"
+    // <== UPnP support [MoNKi] - leuk_he
+    // ==> Random Ports [MoNKi] - Stulle
+    IDS_RND_PORT_GROUP      "Rastgele Port"
+    IDS_RND_PORT_FIRST      "En küçük Port"
+    IDS_RND_PORT_LAST       "En büyük Port"
+    IDS_RND_PORT_RESET      "Random ports safe restart time"
+    // <== Random Ports [MoNKi] - Stulle
+    // ==> Support page in preferences [Stulle] - Stulle
+    IDS_SUPPORT             "Destek"
+	IDS_HOMEPAGE            "Ana sayfa"
+    IDS_BOARD_GER           "Almanca destek forumu"
+    IDS_BOARD_ENG           "Ýngilizce destek forumu"
+    IDS_XTREME              "Xtreme Mod Ana sayfasý"
+    // <== Support page in preferences [Stulle] - Stulle
+    // ==> Automatic shared files updater [MoNKi] - Stulle
+    IDS_AUTO_SHARED_UPDATER "Paylaþýlanlarý otomatik yenile"
+    IDS_ASFU_RELOADTIME     "ASFU: Paylaþýlan dizinlerde deðiþiklik tespit edildi, %d saniye içerisinde paylaþýlanlar yeniden yüklenecek..."
+    IDS_ASFU_DELAY          "ASFU: Tamamlanmakta olan bir dosya tespit edildi, yeniden yükleme iþlemi erteleniyor..."
+    IDS_ASFU_RELOAD         "Paylaþýlan dizinlerde deðiþiklik tespit edildi. Paylaþýlanlar yeniden yükleniyor..."
+    IDS_ASFU_RELOADING      "ASFU: Yeniden yükleniyor..."
+    IDS_ASFU_SINGLE         "Tek dosya paylaþýmý içeren klasörleri izle"
+    IDS_ASFU_TIMEBETWEEN    "Ýki yenileme arasýnda geçecek zaman [sn]"
+    // <== Automatic shared files updater [MoNKi] - Stulle
+    // ==> Anti Uploader Ban [Stulle] - Stulle
+    IDS_UNBAN_UPLOADER      "Yasaklý muhafiyet sýnýrý(MB) [0=devre dýþý]"
+    IDS_ANTI_CASE_1         "GÖN >= Sýnýr"
+    IDS_ANTI_CASE_2         "GÖN-ÝND >= Sýnýr"
+    IDS_ANTI_CASE_3         "GÖN-ÝND >= Sýnýr 1:1 olana dek"
+    // <== Anti Uploader Ban [Stulle] - Stulle
+    // ==> Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+    IDS_EMULATOR_GROUP      "Diðer istemcilere benze"
+    IDS_EMULATE_ML          "MLDonkeylere benze"
+    IDS_EMULATE_DONK        "eDonkeylere benze"
+    IDS_EMULATE_DONK_HYB    "eDonkey-hybridlere benze"
+    IDS_EMULATE_SHA         "Sharezaslara benze"
+    IDS_EMULATE_PHANT       "lPhantlara benze"
+    IDS_EMULATE_LOG         "Benzeme olaylarýný günlükle"
+    // <== Emulate others [WiZaRd/Spike/shadow2004] - Stulle
+    // ==> Spread Credits Slot [Stulle] - Stulle
+    IDS_SPREAD_CREDITS_SLOT "Kredi daðýtma slotu (SCS)"
+    IDS_SPREAD_CREDITS_SLOT_COUNTER "Her X slotda bir Kredi daðýtma slotu"
+    // <== Spread Credits Slot [Stulle] - Stulle
+    // ==> Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+    IDS_PAYBACKFIRST        "Önce Ödeþ"
+    IDS_PAYBACKFIRSTLIMIT   "Tetikleme miktarý (Öntanýmlý 10MB)"
+    IDS_PAYBACKFIRST2       "PBF for clients without SUI"
+    IDS_PAYBACKFIRSTLIMIT2  "Amount before triggering (Default 50MB)"
+    // <== Pay Back First [AndCycle/SiRoB/Stulle] - Stulle
+    IDS_IGNORE_THIRD        "Don't reserve 1/3 of your uploadlimit for emule" // Do not reserve 1/3 of your uploadlimit for emule [Stulle] - Stulle
+    IDS_UL_THRES            "Sadece son 30dk içerisinde soran kullanýcýlarý kabul et" // Disable accepting only clients who asked within last 30min [Stulle] - Stulle
+    IDS_FOLLOWTHEMAJORITY   "Çoðunluða uy" // Follow The Majority [AndCycle/Stulle] - Stulle
+    IDS_FAIR_PLAY           "Adil Oyun - X katý kadar yolla(0 = kapalý)" // Fair Play [AndCycle/Stulle] - Stulle
+    IDS_MAX_SLOTSPEED       "Slot hýzýný her zaman en yüksekte tut" // Alwasy maximize slot speed [Stulle] - Stulle
+    IDS_REASK_FILE_SRC      "Kaynaklarý yeniden sorgulama zamaný [29-55 dk.]" // Timer for ReAsk File Sources [Stulle] - Stulle
+    // ==> Advanced Options [Official/MorphXT] - Stulle
+    IDS_MINIMULEAUTOCLOSE   "MiniMule auto close"
+    IDS_MINIMULETRANSPARENCY "MiniMule transparency"
+    IDS_CHECKCOMCTL32       "Check Comctl32.dll"
+    IDS_CHECKSHELL32        "Check Shell32.dll"
+    IDS_IGNOREINSTANCES     "Ignore instances"
+    IDS_NOTIFIERMAILENCRYPTCERTNAME "Mail notifier encryption certificat name"
+    IDS_MEDIAINFO_MEDIAINFODLLPATH "Path for mediainfo.dll"
+    IDS_MEDIAINFO_RIFF      "Use mediainfo.dll to recognise 'avi' files"
+    IDS_MEDIAINFO_ID3LIB    "Use mediainfo.dll or ID3Lib to check mpeg files for mpeg header"
+    IDS_MAXLOGBUFF          "Max memory for log display"
+    IDS_MAXCHATHISTORY      "Max lines saved in IRC chat"
+    IDS_PREVIEWSMALLBLOCKS  "Preview small blocks (for VLC)"
+    IDS_RESTORELASTMAINWNDDLG "Restore last window on startup"
+    IDS_RESTORELASTLOGPANE  "Restore last log pane on startup"
+    IDS_PREVIEWCOPIEDARCHIVES "Preview copied archives"
+    IDS_STRAIGHTWINDOWSTYLES "Straight window styles (might require restart)"
+    IDS_LOGFILEFORMAT       "Log file format (enabled=UTF-8, disabled=Unicode)"
+    IDS_RTLWINDOWSLAYOUT    "Right-To-Left windows layout"
+    IDS_PREVIEWONICONDBLCLK "Simgeye çift týklayýnca önizleme yap"
+    IDS_INTERNETSECURITYZONE "Internet Security Zone"
+    IDS_TXTEDITOR           "Default editor for webservices and IPFilter.dat"
+    IDS_SERVERUDPPORT       "Server UDP Port"
+    IDS_MAXMSGSESSIONS      "Max open chat sessions"
+    IDS_PREFERRESTRICTEDOVERUSER "Prefer restricted over user"
+    IDS_WEBFILEUPLOADSIZELIMITMB "Limit for file Upload via Web Interface in MB (0=none)"
+    IDS_HIGHRESTIMER        "High resolution timer"
+    IDS_ALLOWEDIPS          "AllowedIPs webserver (seperated by ;)"
+    IDS_REMOVEFILESTOBIN    "Remove files to bin"
+    IDS_DEBUGSEARCHDETAILLEVEL "Debug search detail level"
+    IDS_CRYPTTCPPADDINGLENGTH "CryptTCPPaddingLength=[1-254]"
+    IDS_USEUSERSORTEDSERVERLIST "User sorted server list"
+    IDS_MINIMULE            "MiniMule"
+    IDS_TRUSTEVERYHASH      "Trust every AICH Hash (current session)"
+    IDS_INSPECTALLFILETYPES "Inspect all file headers for file type"
+    IDS_X_ADJUSTNTFSDAYLIGHTFILETIME "Adjust NTFS daylight file time"
+    IDS_X_DATETIMEFORMAT    "Date&Time format"
+    IDS_X_DATETIMEFORMAT4LOG "Date&Time format for log"
+    IDS_X_LOGWARNING        "Log warning color"
+    IDS_X_LOGSUCCESS        "Log success color"
+    IDS_X_LOGERROR          "Log error color"
+    IDS_X_ICH               "Intelligent Corruption Handing (ICH)"
+    IDS_X_DONTCOMPRESSAVI   "Don't compress avi"
+    IDS_X_SHOWCOPYED2KLINK  "Show 'copy ed2k link' command"
+    IDS_X_ICON_FLASH_ON_NEW_MESSAGE "Flash tray icon on new message"
+    IDS_X_SHOWVERTICALHOURMARKERS "Stats- Show vertical hour markers"
+    IDS_X_REBARTOOLBAR      "* ReBar Toolbar"
+    IDS_BINDADDR            "Bind emule to interface"
+    IDS_MEDIAINFO_MEDIADET  "Use Media Detector (MediaDet) to retrieve information about media files"
+    IDS_MEDIAINFO_RM        "Use mediainfo.dll to recognise Real Media files"
+    IDS_MEDIAINFO_WM        "Use mediainfo.dll to recognise Windows Media files"
+    IDS_X_DATETIMEFORMAT4LIST "Date&Time format for lists"
+    IDS_UPDATEQUEUE         "Sýra listesini gerçek zamanlý güncelleme"
+    IDS_REPAINTGRAPHS       "Yeni boyutta istatistik çizelgesini yeniden oluþturma"
+    IDS_EXTRAPREVIEWWITHMENU "Display Preview With menu in root context menu"
+    IDS_SHOWUPDOWNICONINTASKBAR "Use overlay to indicate up/down in taskbar"
+    IDS_FORCESPEEDSTOKB     "Display all speed values in KB/s"
+    IDS_X_FILE_BUFFER_TIME_LIMIT "File Buffer Time Limit (in sec)"
+    IDS_X_REARRANGEKADSEARCH "Rearrange KAD search keywords"
+    IDS_PW_BEEP             "Hatalarda sesle uyar"
+    IDS_MSGONLYSEC          "Sadece geçerli istemcilerden kabul et"
+    IDS_DISABLEPEERACHE     "PeerCache'den indirme etkisiz"
+    IDS_KEEPUNAVAILABLEFIXEDSHAREDDIRS "Keep unavailable directories on fixed drives"
+    // <== Advanced Options [Official/MorphXT] - Stulle
+    // ==> Advanced Updates [MorphXT/Stulle] - Stulle
+    IDS_UPDATEANTILEECHERONSTART "Baþlangýçta antiLeech.dll güncelle"
+    IDS_AUTOUPWEEK          "Hafalýk güncelle"
+    IDS_URL_FOR_UPDATING    "Güncelleme için URL"
+    IDS_UPDATEIPCURL        "Güncelle"
+    IDS_UPDATEIPFILTERONSTART "Baþlangýçta IPFilter.dat güncelle"
+    IDS_RESET               "Sýfýrla"
+    IDS_COUNTRY             "Ülke"
+    IDS_AUTOUPIP2COUNTRY    "Baþlangýçta Ip-to-country.csv güncelle"
+    IDS_SCHED_UPDATE_IPCONFIG_LOG "Zamanlanmýþ IPFILTER.DAT-güncelleme iþlemi baþlatýldý."
+    IDS_SCHED_UPDATE_ANTILEECH_LOG "Zamanlanmýþ antiLeech.dll-güncelleme iþlemi baþlatýldý."
+    IDS_SCHED_UPDATE_IPCONFIG "IPFILTER.DAT-dosyasýný güncelle"
+    IDS_SCHED_UPDATE_ANTILEECH "antiLeech.dll-dosyasýný güncelle"
+    IDS_SCHED_UPDATE_WARNING 
+                            "Að yoðunluðunu düþük tutmak için otomatik güncelleme iþlemlerini çok sýk olarak ayarlamayýnýz!\r\nHaftada bir kere yeterli olacaktýr!"
+    IDS_SCHED_WARNENDTIME   "Bir kerelik olaylar için bitiþ zamaný ile baþlangýç zamaný ayný olmalýdýr"
+    IDS_IP2COUNTRY_DWNFILE  "IP2Country dosyasý indiriliyor"
+    IDS_IP2COUNTRY_UPUNLOAD "Güncelleme iþlemi nedeniyle IP2Country.csv kaldýrýldý"
+    IDS_IP2COUNTRY_UPLOAD   "Baþarýlý bir güncelleme ardýndan IP2Country.csv yüklendi"
+    IDS_LOG_ERRDWN          "Ýndirilirken hata meydana geldi: %s"
+    IDS_IP2COUNTRY_ERROR7   """%s"" IP to Country ZIP dosyasýndan IP to Country dosyasý çýkartýlamadý."
+    IDS_IP2COUNTRY_ERROR8   "Ýndirilen ""%s"" IP to Country ZIP dosyasý beklenmedik içeriðe sahip."
+    IDS_AUTODLPFAILED       "DLP  sürüm kontrolü baþarýsýz."
+    IDS_ANTILEECH_DWNFILE   "DLP dosyasý indiriliyor"
+    IDS_AUTOIPFILTERFAILED  "IPFilter sürüm kontrolü baþarýsýz."
+    // <== Advanced Updates [MorphXT/Stulle] - Stulle
+    // ==> Links for Server list and nodes file [Stulle] - Stulle
+    IDS_NODESFILEBUTTON     "Nodes Dosyasý"
+    IDS_SERVER_LISTS        "Sunucu listeleri"
+    // <== Links for Server list and nodes file [Stulle] - Stulle
+    IDS_SHOW_SPEED_METER    "Araç çubuðunda hýz grafiði göster" // High resolution speedmeter on toolbar [eFMod/Stulle] - Myth88
+    // ==> Control download priority [tommy_gun/iONiX] - MyTh88
+    IDS_AUTO_DOWN_GROUP     "Ýndirme Öncelikleri"
+    IDS_AUTO_DOWN_PERC      "Tamamlanmýþ yüzdeye göre"
+    IDS_AUTO_DOWN_PERC_VAL  "Tamamlanmýþ yüzde"
+    IDS_AUTO_DOWN_SIZE      "Kalan boyuta göre"
+    IDS_AUTO_DOWN_SIZE_VAL  "Kalan boyut miktarý (MB)"
+    IDS_AUTO_DOWN_PRIO      "Önceliði deðiþtir"
+    // <== Control download priority [tommy_gun/iONiX] - MyTh88
+    // ==> XP Style Menu [Xanatos] - Stulle
+    IDS_MENU_PREVIEW        "Preview"
+    IDS_HISTORY             "History Tasks"
+    IDS_COLUMNS             "Columns"
+    IDS_PS_LIMITED_SRC      "Kaynaða göre sýnýr"
+    IDS_PS_LIMITED_AMNT     "Miktara göre sýnýr"
+    IDS_FUNCTION            "Function"
+    IDS_RELEASER            "Sunum özellikleri"
+    // <== XP Style Menu [Xanatos] - Stulle
+    IDS_FINECS              "Fine Credit System (Threshold: 4 chunks)" // Modified FineCS [CiccioBastardo/Stulle] - Stulle
+    IDS_IPFILTERWHITELOADED "%u IPs loaded to the IP Filter White List" // IP Filter White List [Stulle] - Stulle
+    IDS_TRAY_COMPLETE       "Tamamlanmýþ dosyalarý sistem tabla simgesinde göster" // Completed in Tray [Stulle] - Stulle
+     // ==> Feedback personalization [Stulle] - Stulle
+    IDS_COLOR_FEEDBACK      "Sunum Raporunu kiþiselleþtir"
+    IDS_COLOR_MASTER7       "Sunum Raporu"
+    IDS_COLOR_F1            "Baþlýk"
+    IDS_COLOR_F2            "Ýsim"
+    IDS_COLOR_F3            "Dosya tür ve boyutu"
+    IDS_COLOR_F4            "Ýndirilme durumu"
+    IDS_COLOR_F5            "Aktarýlmýþ"
+    IDS_COLOR_F6            "Ýstekler"
+    IDS_COLOR_F7            "Kaynaklar (Tamamlanmamýþ dosyalar için)"
+    IDS_COLOR_F8            "Sýradaki"
+    // <== Feedback personalization [Stulle] - Stulle
+    IDS_STATIC_ICON         "Sistem tablasýnda her zaman simge göster" // Static Tray Icon - MyTh88
+	IDS_DATEFILENAMELOG     "Date as part of File Name of log file." // Date File Name Log [AndCycle] - Stulle
+    // ==> Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+    IDS_ADVADMIN_GROUP      "Geliþmiþ Web Sunucusu Ayarlarý"
+    IDS_ADVADMIN_ACC        "Hesap:"
+    IDS_ADVADMIN_DELETE     "Hesap Sil"
+    IDS_ADVADMIN_NEW        "Yeni Hesap"
+    IDS_ADVADMIN_KAD        "Kad - Eriþimi?"
+    IDS_ADVADMIN_TRANSFER   "Aktarýmlar - Eriþimi?"
+    IDS_ADVADMIN_SEARCH     "Arama - Eriþimi?"
+    IDS_ADVADMIN_SERVER     "Sunucu - Eriþimi?"
+    IDS_ADVADMIN_SHARED     "Paylaþýlanlar - Eriþimi?"
+    IDS_ADVADMIN_STATS      "Ýstatistikler - Eriþimi?"
+    IDS_ADVADMIN_PREFS      "Seçenekler - Eriþimi?"
+    IDS_ADVADMIN_PASS       "Parola:"
+    IDS_ADVADMIN_USER       "Kull. adý:"
+    IDS_ADVADMIN_CAT        "Kategoriler (ayraç |):"
+    IDS_WS_COOKIE_LOGGEDIN  "Oturumu açýk tut:"
+	IDS_WS_COOKIE_LASTUSER  "Son kullanýcýyý hatýrla:"
+    IDS_ADVADMIN_NOTE       "Uyarý: Bu bölümü etkinleþtirebilmek için çoklu kullanýcý Webtemplates dosyasýný kullanmak zorundasýnýz\n\n"
+    IDS_ADVADMIN_USERLEVEL  "Kull. seviyesi:"
+    IDS_ADVADMIN_OPERATOR   "Operatör"
+    IDS_ADVADMIN_ADMIN      "Yönetici"
+    IDS_ADVADMIN_HIADMIN    "Yük-Yönetici"
+    IDS_ADVADMINENABLED     "Çoklu kullanýcýlý Web Sunucusu yetki yönetimini aç"
+    IDS_ADVADMIN_GUEST      "Ziyaretçi"
+    IDS_ADVADMIN_DFILES     "Dosya indirme - Eriþimi?"
+    // <== Ionix advanced (multiuser) webserver [iOniX/Aireoreion/wizard/leuk_he/Stulle] - Stulle
+    // ==> Tabbed WebInterface settings panel [Stulle] - Stulle
+    IDS_TAB_WEB_SERVER      "Web Sunucusu"
+    IDS_TAB_MULTI_USER      "Çoklu Kullanýcý"
+   IDS_TAB_NT_SERVICE       "NT Hizmeti"
+    // <== Tabbed WebInterface settings panel [Stulle] - Stulle
+    IDS_WS_FAILED_LOGIN     "Baþarýsýz oturum açma giriþiminiz yüzünden 15 dk boyunca yasaklandýnýz!" // Failed login screen for WebInterface [SiRoB/CommanderGer/Stulle] - Stulle
+    // ==> Run eMule as NT Service [leuk_he/Stulle] - Stulle
+    IDS_SVC_RUNNINGASSERVICE "Þu an hizmet olarak çalýþmakta."
+    IDS_SVC_ACCESSDENIED    "Hizmetlere eriþilemedi."
+    IDS_SVC_NOTINSTALLED    "Hizmet eklenmedi."
+    IDS_SVC_INSTALLED       "Hizmet eklendi."
+    IDS_SVC_INSTALLFAILED   "Ekleme baþarýsýz, günlüðü kontrol ediniz."
+    IDS_SVC_UNINSTALLFAILED "Kaldýrma baþarýsýz, günlüðü kontrol ediniz."
+    IDS_SVC_INSTALLED_DISABLED "Hizmet devre dýþý býrakýldý. (silinmek için iþaretlendi?)."
+    IDS_SVC_INSTALLSERVICE  "Ekle"
+    IDS_SVC_SERVERUNINSTALL "Kaldýr"
+    IDS_SVC_STARTWITHSYSTEM "Sistemle bereber baþla"
+    IDS_SVC_SETTINGS        "Hizmet kullanýmýna has özellikleri ayarla"
+    IDS_SVC_RUNBROWSER      "Web Sunucusuna baðlan"
+    IDS_SVC_REPLACESERVICE  "Hizmeti durdur ve arabirimi baþlat "
+    IDS_SVC_ONSTARTBOX      "eMule baþlangýcýnda."
+    IDS_SVC_STARTUPBOX      "Baþlangýç"
+    IDS_SVC_MANUALSTART     "El ile baþlat"
+    IDS_SVC_CURRENT_STATUS_LABEL "Þu anki Durum"
+   IDS_APPLY_SETTINGS       "Gerekli ayarlamalar þimdi uygulansýn mý?"
+    IDS_CHANGEUSERASSERVICE "You will have to change the user login of the service manually, or save config files in a program directory"
+    IDS_SERVICE_OPT_GROUP   "NT Service optimizations"
+    IDS_SERVICE_OPT_LABEL   "Optimization level:"
+    IDS_SERVICE_OPT_NONE    "None"
+    IDS_SERVICE_OPT_BASIC   "Basic"
+    IDS_SERVICE_OPT_LISTS   "Lists except Server"
+    IDS_SERVICE_OPT_FULL    "Full"
+    IDS_SVC_STRT_MGR_FAIL   "Service started succesfully but failed to tell servicemanger. Quitting."
+    IDS_SVC_PAUSE_MGR_FAIL  "Service paused succesfully but failed to tell servicemanger. Quitting."
+    IDS_SVC_INST_PATH_FAIL  "Unable to install service, no valid path. %s"
+    IDS_SVC_INST_SUCCESS    "Hizmet olarak eklendi."
+    IDS_SVC_INST_FAIL       "Failed to installed as a service: %s"
+    IDS_SVC_SVCCTRL_FAIL    "Failed to connect to Service control: %s"
+    IDS_SVC_STOPPING        "Hizmet durduruluyor"
+    IDS_SVC_STOP_PNDNG      "Service stop pending"
+    IDS_SVC_STOPPED         "Hizmet durduruldu"
+    IDS_SVC_STOP_FAIL       "Hizmeti durdurma baþarýsýz: %s"
+    IDS_SVC_DELETED         "Hizmet kaldýrýldý"
+    IDS_SVC_DELETE_FAIL     "Hizmet kaldýrma baþarýsýz: %s"
+    IDS_SVC_OPEN_FAIL       "Failed to open service: %s"
+    IDS_SVC_TERMINATE       "Terminate service. Error code %d:%s"
+    IDS_SVC_STRTUP_SUCCESS  "Hizmet baþlangýç kipi baþarý ile deðiþtirildi."
+    IDS_SVC_STRTUP_FAIL     "Hizmet baþlangýç kipi deðiþtirme olanaksýz: %s"
+    IDS_SVC_STRTUP_OPN_FAIL "Baþlangýç kipini deðiþtirmek için hizmet baþlatýlamadý: %s"
+    IDS_SVC_STRTUP_CTRL_FAIL "Failed to connect to service control to change startup mode: %s"
+    IDS_SVC_LINK_PASS_FAIL  "Pass link to webservice: Internetopen error"
+    // <== Run eMule as NT Service [leuk_he/Stulle] - Stulle
+    // ==> Adjustable NT Service Strings - Stulle
+    IDS_SERVICE_STR_GROUP   "NT Hizmet girdileri (boþ = öntanýmlý)"
+    IDS_SERVICE_NAME        "Ýsim (ekleme için)"
+    IDS_SERVICE_DISP_NAME   "Görünen isim"
+    IDS_SERVICE_DESCR       "Açýklama"
+IDS_SERVICE_NAME_CHANGED "Zaten eklenmiþ durumdaki NT Hizmetinin ismini deðiþtirdiniz.\nYaptýðýnýz deðiþikliklerin uygulanabilmesi için eMule bu hizmeti tekrar ekleyecek.\n\nTekrar eklemek için 'Evet' tuþuna basýnýz.\nSadece eklenme ismini deðiþtirmek için 'Hayýr' tuþuna basýnýz.\nYapýlanlarý geri almak için'Ýptal' tuþuna basýnýz."    IDS_SERVICE_STR_CHANGED "NT Service string changed"
+    IDS_SERVICE_DISP_CHANGE_FAIL "Hizmet görünen ismi ya da açýklamasý deðiþtirme baþarýsýz.\nBu girdileri deðiþtirmek için hizmeti tekrar yüklemek ister misiniz?"
+    IDS_SERVICE_STR_CHANGE_FAIL "NT hizmet girdileri deðiþtirme baþarýsýz"
+    IDS_SERVICE_UNINSTALL_FAIL "NT Hizmetini kaldýrma baþarýsýz.\nLütfen günlük mesajlarýný kontrol ediniz.\nTüm deðiþiklikler sýfýrlandý."
+    IDS_SERVICE_UNINSTALL_TITLE "Kaldýrma baþarýsýz"
+    IDS_SERVICE_INSTALL_FAIL "NT Hizmeti ekleme baþarýsýz.\nLütfen günlük mesajlarýný kontrol ediniz ve NT Hizmet bölümünden hizmeti tekrar yüklemeyi deneyiniz."
+    IDS_SERVICE_INSTALL_TITLE "Ekleme baþarýsýz"
+    IDS_SVC_DISP_SUCCESS    "Hizmet görünen ismi baþarý ile deðiþtirildi."
+    IDS_SVC_DISP_FAIL       "Hizmet görünen ismi deðiþtirme olanaksýz: %s"
+    IDS_SVC_DESCR_SUCCESS   "Hizmet açýklamasý baþarý ile deðiþtirildi."
+    IDS_SVC_DESCR_FAIL      "Hizmet açýklamasýný deðiþtirmek olanaksýz: %s"
+    IDS_SVC_STR_OPN_FAIL    "Failed to open service to change displayed strings mode: %s"
+    IDS_SVC_STR_CTRL_FAIL   "Failed to connect to service control to change displayed strings: %s"
+    // <== Adjustable NT Service Strings - Stulle
+    // ==> Extended Prompt on Exit dialog [leuk_he] - Stulle
+    IDS_YESSERVICE          "Evet, eMule hizmetini baþlat"
+    IDS_NOMINIMIZE          "Hayýr, Tablaya at"
+    // <== Extended Prompt on Exit dialog [leuk_he] - Stulle
+    IDS_WS_FRIENDSLOT       "Arkadaþslotu" // Friendslot support for WebInterface [Stulle] - Stulle
+    IDS_VISITMVERSIONCHECK  "\n\nMephisto web sayfasýný ziyaret etmek ister misiniz?"
+    IDS_MVERSIONCHECK       "&Sürüm denetleme (Mephisto)"
+    IDS_NONEWMVERVERSION    "Yeni bir Mephisto sürümü saptanamadý."
+    IDS_NEWMVERSIONAVL      "Yeni bir eMule Mephisto sürümü mevcut! Daha fazla bilgi için proje ana sayfasýný ziyaret ediniz."
+    IDS_NEWMVERSIONAVLPOPUP "Yeni bir eMule Mephisto sürümü mevcut. Yeni sürüm hakkýnda bilgi almak için buraya týklayýnýz!"
+    IDS_MEPHISTO            "Mephisto"
+    IDS_RATE_MEPH           "Mephisto'e oy ver"
+    IDS_SCHEDTEXT_MEPH      "Mephisto oto-güncelleme tarafýndan eklendi"
+END
+
 
 #endif    // Turkish resources
 /////////////////////////////////////////////////////////////////////////////

@@ -23,6 +23,7 @@
 #include "Preferences.h"
 #include "UserMsgs.h"
 #include "SplitterControl.h"
+#include "SharedFileList.h" //Xman [MoNKi: -Downloaded History-]
 
 // id3lib
 #pragma warning(disable:4100) // unreferenced formal parameter
@@ -123,10 +124,14 @@ public:
 		m_hLib = NULL;
 		m_ullVersion = 0;
 		// MediaInfoLib - v0.4.0.1
+		//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+		/*
 		m_pfnMediaInfo4_Open = NULL;
 		m_pfnMediaInfo4_Close = NULL;
 		m_pfnMediaInfo4_Get = NULL;
 		m_pfnMediaInfo4_Count_Get = NULL;
+		*/
+		//DolphinX :: Remove MediaInfo 0.4 Support :: End
 		// MediaInfoLib - v0.5 - v0.6.1
 		m_pfnMediaInfo5_Open = NULL;
 		// MediaInfoLib - v0.7+
@@ -149,7 +154,12 @@ public:
 		{
 			m_bInitialized = TRUE;
 
+			// ==> Advanced Options [Official/MorphXT] - Stulle
+			/*
 			CString strPath = theApp.GetProfileString(_T("eMule"), _T("MediaInfo_MediaInfoDllPath"), _T("MEDIAINFO.DLL"));
+			*/
+			CString strPath = CPreferences::sMediaInfo_MediaInfoDllPath;
+			// <== Advanced Options [Official/MorphXT] - Stulle
 			if (strPath == _T("<noload>"))
 				return false;
 			m_hLib = LoadLibrary(strPath);
@@ -183,6 +193,8 @@ public:
 			if (m_hLib != NULL)
 			{
 				ULONGLONG ullVersion = GetModuleVersion(m_hLib);
+				//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+				/*
 				if (ullVersion == 0) // MediaInfoLib - v0.4.0.1 does not have a Win32 version info resource record
 				{
 					char* (__stdcall *fpMediaInfo4_Info_Version)();
@@ -216,6 +228,9 @@ public:
 				// ---
 				// eMule currently handles v0.5.1.0, v0.6.0.0, v0.6.1.0
 				else if (ullVersion >= MAKEDLLVERULL(0, 5, 0, 0) && ullVersion < MAKEDLLVERULL(0, 7, 0, 0))
+				*/
+				if (ullVersion >= MAKEDLLVERULL(0, 5, 0, 0) && ullVersion < MAKEDLLVERULL(0, 7, 0, 0))
+				//DolphinX :: Remove MediaInfo 0.4 Support :: End
 				{
 					// Don't use 'MediaInfo_Info_Version' with version v0.5+. This function is exported,
 					// can be called, but does not return a valid version string..
@@ -240,6 +255,9 @@ public:
 					(FARPROC &)m_pfnMediaInfo_Open = GetProcAddress(m_hLib, "MediaInfo_Open");
 					(FARPROC &)m_pfnMediaInfo_Close = GetProcAddress(m_hLib, "MediaInfo_Close");
 					(FARPROC &)m_pfnMediaInfo_Get = GetProcAddress(m_hLib, "MediaInfo_Get");
+					// ==> Advanced Options [Official/MorphXT] - Stulle
+					(FARPROC &)m_pfnMediaInfo_inform = GetProcAddress(m_hLib, "MediaInfo_Inform");
+					// <== Advanced Options [Official/MorphXT] - Stulle
 					(FARPROC &)m_pfnMediaInfo_Count_Get = GetProcAddress(m_hLib, "MediaInfo_Count_Get");
 					if (m_pfnMediaInfo_New && m_pfnMediaInfo_Delete && m_pfnMediaInfo_Open && m_pfnMediaInfo_Close && m_pfnMediaInfo_Get) {
 						m_ullVersion = ullVersion;
@@ -266,9 +284,14 @@ public:
 
 	void* Open(LPCTSTR File)
 	{
+		//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+		/*
 		if (m_pfnMediaInfo4_Open)
 			return (*m_pfnMediaInfo4_Open)(CT2A(File));
 		else if (m_pfnMediaInfo5_Open)
+		*/
+		if (m_pfnMediaInfo5_Open)
+		//DolphinX :: Remove MediaInfo 0.4 Support :: End
 			return (*m_pfnMediaInfo5_Open)(File);
 		else if (m_pfnMediaInfo_New) {
 			void* Handle = (*m_pfnMediaInfo_New)();
@@ -283,17 +306,26 @@ public:
 	{
 		if (m_pfnMediaInfo_Delete)
 			(*m_pfnMediaInfo_Delete)(Handle);	// File is automaticly closed
+		//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+		/*
 		else if (m_pfnMediaInfo4_Close)
 			(*m_pfnMediaInfo4_Close)(Handle);
+		*/
+		//DolphinX :: Remove MediaInfo 0.4 Support :: End
 		else if (m_pfnMediaInfo_Close)
 			(*m_pfnMediaInfo_Close)(Handle);
 	}
 
 	CString Get(void* Handle, stream_t_C StreamKind, int StreamNumber, LPCTSTR Parameter, info_t_C KindOfInfo, info_t_C KindOfSearch)
 	{
+		//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+		/*
 		if (m_pfnMediaInfo4_Get)
 			return CString((*m_pfnMediaInfo4_Get)(Handle, StreamKind, StreamNumber, CT2A(Parameter), KindOfInfo, KindOfSearch));
 		else if (m_pfnMediaInfo_Get) {
+		*/
+		if (m_pfnMediaInfo_Get) {
+		//DolphinX :: Remove MediaInfo 0.4 Support :: End
 			CString strNewParameter(Parameter);
 			if (m_ullVersion >= MAKEDLLVERULL(0, 7, 1, 0)) {
 				// Convert old tags to new tags
@@ -308,11 +340,27 @@ public:
 		return _T("");
 	}
 
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	CString Inform(void* Handle,size_t format)
+	{
+		if (m_pfnMediaInfo_inform) 
+			if (m_ullVersion >= MAKEDLLVERULL(0, 7, 0, 0)) {
+			return (*m_pfnMediaInfo_inform)(Handle,format);
+		}
+		return _T("");
+	}
+	// <== Advanced Options [Official/MorphXT] - Stulle
+
 	int Count_Get(void* Handle, stream_t_C StreamKind, int StreamNumber)
 	{
+		//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+		/*
 		if (m_pfnMediaInfo4_Get)
 			return (*m_pfnMediaInfo4_Count_Get)(Handle, StreamKind, StreamNumber);
 		else if (m_pfnMediaInfo_Count_Get)
+		*/
+		if (m_pfnMediaInfo_Count_Get)
+		//DolphinX :: Remove MediaInfo 0.4 Support :: End
 			return (*m_pfnMediaInfo_Count_Get)(Handle, StreamKind, StreamNumber);
 		return 0;
 	}
@@ -323,10 +371,14 @@ protected:
 	HINSTANCE m_hLib;
 
 	// MediaInfoLib - v0.4.0.1
+	//DolphinX :: Remove MediaInfo 0.4 Support :: Start
+	/*
 	void* (__stdcall *m_pfnMediaInfo4_Open)(char* File) throw(...);
 	void  (__stdcall *m_pfnMediaInfo4_Close)(void* Handle) throw(...);
 	char* (__stdcall *m_pfnMediaInfo4_Get)(void* Handle, stream_t_C StreamKind, int StreamNumber, char* Parameter, info_t_C KindOfInfo, info_t_C KindOfSearch) throw(...);
 	int   (__stdcall *m_pfnMediaInfo4_Count_Get)(void* Handle, stream_t_C StreamKind, int StreamNumber) throw(...);
+	*/
+	//DolphinX :: Remove MediaInfo 0.4 Support :: End
 
 	// MediaInfoLib - v0.5+
 	void*			(__stdcall *m_pfnMediaInfo5_Open)(const wchar_t* File) throw(...);
@@ -338,6 +390,9 @@ protected:
 	int				(__stdcall *m_pfnMediaInfo_Open)(void* Handle, const wchar_t* File) throw(...);
 	void*			(__stdcall *m_pfnMediaInfo_New)() throw(...);
 	void			(__stdcall *m_pfnMediaInfo_Delete)(void* Handle) throw(...);
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	const wchar_t*  (__stdcall *m_pfnMediaInfo_inform)(void* Handle,size_t reserved) throw(...);
+	// <== Advanced Options [Official/MorphXT] - Stulle
 };
 
 CMediaInfoDLL theMediaInfoDLL;
@@ -381,7 +436,12 @@ BOOL CFileInfoDialog::OnInitDialog()
 		AddAnchor(IDC_FILESIZE, TOP_LEFT, TOP_RIGHT);
 		AddAnchor(IDC_FULL_FILE_INFO, TOP_LEFT, BOTTOM_RIGHT);
 
+		// ==> Drop Win95 support [MorphXT] - Stulle
+		/*
 		m_fi.LimitText(afxIsWin95() ? 0xFFFF : 0x7FFFFFFF);
+		*/
+		m_fi.LimitText(0x7FFFFFFF);
+		// <== Drop Win95 support [MorphXT] - Stulle
 		m_fi.SendMessage(EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELONG(3, 3));
 		m_fi.SetAutoURLDetect();
 		m_fi.SetEventMask(m_fi.GetEventMask() | ENM_LINK);
@@ -519,6 +579,13 @@ BOOL CGetMediaInfoThread::InitInstance()
 
 int CGetMediaInfoThread::Run()
 {
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash
+	CReadWriteLock lock(&theApp.m_threadlock);
+	if (!lock.ReadLock(0))
+		return 0;
+	// END SLUGFILLER: SafeHash
+
 	CoInitialize(NULL);
 
 	HWND hwndRE = CreateWindow(RICHEDIT_CLASS, _T(""), ES_MULTILINE | ES_READONLY | WS_DISABLED, 0, 0, 200, 200, NULL, NULL, NULL, NULL);
@@ -531,7 +598,12 @@ int CGetMediaInfoThread::Run()
 	{
 		CRichEditStream re;
 		re.Attach(hwndRE);
+		// ==> Drop Win95 support [MorphXT] - Stulle
+		/*
 		re.LimitText(afxIsWin95() ? 0xFFFF : 0x7FFFFFFF);
+		*/
+		re.LimitText( 0x7FFFFFFF);
+		// <== Drop Win95 support [MorphXT] - Stulle
 		PARAFORMAT pf = {0};
 		pf.cbSize = sizeof pf;
 		if (re.GetParaFormat(pf)) {
@@ -940,6 +1012,13 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 {
 	if (!pFile)
 		return false;
+
+	//Xman [MoNKi: -Downloaded History-]
+	if(!pFile->IsKindOf(RUNTIME_CLASS(CKnownFile)) || !pFile->IsPartFile() && !theApp.sharedfiles->IsFilePtrInList(((CKnownFile*)pFile))){
+		return false;
+	}
+	//Xman end
+
 	ASSERT( !pFile->GetFilePath().IsEmpty() );
 
 	bool bHasDRM = false;
@@ -979,7 +1058,12 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 	// Check for AVI file
 	//
 	bool bIsAVI = false;
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	/*
 	if (theApp.GetProfileInt(_T("eMule"), _T("MediaInfo_RIFF"), 1))
+	*/
+	if (CPreferences::bMediaInfo_RIFF) 
+	// <== Advanced Options [Official/MorphXT] - Stulle
 	{
 		try
 		{
@@ -1003,7 +1087,12 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 	// Check for RM file
 	//
 	bool bIsRM = false;
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	/*
 	if (theApp.GetProfileInt(_T("eMule"), _T("MediaInfo_RM"), 1))
+	*/
+	if (CPreferences::m_bMediaInfo_RM)
+	// <== Advanced Options [Official/MorphXT] - Stulle
 	{
 		try
 		{
@@ -1028,7 +1117,12 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 	//
 #ifdef HAVE_WMSDK_H
 	bool bIsWM = false;
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	/*
 	if (theApp.GetProfileInt(_T("eMule"), _T("MediaInfo_WM"), 1))
+	*/
+	if (CPreferences::m_bMediaInfo_WM)
+	// <== Advanced Options [Official/MorphXT] - Stulle
 	{
 		try
 		{
@@ -1056,7 +1150,12 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 	////////////////////////////////////////////////////////////////////////////
 	// Check for MPEG Audio file
 	//
+	// ==> Advanced Options [Official/MorphXT] - Stulle
+	/*
 	if (theApp.GetProfileInt(_T("eMule"), _T("MediaInfo_ID3LIB"), 1) &&
+	*/
+	if (CPreferences::bMediaInfo_ID3LIB &&
+	// <== Advanced Options [Official/MorphXT] - Stulle
 		(_tcscmp(szExt, _T(".mp3"))==0 || _tcscmp(szExt, _T(".mp2"))==0 || _tcscmp(szExt, _T(".mp1"))==0 || _tcscmp(szExt, _T(".mpa"))==0))
 	{
 		try
@@ -1587,6 +1686,9 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 							}
 						}
 
+						// ==> Advanced Options [Official/MorphXT] - Stulle
+						CString strInform = theMediaInfoDLL.Inform(Handle,0);
+						// <== Advanced Options [Official/MorphXT] - Stulle
 						CString strTitle = theMediaInfoDLL.Get(Handle, Stream_General, 0, _T("Title"), Info_Text, Info_Name);
 						CString strTitleMore = theMediaInfoDLL.Get(Handle, Stream_General, 0, _T("Title_More"), Info_Text, Info_Name);
 						if (!strTitleMore.IsEmpty() && !strTitle.IsEmpty() && strTitleMore != strTitle)
@@ -1924,6 +2026,15 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 							if (!str.IsEmpty())
 								mi->strInfo << _T("   ") << GetResString(IDS_PW_LANG) << _T(":\t") << str << _T("\n");
 						}
+						// ==> Advanced Options [Official/MorphXT] - Stulle
+						if (!strInform.IsEmpty()) {
+								if (!mi->strInfo.IsEmpty()) 
+									 mi->strInfo << _T("\n");
+								mi->strInfo.SetSelectionCharFormat(mi->strInfo.m_cfBold);
+								mi->strInfo<< _T("Verbose   \n");
+             					mi->strInfo << strInform;
+						}
+						// <== Advanced Options [Official/MorphXT] - Stulle
 
 						theMediaInfoDLL.Close(Handle);
 
@@ -1999,7 +2110,12 @@ bool CGetMediaInfoThread::GetMediaInfo(HWND hWndOwner, const CShareableFile* pFi
 		//
 		// Avoid processing of some file types which are known to crash due to bugged DirectShow filters.
 #ifdef HAVE_QEDIT_H
+		// ==> Advanced Options [Official/MorphXT] - Stulle
+		/*
 		if (theApp.GetProfileInt(_T("eMule"), _T("MediaInfo_MediaDet"), 1)
+		*/
+		if (CPreferences::m_bMediaInfo_MediaDet
+		// <== Advanced Options [Official/MorphXT] - Stulle
 			&& (   thePrefs.GetInspectAllFileTypes() 
 			    || (_tcscmp(szExt, _T(".ogm"))!=0 && _tcscmp(szExt, _T(".ogg"))!=0 && _tcscmp(szExt, _T(".mkv"))!=0)))
 		{

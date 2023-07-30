@@ -20,6 +20,7 @@
 #include "emuledlg.h"
 #include "MenuCmds.h"
 #include "UserMsgs.h"
+#include "Preferences.h" // TBH: minimule - Max
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -62,6 +63,9 @@ CTrayDialog::CTrayDialog(UINT uIDD,CWnd* pParent /*=NULL*/)
 	m_bLButtonDblClk = false;
 	m_bLButtonDown = false;
 	m_uSingleClickTimer = 0;
+	// ==> Static Tray Icon [MorphXT] - MyTh88
+	m_bMaximized = false;
+	// <== Static Tray Icon [MorphXT] - MyTh88
 }
 
 int CTrayDialog::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -128,7 +132,12 @@ void CTrayDialog::TraySetToolTip(LPCTSTR lpszToolTip)
 	Shell_NotifyIcon(NIM_MODIFY, &m_nidIconData);
 }
 
+// ==> TBH: minimule - Stulle
+/*
 BOOL CTrayDialog::TrayShow()
+*/
+BOOL CTrayDialog::TrayShow(BOOL bMiniMule)
+// <== TBH: minimule - Stulle
 {
 	BOOL bSuccess = FALSE;
 	if (!m_bTrayIconVisible)
@@ -136,6 +145,26 @@ BOOL CTrayDialog::TrayShow()
 		bSuccess = Shell_NotifyIcon(NIM_ADD, &m_nidIconData);
 		if (bSuccess)
 			m_bTrayIconVisible = TRUE;
+
+		// ==> TBH: minimule - Max
+		if (bMiniMule == TRUE)
+		{
+			if (thePrefs.IsMiniMuleEnabled() &&	thePrefs.GetMMOpen())
+			{
+				if (thePrefs.GetMiniMuleLives())
+					theApp.minimule->RunMiniMule();
+				else
+					theApp.minimule->RunMiniMule(true);
+				theApp.minimule->ShowWindow(SW_SHOW);
+			}
+		// <== TBH: minimule - Max
+		// ==> TBH: minimule (open on tray) - Max
+			else if (thePrefs.GetEnableMiniMule() && thePrefs.GetMMOpen())
+			{
+				theApp.emuledlg->RunMiniMule();
+			}
+		}
+		// <== TBH: minimule (open on tray) - Max
 	}
 	return bSuccess;
 }
@@ -148,6 +177,11 @@ BOOL CTrayDialog::TrayHide()
 		bSuccess = Shell_NotifyIcon(NIM_DELETE, &m_nidIconData);
 		if (bSuccess)
 			m_bTrayIconVisible = FALSE;
+
+		// ==> TBH: minimule - Max
+		if ((theApp.minimule!= NULL) &&theApp.minimule->IsWindowVisible())
+			theApp.minimule->ShowWindow(SW_HIDE);
+		// <== TBH: minimule - Max
 	}
 	return bSuccess;
 }
@@ -276,10 +310,8 @@ void CTrayDialog::OnTimer(UINT nIDEvent)
 {
 	if (nIDEvent == m_uSingleClickTimer)
 	{
-		TRACE("%s: nIDEvent=%u\n", __FUNCTION__, nIDEvent);
-		// Kill that timer before calling 'OnTrayLButtonUp' which may create the MiniMule window asynchronously!
-		KillSingleClickTimer();
 		OnTrayLButtonUp(CPoint(0, 0));
+		KillSingleClickTimer();
 	}
 	CDialogMinTrayBtn<CResizableDialog>::OnTimer(nIDEvent);
 }
@@ -290,7 +322,13 @@ void CTrayDialog::OnSysCommand(UINT nID, LPARAM lParam)
 	{
 		if ((nID & 0xFFF0) == SC_MINIMIZE)
 		{
+			// ==> Static Tray Icon [MorphXT] - MyTh88
+			/*
 			if (TrayShow())
+			*/
+			m_bMaximized = IsZoomed();
+			if (thePrefs.GetStaticIcon() || TrayShow())
+			// <== Static Tray Icon [MorphXT] - MyTh88
 				ShowWindow(SW_HIDE);
 		}
 		else
@@ -298,7 +336,13 @@ void CTrayDialog::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 	else if ((nID & 0xFFF0) == MP_MINIMIZETOTRAY)
 	{
+		// ==> Static Tray Icon [MorphXT] - MyTh88
+		/*
 		if (TrayShow())
+		*/
+		m_bMaximized = IsZoomed();
+		if (thePrefs.GetStaticIcon() || TrayShow())
+		// <== Static Tray Icon [MorphXT] - MyTh88
 			ShowWindow(SW_HIDE);
 	}
 	else
@@ -359,6 +403,19 @@ LRESULT CTrayDialog::OnTaskBarCreated(WPARAM /*wParam*/, LPARAM /*lParam*/)
 
 void CTrayDialog::RestoreWindow()
 {
+	// ==> Static Tray Icon [MorphXT] - MyTh88
+	/*
 	ShowWindow(SW_SHOW);
+	*/
+	if(m_bMaximized)
+		ShowWindow(SW_SHOWMAXIMIZED);
+	else
+		ShowWindow(SW_SHOW);
 	SetForegroundWindow();
+	// <== Static Tray Icon [MorphXT] - MyTh88
+
+	// ==> TBH: minimule - Stulle
+	if (theApp.minimule->IsWindowVisible())
+		theApp.minimule->ShowWindow(SW_HIDE);
+	// <== TBH: minimule - Stulle
 }

@@ -46,7 +46,12 @@ public:
 	//Wrappers
 	void Localize();
 	void ShowQueueCount(uint32 number);
+	//Xman see all sources
+	/*
 	void UpdateFilesCount(int iCount);
+	*/
+	void UpdateFilesCount(UINT iCount, UINT countsources, UINT countreadyfiles);
+	//Xman end
 	void UpdateCatTabTitles(bool force = true);
 	void VerifyCatTabSize();
 	int	 AddCategoryInteractive();
@@ -54,6 +59,15 @@ public:
 	void ResetTransToolbar(bool bShowToolbar, bool bResetLists = true);
 	void SetToolTipsDelay(DWORD dwDelay);
 	void OnDisableList();
+	int GetActiveCategory(); // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	// ==> Design Settings [eWombat/Stulle] - Max
+	void SetBackgroundColor(int nStyle);
+	void OnBackcolor();
+	// <== Design Settings [eWombat/Stulle] - Max
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max
+	void ShowRessources();
+	void EnableSysInfo(bool bEnable);
+	// <== CPU/MEM usage [$ick$/Stulle] - Max
 	void UpdateListCount(EWnd2 listindex, int iCount = -1);
 	int	 AddCategory(CString newtitle,CString newincoming,CString newcomment,CString newautocat,bool addTab=true);
 	void ShowToolbar(bool bShow);

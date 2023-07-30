@@ -26,6 +26,7 @@
 #include "CatDialog.h"
 #include "SearchDlg.h"
 #include "Partfile.h"
+#include "KnownFileList.h"//Xman [MoNKi: -Check already downloaded files-]
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -194,7 +195,12 @@ void CCollectionViewDialog::DownloadSelected(void)
 	{
 		CCollectionFile* pCollectionFile = collectionFileList.RemoveHead();
 		if (pCollectionFile)
-			theApp.downloadqueue->AddSearchToDownload(pCollectionFile->GetED2kLink(), thePrefs.AddNewFilesPaused(), iNewIndex);
+			//Xman [MoNKi: -Check already downloaded files-]
+			if ( theApp.knownfiles->CheckAlreadyDownloadedFileQuestion(pCollectionFile->GetFileHash(), pCollectionFile->GetFileName()) )
+			{
+				theApp.downloadqueue->AddSearchToDownload(pCollectionFile->GetED2kLink(), thePrefs.AddNewFilesPaused(), iNewIndex);
+			}
+			//Xman end
 	}
 }
 

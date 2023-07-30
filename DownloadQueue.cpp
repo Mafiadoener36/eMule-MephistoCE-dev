@@ -39,6 +39,14 @@
 #include "TaskbarNotifier.h"
 #include "MenuCmds.h"
 #include "Log.h"
+//Xman
+#include "BandWidthControl.h"
+#include "ListenSocket.h"
+//Xman end
+
+#include ".\MiniMule\SystemInfo.h" // CPU/MEM usage [$ick$/Stulle] - Max 
+#include "UploadQueue.h" // Do not restrict download if no upload possible [Stulle] - Stulle
+#include "FriendList.h" // Multiple friendslots [ZZ] - Mephisto
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -46,11 +54,16 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+DWORD quicktime; // Quick start [TPT] - Max
 
 CDownloadQueue::CDownloadQueue()
 {
 	filesrdy = 0;
+	//Xman
+	/*
 	datarate = 0;
+	*/
+	//Xman end
 	cur_udpserver = 0;
 	lastfile = 0;
 	lastcheckdiskspacetime = 0;
@@ -59,12 +72,60 @@ CDownloadQueue::CDownloadQueue()
 	SetLastKademliaFileRequest();
 	udcounter = 0;
 	m_iSearchedServers = 0;
+	//Xman
+	/*
 	m_datarateMS=0;
+	*/
+	//Xman end
 	m_nUDPFileReasks = 0;
 	m_nFailedUDPFileReasks = 0;
 	m_dwNextTCPSrcReq = 0;
 	m_cRequestsSentToServer = 0;
+	//Xman Xtreme Mod
+	m_TCPFileReask=0;
+	m_FailedTCPFileReask=0;
+	//Xman end
+
+	// Maella -Overhead compensation (pseudo full download rate control)-
+	m_lastProcessTime = ::GetTickCount();
+	m_lastOverallReceivedBytes = 0;
+	m_lastReceivedBytes = 0;
+	m_nDownloadSlopeControl = 0;
+	// Maella end
+
+	//Xman askfordownload priority
+	//m_toomanytimestamp=0;
+	m_maxdownprio=0;
+	m_maxdownprionew=0;
+	//Xman end
+	
+	//Xman GlobalMaxHarlimit for fairness
+	m_uGlobsources=0;
+	m_limitstate=0;
+	m_limitratio=0; // Enforce Ratio [Stulle] - Stulle
+
+	//Xman
+	/*
     m_dwLastA4AFtime = 0; // ZZ:DownloadManager
+	*/
+	//Xman end
+
+	// ==> Quick start [TPT] - Max
+	quickflag = 0;
+	quickflags = 0;
+	// <== Quick start [TPT] - Max
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	m_iLastLinkQueuedTick = 0;
+	m_bBusyPurgingLinks = false;
+	m_ED2KLinkQueue.RemoveAll();
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+	// ==> File Settings [sivka/Stulle] - Stulle
+	m_SaveSettingsThread = NULL;
+	m_bSaveAgain = false;
+	m_dwLastSave = 0;
+	// <== File Settings [sivka/Stulle] - Stulle
 }
 
 void CDownloadQueue::AddPartFilesToShare()
@@ -78,11 +139,26 @@ void CDownloadQueue::AddPartFilesToShare()
 }
 
 void CDownloadQueue::Init(){
+
+	GlobalHardLimitTemp = 0; // show global HL - Stulle
+
+	// ==> Global Source Limit [Max/Stulle] - Stulle
+	m_dwUpdateHL = ::GetTickCount();
+	m_dwUpdateHlTime = 50000; // 50 sec on startup
+	m_bPassiveMode = false;
+	m_bGlobalHLSrcReqAllowed = true;
+	// <== Global Source Limit [Max/Stulle] - Stulle
+
+	m_dwResTimer = ::GetTickCount(); // CPU/MEM usage [$ick$/Stulle] - Max
+
 	// find all part files, read & hash them if needed and store into a list
 	CFileFind ff;
 	int count = 0;
 
 	for (int i=0;i<thePrefs.tempdir.GetCount();i++) {
+		//Xman
+		CStringList metsfound;	// SLUGFILLER: SafeHash - ensure each met is loaded once per tempdir
+		bool allMetsSuccess = true; //zz_fly :: better .part.met file backup and recovery :: Enig123
 		CString searchPath=thePrefs.GetTempDir(i);
 
 		searchPath += _T("\\*.part.met");
@@ -93,6 +169,16 @@ void CDownloadQueue::Init(){
 			end = !ff.FindNextFile();
 			if (ff.IsDirectory())
 				continue;
+
+			// BEGIN SLUGFILLER: SafeHash - one is enough
+			if (metsfound.Find(CString(ff.GetFileName()).MakeLower()))
+				continue;
+			//MORPH START - Moved Down, to allow checking for backup met files.
+			/*
+			metsfound.AddTail(CString(ff.GetFileName()).MakeLower());
+			*/
+			//MORPH END   - Moved Down, to allow checking for backup met files.
+			// END SLUGFILLER: SafeHash
 			CPartFile* toadd = new CPartFile();
 			EPartFileLoadResult eResult = toadd->LoadPartFile(thePrefs.GetTempDir(i), ff.GetFileName());
 			if (eResult == PLR_FAILED_METFILE_CORRUPT)
@@ -100,7 +186,13 @@ void CDownloadQueue::Init(){
 				// .met file is corrupted, try to load the latest backup of this file
 				delete toadd;
 				toadd = new CPartFile();
+				//zz_fly :: better .part.met file backup and recovery :: Enig123 :: Start
+				//note: .backup is newer than .bak, if it is valid. we load .backup first. see CPartFile::SavePartFile() for details.
+				/*
 				eResult = toadd->LoadPartFile(thePrefs.GetTempDir(i), ff.GetFileName() + PARTMET_BAK_EXT);
+				*/
+				eResult = toadd->LoadPartFile(thePrefs.GetTempDir(i), ff.GetFileName() + PARTMET_TMP_EXT);
+				//zz_fly :: better .part.met file backup and recovery :: Enig123 :: End
 				if (eResult == PLR_LOADSUCCESS)
 				{
 					toadd->SavePartFile(true); // don't override our just used .bak file yet
@@ -110,31 +202,70 @@ void CDownloadQueue::Init(){
 
 			if (eResult == PLR_LOADSUCCESS)
 			{
+				metsfound.AddTail(CString(ff.GetFileName()).MakeLower()); //MORPH - Added, fix SafeHash
 				count++;
 				filelist.AddTail(toadd);			// to downloadqueue
+				// SLUGFILLER: SafeHash remove - part files are shared later
+				/*
 				if (toadd->GetStatus(true) == PS_READY)
 					theApp.sharedfiles->SafeAddKFile(toadd); // part files are always shared files
+				*/
+				// SLUGFILLER End
 				theApp.emuledlg->transferwnd->GetDownloadList()->AddFile(toadd);// show in downloadwindow
 			}
 			else
+			{
 				delete toadd;
+				allMetsSuccess = false; //zz_fly :: better .part.met file backup and recovery :: Enig123
+			}
 		}
 		ff.Close();
 
+		//zz_fly :: better .part.met file backup and recovery :: Enig123 :: Start
+		//  skip recovery step if there's no failed part file load
+		if(allMetsSuccess)
+			continue;
+		//zz_fly :: better .part.met file backup and recovery :: Enig123 :: End
+
 		//try recovering any part.met files
+		//zz_fly :: better .part.met file backup and recovery :: Enig123 :: Start
+		// .backup failed, load .bak
+		/*
 		searchPath += _T(".backup");
+		*/
+		searchPath += PARTMET_BAK_EXT;
+		//zz_fly :: better .part.met file backup and recovery :: Enig123 :: Emd
 		end = !ff.FindFile(searchPath, 0);
 		while (!end){
 			end = !ff.FindNextFile();
 			if (ff.IsDirectory())
 				continue;
+			//Xman
+			// BEGIN SLUGFILLER: SafeHash - one is enough
+			if (metsfound.Find(RemoveFileExtension(CString(ff.GetFileName()).MakeLower())))
+				continue;
+			//MORPH START - Moved Down, to allow checking for backup met files.
+			/*
+			metsfound.AddTail(RemoveFileExtension(CString(ff.GetFileName()).MakeLower()));
+			*/
+			//MORPH END   - Moved Down, to allow checking for backup met files.
+			// END SLUGFILLER: SafeHash
+
 			CPartFile* toadd = new CPartFile();
 			if (toadd->LoadPartFile(thePrefs.GetTempDir(i), ff.GetFileName()) == PLR_LOADSUCCESS){
+				//MORPH START - Added, fix SafeHash
+				metsfound.AddTail(RemoveFileExtension(CString(ff.GetFileName()).MakeLower()));
+				//MORPH END   - Added, fix SafeHash
 				toadd->SavePartFile(true); // resave backup, don't overwrite existing bak files yet
 				count++;
 				filelist.AddTail(toadd);			// to downloadqueue
+				//Xman
+				// SLUGFILLER: SafeHash remove - part files are shared later
+				/*
 				if (toadd->GetStatus(true) == PS_READY)
 					theApp.sharedfiles->SafeAddKFile(toadd); // part files are always shared files
+				*/
+				// SLUGFILLER End
 				theApp.emuledlg->transferwnd->GetDownloadList()->AddFile(toadd);// show in downloadwindow
 
 				AddLogLine(false, GetResString(IDS_RECOVERED_PARTMET), toadd->GetFileName());
@@ -149,21 +280,42 @@ void CDownloadQueue::Init(){
 		AddLogLine(false,GetResString(IDS_NOPARTSFOUND));
 	} else {
 		AddLogLine(false,GetResString(IDS_FOUNDPARTS),count);
+		//zz_fly :: remove useless code :: Enig123
+		/*
 		SortByPriority();
+		*/
+		//zz_fly :: remove useless code :: Enig123
 		CheckDiskspace();
 	}
+	m_SettingsSaver.LoadSettings(); // File Settings [sivka/Stulle] - Stulle
 	VERIFY( m_srcwnd.CreateEx(0, AfxRegisterWndClass(0), _T("eMule Async DNS Resolve Socket Wnd #2"), WS_OVERLAPPED, 0, 0, 0, 0, NULL, NULL));
 
 	ExportPartMetFilesOverview();
 }
 
 CDownloadQueue::~CDownloadQueue(){
+	// ==> File Settings [sivka/Stulle] - Stulle
+	if (m_SaveSettingsThread) // we just saved something
+	{
+		m_SaveSettingsThread->EndThread();
+		delete m_SaveSettingsThread;
+		m_SaveSettingsThread = NULL;
+	}
+	else // we might have missed something
+		(void)m_SettingsSaver.SaveSettings();
+	// <== File Settings [sivka/Stulle] - Stulle
 	for (POSITION pos = filelist.GetHeadPosition();pos != 0;)
 		delete filelist.GetNext(pos);
 	m_srcwnd.DestroyWindow(); // just to avoid a MFC warning
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CDownloadQueue::AddSearchToDownload(CSearchFile* toadd, uint8 paused, int cat)
+*/
+// New Param: uint16 useOrder (Def: 0)
+void CDownloadQueue::AddSearchToDownload(CSearchFile* toadd, uint8 paused, int cat, uint16 useOrder)
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 {
 	if (toadd->GetFileSize()== (uint64)0 || IsFileExisting(toadd->GetFileHash()))
 		return;
@@ -179,6 +331,8 @@ void CDownloadQueue::AddSearchToDownload(CSearchFile* toadd, uint8 paused, int c
 		return;
 	}
 
+	newfile->SetCatResumeOrder(useOrder); // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
 	if (paused == 2)
 		paused = (uint8)thePrefs.AddNewFilesPaused();
 	AddDownload(newfile, (paused==1));
@@ -190,8 +344,8 @@ void CDownloadQueue::AddSearchToDownload(CSearchFile* toadd, uint8 paused, int c
 			sources.WriteUInt8(1);
 			sources.WriteUInt32(toadd->GetClientID());
 			sources.WriteUInt16(toadd->GetClientPort());
-		    sources.SeekToBegin();
-		    newfile->AddSources(&sources, toadd->GetClientServerIP(), toadd->GetClientServerPort(), false);
+			sources.SeekToBegin();
+			newfile->AddSources(&sources, toadd->GetClientServerIP(), toadd->GetClientServerPort(), false);
 		}
 		catch(CFileException* error){
 			ASSERT(0);
@@ -200,16 +354,21 @@ void CDownloadQueue::AddSearchToDownload(CSearchFile* toadd, uint8 paused, int c
 	}
 
 	// Add more sources which were found via global UDP search
+	// ==> Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
+	/*
 	const CSimpleArray<CSearchFile::SClient>& aClients = toadd->GetClients();
+	*/
+	const CSimpleArray<CSearchFile::SClient,CSearchFile::CSClientEqualHelper>& aClients = toadd->GetClients();
+	// <== Make code VS 2005 and VS 2008 ready [MorphXT] - Stulle
 	for (int i = 0; i < aClients.GetSize(); i++){
 		CSafeMemFile sources(1+4+2);
 		try{
 			sources.WriteUInt8(1);
 			sources.WriteUInt32(aClients[i].m_nIP);
 			sources.WriteUInt16(aClients[i].m_nPort);
-		    sources.SeekToBegin();
+			sources.SeekToBegin();
 			newfile->AddSources(&sources,aClients[i].m_nServerIP, aClients[i].m_nServerPort, false);
-	    }
+		}
 		catch(CFileException* error){
 			ASSERT(0);
 			error->Delete();
@@ -218,13 +377,21 @@ void CDownloadQueue::AddSearchToDownload(CSearchFile* toadd, uint8 paused, int c
 	}
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CDownloadQueue::AddSearchToDownload(CString link, uint8 paused, int cat)
+*/
+// New Param: uint16 useOrder (Def: 0)
+void CDownloadQueue::AddSearchToDownload(CString link,uint8 paused, int cat, uint16 useOrder)
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 {
 	CPartFile* newfile = new CPartFile(link, cat);
 	if (newfile->GetStatus() == PS_ERROR){
 		delete newfile;
 		return;
 	}
+
+	newfile->SetCatResumeOrder(useOrder); // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 	if (paused == 2)
 		paused = (uint8)thePrefs.AddNewFilesPaused();
@@ -233,16 +400,35 @@ void CDownloadQueue::AddSearchToDownload(CString link, uint8 paused, int cat)
 
 void CDownloadQueue::StartNextFileIfPrefs(int cat) {
     if (thePrefs.StartNextFile())
+		// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+		/*
 		StartNextFile((thePrefs.StartNextFile() > 1?cat:-1), (thePrefs.StartNextFile()!=3));
+		*/
+	{
+		int catTemp = thePrefs.StartNextFile() > 1?cat:-1;
+		Category_Struct* cur_cat = thePrefs.GetCategory(cat);
+		if (cur_cat && cur_cat->bResumeFileOnlyInSameCat)
+			catTemp = cat;
+		
+		StartNextFile(catTemp, (thePrefs.StartNextFile()!=3));
+	}
+		// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CDownloadQueue::StartNextFile(int cat, bool force){
+*/
+bool CDownloadQueue::StartNextFile(int cat, bool force){
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 	CPartFile*  pfile = NULL;
 	CPartFile* cur_file ;
 	POSITION pos;
 	
 	if (cat != -1) {
+		// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+		/*
         // try to find in specified category
 		for (pos = filelist.GetHeadPosition();pos != 0;){
 			cur_file = filelist.GetNext(pos);
@@ -252,19 +438,40 @@ void CDownloadQueue::StartNextFile(int cat, bool force){
 				 cat==0 && thePrefs.GetCategory(0)->filter==0 && cur_file->GetCategory()>0
                 ) &&
                 CPartFile::RightFileHasHigherPrio(pfile, cur_file)
+		*/
+		Category_Struct* cur_cat = thePrefs.GetCategory(cat);
+		force &= !(cur_cat && cur_cat->bResumeFileOnlyInSameCat);
+		// try to find in specified category
+		for (pos = filelist.GetHeadPosition();pos != 0;){
+			cur_file = filelist.GetNext(pos);
+			if (cur_file->GetStatus()==PS_PAUSED &&
+				cur_file->GetCategory()==(UINT)cat &&
+                CPartFile::RightFileHasHigherPrio(pfile, cur_file)
+		// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 			   ) {
     			pfile = cur_file;
 			}
 		}
 		if (pfile == NULL && !force)
+			// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+			/*
 			return;
+			*/
+			return false;
+			// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 	}
 
     if(cat == -1 || pfile == NULL && force) {
 	    for (pos = filelist.GetHeadPosition();pos != 0;){
 		    cur_file = filelist.GetNext(pos);
+		    Category_Struct* cur_cat = thePrefs.GetCategory(cur_file->GetCategory()); // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 		    if (cur_file->GetStatus() == PS_PAUSED &&
+				// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+				/*
                 CPartFile::RightFileHasHigherPrio(pfile, cur_file))
+				*/
+				CPartFile::RightFileHasHigherPrio(pfile, cur_file) && !(cur_cat && cur_cat->bResumeFileOnlyInSameCat))
+				// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 		    {
                 // pick first found matching file, since they are sorted in prio order with most important file first.
 			    pfile = cur_file;
@@ -272,8 +479,11 @@ void CDownloadQueue::StartNextFile(int cat, bool force){
 	    }
     }
 	if (pfile) pfile->ResumeFile();
+	return pfile!=NULL; // Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CDownloadQueue::AddFileLinkToDownload(CED2KFileLink* pLink, int cat)
 {
 	CPartFile* newfile = new CPartFile(pLink, cat);
@@ -303,12 +513,25 @@ void CDownloadQueue::AddFileLinkToDownload(CED2KFileLink* pLink, int cat)
 				partfile->GetAICHRecoveryHashSet()->FreeHashSet();
 
 			}
+			//MORPH START - Added by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
+			if (pLink->HasHostnameSources())
+			{
+				POSITION pos = pLink->m_HostnameSourcesList.GetHeadPosition();
+				while (pos != NULL)
+				{
+					const SUnresolvedHostname* pUnresHost = pLink->m_HostnameSourcesList.GetNext(pos);
+					m_srcwnd.AddToResolve(pLink->GetHashKey(), pUnresHost->strHostname, pUnresHost->nPort, pUnresHost->strURL);
+				}
+			}
+			//MORPH END   - Added by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
 		}
 		else
 			DebugLogWarning(_T("FileIdentifier mismatch when trying to add ed2k link to existing download - AICH Hash or Size might differ, no sources added. File: %s"),
 				partfile->GetFileName());
 	}
 
+	//MORPH START - Removed by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
+	/*
 	if (pLink->HasHostnameSources())
 	{
 		POSITION pos = pLink->m_HostnameSourcesList.GetHeadPosition();
@@ -318,7 +541,113 @@ void CDownloadQueue::AddFileLinkToDownload(CED2KFileLink* pLink, int cat)
 			m_srcwnd.AddToResolve(pLink->GetHashKey(), pUnresHost->strHostname, pUnresHost->nPort, pUnresHost->strURL);
 		}
 	}
+	*//*
+	//MORPH END   - Removed by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
 }
+*/
+// This function has been modified in order
+// to accomodate the category selection.
+// NEW PARAM:  bool AllocatedLink = false by default
+void CDownloadQueue::AddFileLinkToDownload(CED2KFileLink* pLink, int theCat, bool AllocatedLink)
+{
+	if (thePrefs.SelectCatForNewDL() && theCat==-1)
+	{
+		m_ED2KLinkQueue.AddTail(pLink);
+		m_iLastLinkQueuedTick = GetTickCount();
+		return;
+	}
+
+	int useCat = theCat;
+
+	if (useCat == -1){
+		if (thePrefs.UseAutoCat())
+			useCat = theApp.downloadqueue->GetAutoCat(CString(pLink->GetName()), pLink->GetSize());
+		else if (thePrefs.UseActiveCatForLinks())
+			useCat = theApp.emuledlg->transferwnd->GetActiveCategory();
+		else
+			useCat = 0;
+	}
+	// Just in case...
+	if (m_ED2KLinkQueue.GetCount() && !thePrefs.SelectCatForNewDL()) PurgeED2KLinkQueue();
+	m_iLastLinkQueuedTick = 0;
+
+	// Pass useCat instead of cat and autoset resume order.
+	/*
+	CPartFile* newfile = new CPartFile(pLink, cat);
+	*/
+	CPartFile* newfile = new CPartFile(pLink, useCat);
+
+	if (newfile->GetStatus() == PS_ERROR){
+		delete newfile;
+		newfile=NULL;
+	}
+	else {
+		// Pass useCat instead of cat and autoset resume order.
+		if (thePrefs.SmallFileDLPush() && newfile->GetFileSize() < (uint64)154624)
+			newfile->SetCatResumeOrder(0);
+		else if (thePrefs.AutoSetResumeOrder())
+			newfile->SetCatResumeOrder(GetMaxCatResumeOrder(useCat)+1);
+		AddDownload(newfile,thePrefs.AddNewFilesPaused());
+	}
+
+	CPartFile* partfile = newfile;
+	if (partfile == NULL)
+		partfile = GetFileByID(pLink->GetHashKey());
+	if (partfile)
+	{
+		// match the fileidentifier and only if the are the same add possible sources
+		CFileIdentifierSA tmpFileIdent(pLink->GetHashKey(), pLink->GetSize(), pLink->GetAICHHash(), pLink->HasValidAICHHash());
+		if (partfile->GetFileIdentifier().CompareRelaxed(tmpFileIdent))
+		{
+			if (pLink->HasValidSources())
+				partfile->AddClientSources(pLink->SourcesList, 1, false);
+			if (!partfile->GetFileIdentifier().HasAICHHash() && tmpFileIdent.HasAICHHash())
+			{
+				partfile->GetFileIdentifier().SetAICHHash(tmpFileIdent.GetAICHHash());
+				partfile->GetAICHRecoveryHashSet()->SetMasterHash(tmpFileIdent.GetAICHHash(), AICH_VERIFIED);
+				partfile->GetAICHRecoveryHashSet()->FreeHashSet();
+
+			}
+			//MORPH START - Added by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
+			if (pLink->HasHostnameSources())
+			{
+				POSITION pos = pLink->m_HostnameSourcesList.GetHeadPosition();
+				while (pos != NULL)
+				{
+					const SUnresolvedHostname* pUnresHost = pLink->m_HostnameSourcesList.GetNext(pos);
+					m_srcwnd.AddToResolve(pLink->GetHashKey(), pUnresHost->strHostname, pUnresHost->nPort, pUnresHost->strURL);
+				}
+			}
+			//MORPH END   - Added by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
+		}
+		else
+			DebugLogWarning(_T("FileIdentifier mismatch when trying to add ed2k link to existing download - AICH Hash or Size might differ, no sources added. File: %s"),
+				partfile->GetFileName());
+	}
+
+	//MORPH START - Removed by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
+	/*
+	if (pLink->HasHostnameSources())
+	{
+		POSITION pos = pLink->m_HostnameSourcesList.GetHeadPosition();
+		while (pos != NULL)
+		{
+			const SUnresolvedHostname* pUnresHost = pLink->m_HostnameSourcesList.GetNext(pos);
+			m_srcwnd.AddToResolve(pLink->GetHashKey(), pUnresHost->strHostname, pUnresHost->nPort, pUnresHost->strURL);
+		}
+	}
+	*/
+	//MORPH END   - Removed by Stulle, Only resolve hostnames for downloads if partfile found [WiZaRd]
+
+	// Deallocate memory, because if we've gotten here,
+	// this link wasn't added to the queue and therefore there's no reason to
+	// not delete it.
+	if (AllocatedLink) {
+		delete pLink;
+		pLink = NULL;
+	}
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 void CDownloadQueue::AddToResolved( CPartFile* pFile, SUnresolvedHostname* pUH )
 {
@@ -331,10 +660,18 @@ void CDownloadQueue::AddDownload(CPartFile* newfile,bool paused) {
 	if (paused)
 		newfile->PauseFile();
 	
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	SetAutoCat(newfile);// HoaX_69 / Slugfiller: AutoCat
+	*/
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 	filelist.AddTail(newfile);
+	//zz_fly :: remove useless code :: Enig123
+	/*
 	SortByPriority();
+	*/
+	//zz_fly :: remove useless code :: Enig123
 	CheckDiskspace();
 	theApp.emuledlg->transferwnd->GetDownloadList()->AddFile(newfile);
 	AddLogLine(true, GetResString(IDS_NEWDOWNLOAD), newfile->GetFileName());
@@ -342,6 +679,7 @@ void CDownloadQueue::AddDownload(CPartFile* newfile,bool paused) {
 	msgTemp.Format(GetResString(IDS_NEWDOWNLOAD) + _T("\n"), newfile->GetFileName());
 	theApp.emuledlg->ShowNotifier(msgTemp, TBN_DOWNLOADADDED);
 	ExportPartMetFilesOverview();
+	SaveFileSettings(); // File Settings [sivka/Stulle] - Stulle
 }
 
 bool CDownloadQueue::IsFileExisting(const uchar* fileid, bool bLogWarnings) const
@@ -364,6 +702,8 @@ bool CDownloadQueue::IsFileExisting(const uchar* fileid, bool bLogWarnings) cons
 	return false;
 }
 
+//Xman Xtreme Mod
+/*
 void CDownloadQueue::Process(){
 	
 	ProcessLocalRequests(); // send src requests to local server
@@ -446,6 +786,369 @@ void CDownloadQueue::Process(){
     }
 // <-- ZZ:DownloadManager
 }
+*/
+void CDownloadQueue::Process(){
+	// ==> Global Source Limit [Max/Stulle] - Stulle
+	if( thePrefs.IsUseGlobalHL() && (::GetTickCount() - m_dwUpdateHL) >= m_dwUpdateHlTime )
+		SetHardLimits();
+	// <== Global Source Limit [Max/Stulle] - Stulle
+	
+	ProcessLocalRequests(); // send src requests to local server
+
+	// ==> Quick start [TPT] - Max
+	static DWORD QuickStartEndTime=0;
+	if(thePrefs.GetQuickStart() && theApp.IsConnected() && quickflag == 0)
+	{
+		if(quickflags == 0)
+		{
+			quicktime = ::GetTickCount();
+			if (thePrefs.GetQuickStartMaxConnPerFiveBack() < thePrefs.GetQuickStartMaxConnPerFive()) // return values manual - Stulle
+				thePrefs.SetMaxConsPerFive(thePrefs.GetQuickStartMaxConnPerFive());
+			if (thePrefs.GetQuickStartMaxConnBack() < thePrefs.GetQuickStartMaxConn()) // return values manual - Stulle
+				thePrefs.SetMaxCon(thePrefs.GetQuickStartMaxConn());
+			quickflags = 1;
+			AddLogLine(true, _T("***** Quick Start actived for %u min. *****"), thePrefs.GetQuickStartMaxTime());
+			AddLogLine(false, _T("***** Max.Con.: %i *****"), thePrefs.GetMaxCon());
+			AddLogLine(false, _T("***** Max.Con./5sec: %i *****"), thePrefs.GetMaxConperFive());
+
+			DWORD QuickStartTime = MIN2MS(thePrefs.GetQuickStartMaxTime());
+			QuickStartEndTime = quicktime + QuickStartTime;
+			// this is sooooooooo useless...
+			//			for(POSITION pos = theApp.downloadqueue->filelist.GetHeadPosition(); pos != NULL;) 
+			//			{ 
+			//					CPartFile* cur_file = theApp.downloadqueue->filelist.GetNext(pos); 
+			//			}
+		}
+		if (QuickStartEndTime <= ::GetTickCount() || theApp.m_app_state == APP_STATE_SHUTTINGDOWN)
+		{
+			thePrefs.SetMaxConsPerFive(thePrefs.GetQuickStartMaxConnPerFiveBack()); // return values manual - Stulle
+			thePrefs.SetMaxCon(thePrefs.GetQuickStartMaxConnBack()); // return values manual - Stulle
+			quickflag = 1;
+			AddLogLine(true , _T("***** Quick Start ended *****"));
+			AddLogLine(false, _T("***** Max.Con.: %i *****"), thePrefs.GetMaxCon());
+			AddLogLine(false, _T("***** Max.Con./5sec: %i *****"), thePrefs.GetMaxConperFive());
+		}
+	}
+	// <== Quick start [TPT] - Max
+
+	// Elapsed time (TIMER_PERIOD not accurate)	
+	//zz_fly :: fix possible overflow :: start
+	//note: i am not fix the subtraction. the subtraction is right when overflow happens. but overflowed deltaTime will let if(deltaTime>0) useless.
+	/*
+	uint32 deltaTime = ::GetTickCount() - m_lastProcessTime;
+	*/
+	uint32 deltaTime = 30000 + ::GetTickCount() - m_lastProcessTime;
+	if (deltaTime > 30000)
+		deltaTime -= 30000;
+	else
+		deltaTime = 0;
+	//zz_fly :: end
+	m_lastProcessTime += deltaTime;
+
+	// - Maella -New bandwidth control-
+	// Anticipate high CPU load => unregular cycle
+	if(deltaTime > 0){
+		/*
+		const float maxDownload = (theApp.glob_prefs->GetNAFCEnable() == false && theApp.glob_prefs->GetNAFCFullControl() == false) ? 
+		app_prefs->GetMaxDownload() : theApp.pBandWidthControl->GetMaxDownload();
+		*/
+		//Xman 1:3 Raitio
+		//Xman GlobalMaxHarlimit for fairness
+		// ==> Enforce Ratio [Stulle] - Stulle
+		/*
+		const bool limitbysources=GetGlobalSources()> thePrefs.m_uMaxGlobalSources && thePrefs.m_bAcceptsourcelimit==false;
+		const float maxDownload = theApp.pBandWidthControl->GetMaxDownloadEx(limitbysources); //in [kb/s]
+		if(limitbysources)
+			m_limitstate=1; //at least session ratio
+		else
+			m_limitstate=0; //no limit
+		*/
+		uint8 limitbysources = 0;
+		uint8 uReason = 0;
+		m_limitratio = 0; // reset
+		if(thePrefs.GetEnforceRatio())
+			limitbysources |= 2;
+		if(GetGlobalSources() > thePrefs.m_uMaxGlobalSources && thePrefs.m_bAcceptsourcelimit == false)
+			limitbysources |= 1;
+		// ==> Multiple friendslots [ZZ] - Mephisto
+		if(theApp.friendlist && theApp.friendlist->IsFriendSlot()) // just in case...
+			limitbysources |= 4;
+		// <== Multiple friendslots [ZZ] - Mephisto
+		// ==> Do not restrict download if no upload possible [Stulle] - Stulle
+		/*
+		const float maxDownload = theApp.pBandWidthControl->GetMaxDownloadEx(limitbysources); //in [kb/s]
+		*/
+		float maxDownload = 0; //in [kb/s]
+		if(theApp.uploadqueue->GetUploadQueueLength() <= 2 && // yeah, it should be two at the least
+			theApp.uploadqueue->GetWaitingUserCount() <= 0) // nobody in queue
+		{
+			maxDownload = thePrefs.GetMaxDownload();
+			limitbysources = 0xFF;
+		}
+		else
+			maxDownload = theApp.pBandWidthControl->GetMaxDownloadEx(limitbysources,uReason,m_limitratio);
+		// <== Do not restrict download if no upload possible [Stulle] - Stulle
+		m_limitstate=DLR_NONE; // reset
+		if(limitbysources == 0xFF)
+			m_limitstate = DLR_NOUL; // unlimited because no UL possible
+		else
+		{
+			if(limitbysources&1)
+				m_limitstate |= DLR_SESLIM; // Will be session limited by sources
+			if(limitbysources&2)
+				m_limitstate |= DLR_ENFLIM; // Will be session limited by enforce
+			// ==> Multiple friendslots [ZZ] - Mephisto
+			if(limitbysources&4)
+				m_limitstate |= DLR_FRILIM; // Will be session limited by friendslots
+			// <== Multiple friendslots [ZZ] - Mephisto
+		}
+		// <== Enforce Ratio [Stulle] - Stulle
+		//Xman end
+		//Xman end
+
+		const bool isLimited = (maxDownload < UNLIMITED);
+
+		if(isLimited == false)
+		{
+			m_nDownloadSlopeControl = 0;
+			// ==> Enforce Ratio [Stulle] - Stulle
+			if(uReason&4)
+				m_limitstate |= DLR_13RATIO; // unlimited because < 1:3 ratio
+			// <== Enforce Ratio [Stulle] - Stulle
+		}
+		else 
+		{
+			//Xman 
+			//application can hang. compensate to 1 second:
+			if(deltaTime>1000)
+				deltaTime=1000;
+
+			//Xman GlobalMaxHarlimit for fairness
+			// ==> Enforce Ratio [Stulle] - Stulle
+			/*
+			if(limitbysources && maxDownload < theApp.pBandWidthControl->GetMaxDownloadEx(false))
+				m_limitstate=2; //session ratio is reached->full limitation 
+			//Xman end
+
+			else if (thePrefs.Is13Ratio()) //downloadlimit although it should be unlimited => we have a ratio
+				m_limitstate=3;
+			else if (maxDownload < thePrefs.GetMaxDownload()) //can only be NAFC
+				m_limitstate=4;
+			*/
+			if(uReason&1)
+				m_limitstate |= DLR_SOURCE; // Forced 1:3 by sources
+			if(uReason&2)
+				m_limitstate |= DLR_ENFORCE; // Enforce
+			if (uReason&8)
+				m_limitstate |= DLR_NAFC; // NAFC limit
+			// ==> Multiple friendslots [ZZ] - Mephisto
+			if(uReason&16)
+				m_limitstate |= DLR_FRIEND; // Friendslots
+			// <== Multiple friendslots [ZZ] - Mephisto
+			// <== Enforce Ratio [Stulle] - Stulle
+			//Xman end
+
+			//Xman changed sint32 to sint64
+			// Bandwidth control
+			const sint64 slopeCredit = (sint64)(maxDownload * 1.024f * (float)deltaTime); // it's 1.024 due to deltaTime is in milliseconds
+			const sint64 maxSlop = 12 * slopeCredit / 10; // 120%
+
+			// The Bandwitch control should be valid for an AVERAGE value
+			m_nDownloadSlopeControl += slopeCredit; // [bytes/period]
+			m_nDownloadSlopeControl -= (sint64)(theApp.pBandWidthControl->GeteMuleIn() - m_lastReceivedBytes);
+
+			// Trunk negative value => possible when Overhead compensation activated
+			if(m_nDownloadSlopeControl > maxSlop)
+			{
+				m_nDownloadSlopeControl = maxSlop;
+			}
+			//Xman 4.8
+			//if we got to many data during one loop (e.g. downloads timed out and we read many filled buffers at once)
+			//the download could stop for a few seconds. 
+			//comensate it to max 2 seconds:
+			else if(m_nDownloadSlopeControl < -1 * (sint64)(maxDownload*1024*2))
+			{
+				m_nDownloadSlopeControl = -1 * (sint64)(maxDownload*1024*2);
+			}
+
+		}
+
+		// Keep current value for next processing
+		//m_lastOverallReceivedBytes = theApp.pBandWidthControl->GeteMuleInOverall();
+		m_lastReceivedBytes = theApp.pBandWidthControl->GeteMuleIn();
+
+		sint64 nDownloadSlopeControl = m_nDownloadSlopeControl;  
+
+		//Xman askfordownload priority
+		if(udcounter == 0)
+		{
+			m_maxdownprio=m_maxdownprionew;
+			m_maxdownprionew=0;
+			GetTooManyConnections(true); //force the recalc
+		}
+		//Xman end
+
+		GlobalHardLimitTemp = 0; // show global HL - Stulle
+
+		theStats.m_fGlobalDone = 0;
+		theStats.m_fGlobalSize = 0;
+		theStats.m_dwOverallStatus=0;
+		// Remark: filelist is not sorted by priority (see 'balancing' below), needed to priorize the connection (e.g. during start-up)
+		for(int priority = 0; priority < 3; priority++)
+		{
+			POSITION next_pos = filelist.GetHeadPosition();
+			bool notbalanced = true; //zz_fly :: optimized in download balance :: Enig123
+			for(int i=0; i<filelist.GetCount(); i++)
+			{
+				POSITION cur_pos = next_pos;
+				const int count = filelist.GetCount(); // Could changed => to check
+				CPartFile* cur_file = filelist.GetNext(next_pos); // Already point to the next element
+
+				//note: let all files can be maintained by global download stats. thanks DolphinX
+				if(cur_file && (
+					(priority == 0 && cur_file->GetDownPriority() == PR_HIGH) ||
+					(priority == 1 && cur_file->GetDownPriority() == PR_NORMAL) ||
+					(priority == 2 && (cur_file->GetDownPriority() == PR_LOW))))
+				{			
+					// maintain global download stats
+					theStats.m_fGlobalDone += (uint64)cur_file->GetCompletedSize();
+					theStats.m_fGlobalSize += (uint64)cur_file->GetFileSize();
+
+					if (cur_file->GetTransferringSrcCount()>0)
+						theStats.m_dwOverallStatus  |= STATE_DOWNLOADING;
+					if (cur_file->GetStatus()==PS_ERROR)
+						theStats.m_dwOverallStatus  |= STATE_ERROROUS;
+
+					if(cur_file->GetStatus() == PS_READY || cur_file->GetStatus() == PS_EMPTY)
+					{ 
+						//Xman sourcecache
+						cur_file->ProcessSourceCache();
+						//Xman end
+
+						// ==> show global HL - Stulle
+						if (thePrefs.GetShowGlobalHL())
+							GlobalHardLimitTemp += cur_file->GetMaxSources();
+						// <== show global HL - Stulle
+
+						// The method must be called regardless of nDownloadSlopeControl
+						// The method returns the size of the received blocks if the download rate is limited (otherwise zero)
+						uint32 maxAmmount = (nDownloadSlopeControl <= 0) ? 0 : (uint32)nDownloadSlopeControl;
+						uint32 receivedBlock = cur_file->Process(maxAmmount, isLimited, udcounter == 0);						
+						if(receivedBlock > 0)
+						{
+							nDownloadSlopeControl -= receivedBlock;
+							// Try to 'balance' the download between sources (=> clients).
+							// Move the 'uploaded' at the end of the list.
+							if(isLimited == true && count == filelist.GetCount() 
+							//zz_fly :: optimized in download balance :: Enig123 :: start
+								//&& cur_file->GetStatus() == PS_READY //note: PS_EMPTY is in downloading too
+								&& (nDownloadSlopeControl > 0 || notbalanced) ) //note: do not balance the file only recieved several bytes
+							//zz_fly :: end
+							{
+								// To check if these line are a source of bug
+								filelist.RemoveAt(cur_pos);
+								filelist.AddTail(cur_file); 
+								notbalanced = false; //zz_fly :: optimized in download balance :: Enig123
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// ==> show global HL - Stulle
+	if (thePrefs.GetShowGlobalHL())
+	{
+        if (filelist.GetCount() == 0)
+			GlobalHardLimitTemp = 0;
+		theApp.emuledlg->transferwnd->GetDownloadList()->GlobalHardLimit = GlobalHardLimitTemp;
+	}
+	// <== show global HL - Stulle
+
+	//Xman askfordownload priority
+	if(udcounter == 0 && !(theApp.listensocket->TooManySockets()) && m_maxdownprionew>0)
+		m_maxdownprionew--;
+	//Xman end
+
+	udcounter++;
+
+	// Server statistic + UDP socket    
+	if (udcounter == (500/TIMER_PERIOD)) { // Maella -Small latency- every 0.5 second  
+		if (theApp.serverconnect->IsUDPSocketAvailable())
+		{
+			if((!lastudpstattime) || (::GetTickCount() - lastudpstattime) > UDPSERVERSTATTIME)
+			{
+				lastudpstattime = ::GetTickCount();
+				theApp.serverlist->ServerStats();
+			}
+		}
+	}
+
+	if (udcounter >= (1000/TIMER_PERIOD))  // Maella -Small latency- every 1 second
+	{
+		udcounter = 0;
+		// [TPT] - Patch
+		// This will avoid reordering list while filelist processing (due to Maella bandwidth)
+		for (POSITION pos = filelist.GetHeadPosition(); pos != NULL;)
+		{
+			CPartFile* cur_file =  filelist.GetNext(pos);
+
+			if(cur_file)
+			{
+				cur_file->UpdateAutoDownPriority();
+				// This will make sure we don't keep old sources to paused and stoped files..
+				// Remark: don't need to be processed every 50/100 ms
+				cur_file->StopPausedFile();
+			}
+		}
+		// [TPT] - Patch
+		if (theApp.serverconnect->IsUDPSocketAvailable())
+		{
+			if ((!lastudpsearchtime) || (::GetTickCount() - lastudpsearchtime) > UDPSERVERREASKTIME)
+				SendNextUDPPacket();
+		}
+	}
+	//end - Maella -New bandwidth control-
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	// Purge ED2K Link Queue
+	if (m_iLastLinkQueuedTick && !m_bBusyPurgingLinks && (GetTickCount() - m_iLastLinkQueuedTick) > 400)
+		PurgeED2KLinkQueue();
+	else if (m_ED2KLinkQueue.GetCount() && !thePrefs.SelectCatForNewDL()) // This should not happen.
+	{
+		PurgeED2KLinkQueue();
+		AddDebugLogLine(false, _T("ERROR: Links in ED2K Link Queue while SelectCatForNewDL was disabled!"));
+	}
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max 
+	if(::GetTickCount() > m_dwResTimer) 
+		{
+			theApp.emuledlg->transferwnd->ShowRessources();
+			m_dwResTimer = ::GetTickCount() + 1000; // update ever 1 sec
+		}
+	// <== CPU/MEM usage [$ick$/Stulle] - Max 
+
+	CheckDiskspaceTimed();
+}
+//Xman end
+
+//Xman askfordownload priority
+uint16 CDownloadQueue::GetTooManyConnections(bool recalc)
+{
+	if(recalc)
+	{
+		m_toomanyconnections=0;
+		for (POSITION pos =filelist.GetHeadPosition();pos != 0;)
+		{
+			CPartFile* cur_file = filelist.GetNext(pos);
+			m_toomanyconnections = m_toomanyconnections + (uint16)cur_file->GetSrcStatisticsValue(DS_TOOMANYCONNS);
+		}
+	}
+	return m_toomanyconnections;
+}
+//Xman end
 
 CPartFile* CDownloadQueue::GetFileByIndex(int index) const
 {
@@ -515,15 +1218,17 @@ bool CDownloadQueue::CheckAndAddSource(CPartFile* sender,CUpDownClient* source){
 	// filter sources which are incompatible with our encryption setting (one requires it, and the other one doesn't supports it)
 	if ( (source->RequiresCryptLayer() && (!thePrefs.IsClientCryptLayerSupported() || !source->HasValidHash())) || (thePrefs.IsClientCryptLayerRequired() && (!source->SupportsCryptLayer() || !source->HasValidHash())))
 	{
-#if defined(_DEBUG) || defined(_BETA) || defined(_DEVBUILD)
+#if defined(_DEBUG) || defined(_BETA)
 		//if (thePrefs.GetDebugSourceExchange()) // TODO: Uncomment after testing
-			AddDebugLogLine(DLP_DEFAULT, false, _T("Rejected source because CryptLayer-Setting (Obfuscation) was incompatible for file %s : %s"), sender->GetFileName(), source->DbgGetClientInfo() );
+		AddDebugLogLine(DLP_DEFAULT, false, _T("Rejected source because CryptLayer-Setting (Obfuscation) was incompatible for file %s : %s"), sender->GetFileName(), source->DbgGetClientInfo() );
 #endif
 		delete source;
 		return false;
 	}
 
 	// "Filter LAN IPs" and/or "IPfilter" is not required here, because it was already done in parent functions
+
+	//srcLock.Lock();	//zz_fly :: make source add action thread safe :: Enig123
 
 	// uses this only for temp. clients
 	for (POSITION pos = filelist.GetHeadPosition();pos != 0;){
@@ -533,19 +1238,26 @@ bool CDownloadQueue::CheckAndAddSource(CPartFile* sender,CUpDownClient* source){
 			if (cur_client->Compare(source, true) || cur_client->Compare(source, false)){
 				if (cur_file == sender){ // this file has already this source
 					delete source;
+					//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
 					return false;
 				}
 				// set request for this source
 				if (cur_client->AddRequestForAnotherFile(sender)){
 					theApp.emuledlg->transferwnd->GetDownloadList()->AddSource(sender,cur_client,true);
 					delete source;
-                    if(cur_client->GetDownloadState() != DS_CONNECTED) {
+                    //Xman remark: this is done in filerequest
+                    /*
+					if(cur_client->GetDownloadState() != DS_CONNECTED) {
                         cur_client->SwapToAnotherFile(_T("New A4AF source found. CDownloadQueue::CheckAndAddSource()"), false, false, false, NULL, true, false); // ZZ:DownloadManager
                     }
+                    */
+                    //Xman end
+					//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
 					return false;
 				}
 				else{
 					delete source;
+					//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
 					return false;
 				}
 			}
@@ -566,6 +1278,17 @@ bool CDownloadQueue::CheckAndAddSource(CPartFile* sender,CUpDownClient* source){
 				AddDebugLogLine(false, _T("*** CDownloadQueue::CheckAndAddSource -- added potential wrong source (%u)(diff. partcount) to file \"%s\""), source->GetUserIDHybrid(), sender->GetFileName());
 		}
 #endif
+		//Xman check if this is a recent dropped source
+		if(source->droptime>0 /*it is a dropped source */ 
+			&& ((::GetTickCount() - source->GetLastAskedTime())<(50*60*1000) /*last asked was shorter than 50 minutes */  
+			|| (((::GetTickCount() - source->GetLastAskedTime())<(150*60*1000)) /*last asked was shorter than 150 minutes */ && (source->IsEmuleClient()==false || source->IsLeecher()))	))
+		{
+			//AddDebugLogLine(false, _T("-o- rejected dropped client %s, %s reentering downloadqueue after time: %u min"), source->GetClientVerString(), source->GetUserName(), (::GetTickCount()-source->droptime)/60000);
+			//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
+			return false;
+		}
+		//Xman end
+
 		source->SetRequestFile(sender);
 	}
 	else{
@@ -581,17 +1304,47 @@ bool CDownloadQueue::CheckAndAddSource(CPartFile* sender,CUpDownClient* source){
 	}
 #endif
 
+	//Xman Xtreme Downloadmanager
+	//if(source->droptime>0)
+		//AddDebugLogLine(false, _T("-o- dropped client %s, %s reentered downloadqueue after time: %u min"), source->GetClientVerString(), source->GetUserName(), (::GetTickCount()-source->droptime)/60000);
+	source->droptime=0;
+	source->enterqueuetime=0;
+	//Xman end
+
 	sender->srclist.AddTail(source);
+
+	//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
+
 	theApp.emuledlg->transferwnd->GetDownloadList()->AddSource(sender,source,false);
+
+	//Xman GlobalMaxHarlimit for fairness
+	IncGlobSources();
+	//Xman end
+
 	return true;
 }
 
 bool CDownloadQueue::CheckAndAddKnownSource(CPartFile* sender,CUpDownClient* source, bool bIgnoreGlobDeadList){
 	if (sender->IsStopped())
 		return false;
-	
+
+	//Xman check if this is a recent dropped source
+	if(source->droptime>0 /*it is a dropped source */ 
+		&& ((::GetTickCount() - source->GetLastAskedTime())<(50*60*1000) /*last asked was shorter than 50 minutes */  
+		|| (((::GetTickCount() - source->GetLastAskedTime())<(150*60*1000)) /*last asked was shorter than 150 minutes */ && (source->IsEmuleClient()==false || source->IsLeecher()))	))
+	{
+		//AddDebugLogLine(false, _T("-o- rejected known dropped client %s, %s reentering downloadqueue after time: %u min"), source->GetClientVerString(), source->GetUserName(), (::GetTickCount()-source->droptime)/60000);
+		return false;
+	}
+	//Xman end
+
 	// filter sources which are known to be temporarily dead/useless
+	//Xman
+	/*
 	if ( (theApp.clientlist->m_globDeadSourceList.IsDeadSource(source) && !bIgnoreGlobDeadList) || sender->m_DeadSourceList.IsDeadSource(source)){
+	*/
+	if ( (!bIgnoreGlobDeadList && theApp.clientlist->m_globDeadSourceList.IsDeadSource(source)) || sender->m_DeadSourceList.IsDeadSource(source)){
+	//Xman end
 		//if (thePrefs.GetLogFilteredIPs())
 		//	AddDebugLogLine(DLP_DEFAULT, false, _T("Rejected source because it was found on the DeadSourcesList (%s) for file %s : %s")
 		//	,sender->m_DeadSourceList.IsDeadSource(source)? _T("Local") : _T("Global"), sender->GetFileName(), source->DbgGetClientInfo() );
@@ -601,9 +1354,9 @@ bool CDownloadQueue::CheckAndAddKnownSource(CPartFile* sender,CUpDownClient* sou
 	// filter sources which are incompatible with our encryption setting (one requires it, and the other one doesn't supports it)
 	if ( (source->RequiresCryptLayer() && (!thePrefs.IsClientCryptLayerSupported() || !source->HasValidHash())) || (thePrefs.IsClientCryptLayerRequired() && (!source->SupportsCryptLayer() || !source->HasValidHash())))
 	{
-#if defined(_DEBUG) || defined(_BETA) || defined(_DEVBUILD)
+#if defined(_DEBUG) || defined(_BETA)
 		//if (thePrefs.GetDebugSourceExchange()) // TODO: Uncomment after testing
-			AddDebugLogLine(DLP_DEFAULT, false, _T("Rejected source because CryptLayer-Setting (Obfuscation) was incompatible for file %s : %s"), sender->GetFileName(), source->DbgGetClientInfo() );
+		AddDebugLogLine(DLP_DEFAULT, false, _T("Rejected source because CryptLayer-Setting (Obfuscation) was incompatible for file %s : %s"), sender->GetFileName(), source->DbgGetClientInfo() );
 #endif
 		return false;
 	}
@@ -623,17 +1376,29 @@ bool CDownloadQueue::CheckAndAddKnownSource(CPartFile* sender,CUpDownClient* sou
 		}
 	}
 
+	//srcLock.Lock();	//zz_fly :: make source add action thread safe :: Enig123
+
 	// use this for client which are already know (downloading for example)
 	for (POSITION pos = filelist.GetHeadPosition();pos != 0;){
 		CPartFile* cur_file = filelist.GetNext(pos);
 		if (cur_file->srclist.Find(source)){
 			if (cur_file == sender)
+			//zz_fly :: make source add action thread safe :: Enig123
+			{
+				//srcLock.Unlock();
+			//zz_fly :: make source add action thread safe :: Enig123
 				return false;
+			} //zz_fly :: make source add action thread safe :: Enig123
 			if (source->AddRequestForAnotherFile(sender))
 				theApp.emuledlg->transferwnd->GetDownloadList()->AddSource(sender,source,true);
+                //Xman
+                /*
                 if(source->GetDownloadState() != DS_CONNECTED) {
                     source->SwapToAnotherFile(_T("New A4AF source found. CDownloadQueue::CheckAndAddKnownSource()"), false, false, false, NULL, true, false); // ZZ:DownloadManager
                 }
+                */
+                //Xman end
+			//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
 			return false;
 		}
 	}
@@ -651,22 +1416,41 @@ bool CDownloadQueue::CheckAndAddKnownSource(CPartFile* sender,CUpDownClient* sou
 	source->SetRequestFile(sender);
 	sender->srclist.AddTail(source);
 	source->SetSourceFrom(SF_PASSIVE);
+	//Xman a TCP-connect is not only done on SX
+	/*
 	if (thePrefs.GetDebugSourceExchange())
 		AddDebugLogLine(false, _T("SXRecv: Passively added source; %s, File=\"%s\""), source->DbgGetClientInfo(), sender->GetFileName());
+	*/
 #ifdef _DEBUG
 	if (thePrefs.GetVerbose() && source->GetPartCount()!=0 && source->GetPartCount()!=sender->GetPartCount()){
 		DEBUG_ONLY(AddDebugLogLine(false, _T("*** CDownloadQueue::CheckAndAddKnownSource -- New added source (%u, %s) had still value in partcount"), source->GetUserIDHybrid(), sender->GetFileName()));
 	}
 #endif
+	//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
+	//Xman Xtreme Downloadmanager
+	//if(source->droptime>0)
+		//AddDebugLogLine(false, _T("-o- known dropped client %s, %s reentered downloadqueue after time: %u min"), source->GetClientVerString(), source->GetUserName(), (::GetTickCount()-source->droptime)/60000);
+	source->droptime=0;
+	source->enterqueuetime=0;
+	//Xman end
 
 	theApp.emuledlg->transferwnd->GetDownloadList()->AddSource(sender,source,false);
 	//UpdateDisplayedInfo();
+
+	//Xman GlobalMaxHarlimit for fairness
+	IncGlobSources();
+	//Xman end
+
 	return true;
 }
+//Xman end
 
 bool CDownloadQueue::RemoveSource(CUpDownClient* toremove, bool bDoStatsUpdate)
 {
 	bool bRemovedSrcFromPartFile = false;
+	//srcLock.Lock();	//zz_fly :: make source add action thread safe :: Enig123
+	//Xman Code Improvement
+	/*
 	for (POSITION pos = filelist.GetHeadPosition();pos != 0;){
 		CPartFile* cur_file = filelist.GetNext(pos);
 		for (POSITION pos2 = cur_file->srclist.GetHeadPosition();pos2 != 0; cur_file->srclist.GetNext(pos2)){
@@ -680,10 +1464,26 @@ bool CDownloadQueue::RemoveSource(CUpDownClient* toremove, bool bDoStatsUpdate)
 				break;
 			}
 		}
+	*/
+	for (POSITION pos = filelist.GetHeadPosition();pos != NULL;){
+		CPartFile* cur_file = filelist.GetNext(pos);
+		POSITION pos2 = cur_file->srclist.Find(toremove);
+		if (pos2 != NULL){
+			cur_file->RemoveDownloadingSource(toremove); //to be sure
+			cur_file->srclist.RemoveAt(pos2);
+			cur_file->RemoveSourceFileName(toremove); // Follow The Majority [AndCycle/Stulle] - Stulle
+
+			bRemovedSrcFromPartFile = true;
+			if ( bDoStatsUpdate ){
+				cur_file->UpdatePartsInfo();
+			}
+		}
+	//Xman end
 		if ( bDoStatsUpdate )
 			cur_file->UpdateAvailablePartsCount();
 	}
-	
+	//srcLock.Unlock();	//zz_fly :: make source add action thread safe :: Enig123
+
 	// remove this source on all files in the downloadqueue who link this source
 	// pretty slow but no way arround, maybe using a Map is better, but that's slower on other parts
 	POSITION pos3, pos4;
@@ -718,22 +1518,62 @@ bool CDownloadQueue::RemoveSource(CUpDownClient* toremove, bool bDoStatsUpdate)
 	}
 
 	toremove->SetDownloadState(DS_NONE);
+	//Xman fix for startupload (downloading side)
+		toremove->protocolstepflag1=false; //to be sure
+	//Xman end
 	theApp.emuledlg->transferwnd->GetDownloadList()->RemoveSource(toremove,0);
 	toremove->SetRequestFile(NULL);
+
+	//Xman GlobalMaxHarlimit for fairness
+	if(bRemovedSrcFromPartFile)
+		DecGlobSources();
+	//Xman end
+
 	return bRemovedSrcFromPartFile;
 }
 
 void CDownloadQueue::RemoveFile(CPartFile* toremove)
 {
+	// ==> File Settings [sivka/Stulle] - Stulle
+	if (m_SaveSettingsThread) // we just started saving, we better wait
+	{
+		m_SaveSettingsThread->EndThread();
+		delete m_SaveSettingsThread;
+		m_SaveSettingsThread = NULL;
+	}
+	// <== File Settings [sivka/Stulle] - Stulle
 	RemoveLocalServerRequest(toremove);
 
+	//Xman
+	// Maella -Code Improvement-
+	/*
 	for (POSITION pos = filelist.GetHeadPosition();pos != 0;filelist.GetNext(pos)){
 		if (toremove == filelist.GetAt(pos)){
 			filelist.RemoveAt(pos);
 			break;
 		}
 	}
+	*/
+	POSITION pos = filelist.Find(toremove);
+	if (pos != NULL){
+		//zz_fly :: free unused memory when a download is cancelled/completed :: Enig123 :: start
+		/*
+		ASSERT(filelist.GetAt(pos)->srclist.IsEmpty());
+		filelist.GetAt(pos)->srclist.RemoveAll(); // Security 
+		*/
+		CPartFile* pFile = filelist.GetAt(pos);
+		if(!pFile->srclist.IsEmpty())
+			pFile->srclist.RemoveAll(); // Security 
+		pFile->RemoveAllRequestedBlocks();	//Enig123??
+		//zz_fly :: free unused memory when a download is cancelled/completed :: Enig123 :: end
+		filelist.RemoveAt(pos);
+	}
+	// Maella end
+	//zz_fly :: remove useless code :: Enig123
+	/*
 	SortByPriority();
+	*/
+	//zz_fly :: remove useless code :: Enig123
 	CheckDiskspace();
 	ExportPartMetFilesOverview();
 }
@@ -815,8 +1655,8 @@ bool CDownloadQueue::SendGlobGetSourcesUDPPacket(CSafeMemFile* data, bool bExt2P
 bool CDownloadQueue::SendNextUDPPacket()
 {
 	if (   filelist.IsEmpty()
-        || !theApp.serverconnect->IsUDPSocketAvailable()
-        || !theApp.serverconnect->IsConnected()
+		|| !theApp.serverconnect->IsUDPSocketAvailable()
+		|| !theApp.serverconnect->IsConnected()
 		|| thePrefs.IsClientCryptLayerRequired()) // we cannot use sources received without userhash, so dont ask
 		return false;
 
@@ -998,6 +1838,9 @@ void CDownloadQueue::StopUDPRequests()
 	m_iSearchedServers = 0;
 }
 
+//zz_fly :: remove useless code :: Enig123 :: start
+//note: not needed, because priority have been handled in CDownloadQueue::Process(), thanks Enig123
+/*
 bool CDownloadQueue::CompareParts(POSITION pos1, POSITION pos2){
 	CPartFile* file1 = filelist.GetAt(pos1);
 	CPartFile* file2 = filelist.GetAt(pos2);
@@ -1049,6 +1892,8 @@ void CDownloadQueue::SortByPriority()
 		HeapSort(0, i-1);
 	}
 }
+*/
+//zz_fly :: end
 
 void CDownloadQueue::CheckDiskspaceTimed()
 {
@@ -1245,6 +2090,8 @@ bool CDownloadQueue::IsInList(const CUpDownClient* client) const
 	return false;
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CDownloadQueue::ResetCatParts(UINT cat)
 {
 	CPartFile* cur_file;
@@ -1258,6 +2105,27 @@ void CDownloadQueue::ResetCatParts(UINT cat)
 			cur_file->SetCategory(cur_file->GetCategory() - 1);
 	}
 }
+*/
+// We need to reset the resume order, too, so that these files don't
+// screw up the order of 'All' category.  This function is modified.
+void CDownloadQueue::ResetCatParts(UINT cat, UINT useCat)
+{
+	int useOrder = GetMaxCatResumeOrder(useCat);
+	CPartFile* cur_file;
+	for (POSITION pos = filelist.GetHeadPosition(); pos != 0; ){
+		cur_file = filelist.GetNext(pos);
+
+		if (cur_file->GetCategory()==cat)
+		{
+			useOrder++;
+			cur_file->SetCategory(useCat);
+			cur_file->SetCatResumeOrder(useOrder);
+		}
+		else if (cur_file->GetCategory() > cat)
+			cur_file->SetCategory(cur_file->GetCategory() - 1);
+	}
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 void CDownloadQueue::SetCatPrio(UINT cat, uint8 newprio)
 {
@@ -1274,7 +2142,11 @@ void CDownloadQueue::SetCatPrio(UINT cat, uint8 newprio)
 			}
 	}
 
+    //zz_fly :: remove useless code :: Enig123
+    /*
     theApp.downloadqueue->SortByPriority();
+    */
+    //zz_fly :: remove useless code :: Enig123
 	theApp.downloadqueue->CheckDiskspaceTimed();
 }
 
@@ -1289,7 +2161,11 @@ void CDownloadQueue::RemoveAutoPrioInCat(UINT cat, uint8 newprio){
 		}
 	}
 
+    //zz_fly :: remove useless code :: Enig123
+    /*
     theApp.downloadqueue->SortByPriority();
+    */
+    //zz_fly :: remove useless code :: Enig123
 	theApp.downloadqueue->CheckDiskspaceTimed();
 }
 // <-- ZZ:DownloadManager
@@ -1297,12 +2173,12 @@ void CDownloadQueue::RemoveAutoPrioInCat(UINT cat, uint8 newprio){
 void CDownloadQueue::SetCatStatus(UINT cat, int newstatus)
 {
 	bool reset = false;
-    bool resort = false;
+	bool resort = false;
 
 	POSITION pos= filelist.GetHeadPosition();
 	while (pos != 0)
 	{
-		CPartFile* cur_file = filelist.GetNext(pos);
+		CPartFile* cur_file = filelist.GetAt(pos);
 		if (!cur_file)
 			continue;
 
@@ -1336,6 +2212,7 @@ void CDownloadQueue::SetCatStatus(UINT cat, int newstatus)
 					break;
 			}
 		}
+		filelist.GetNext(pos);
 		if (reset)
 		{
 			reset = false;
@@ -1344,7 +2221,11 @@ void CDownloadQueue::SetCatStatus(UINT cat, int newstatus)
 	}
 
     if(resort) {
+	    //zz_fly :: remove useless code :: Enig123
+	    /*
 	    theApp.downloadqueue->SortByPriority();
+	    */
+	    //zz_fly :: remove useless code :: Enig123
 	    theApp.downloadqueue->CheckDiskspace();
     }
 }
@@ -1357,7 +2238,7 @@ void CDownloadQueue::MoveCat(UINT from, UINT to)
 	POSITION pos= filelist.GetHeadPosition();
 	while (pos != 0)
 	{
-		CPartFile* cur_file = filelist.GetNext(pos);
+		CPartFile* cur_file = filelist.GetAt(pos);
 		if (!cur_file)
 			continue;
 
@@ -1375,6 +2256,7 @@ void CDownloadQueue::MoveCat(UINT from, UINT to)
 					cur_file->SetCategory(mycat + 1);
 			}
 		}
+		filelist.GetNext(pos);
 	}
 }
 
@@ -1399,6 +2281,8 @@ UINT CDownloadQueue::GetPausedFileCount() const
 	return result;
 }
 
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+/*
 void CDownloadQueue::SetAutoCat(CPartFile* newfile){
 	if(thePrefs.GetCatCount()==1)
 		return;
@@ -1439,10 +2323,15 @@ void CDownloadQueue::SetAutoCat(CPartFile* newfile){
 		} else {
 			// regular expression evaluation
 			if (RegularExpressionMatch(catExt,newfile->GetFileName()))
+			{
 				newfile->SetCategory(ix);
+				return; //zz_fly :: Avi3k: fix cat assign
+			}
 		}
 	}
 }
+*/
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 
 void CDownloadQueue::ResetLocalServerRequests()
 {
@@ -1512,7 +2401,7 @@ void CDownloadQueue::ProcessLocalRequests()
 						AddDebugLogLine(false, _T("SXSend: Local server source request for file \"%s\" not sent because of status '%s'"), cur_file->GetFileName(), cur_file->getPartfileStatus());
 				}
 			}
-			
+
 			if (posNextRequest != NULL)
 			{
 				cur_file = m_localServerReqQueue.GetAt(posNextRequest);
@@ -1527,7 +2416,7 @@ void CDownloadQueue::ProcessLocalRequests()
 				}
 
 				iFiles++;
-				
+
 				// create request packet
 				CSafeMemFile smPacket;
 				smPacket.WriteHash16(cur_file->GetFileHash());
@@ -1544,7 +2433,7 @@ void CDownloadQueue::ProcessLocalRequests()
 					byOpcode = OP_GETSOURCES_OBFU;
 				else
 					byOpcode = OP_GETSOURCES;
-	
+
 				Packet* packet = new Packet(&smPacket, OP_EDONKEYPROT, byOpcode);
 				if (thePrefs.GetDebugServerTCPLevel() > 0)
 					Debug(_T(">>> Sending OP__GetSources%s(%2u/%2u); %s\n"), (byOpcode == OP_GETSOURCES) ? _T("") : _T("_OBFU"), iFiles, iMaxFilesPerTcpFrame, DbgGetFileInfo(cur_file->GetFileHash()));
@@ -1709,13 +2598,33 @@ void CDownloadQueue::KademliaSearchFile(uint32 searchID, const Kademlia::CUInt12
 	if(!(!temp->IsStopped() && temp->GetMaxSources() > temp->GetSourceCount()))
 		return;
 
+	//Xman GlobalMaxHarlimit for fairness
+	if(temp->IsGlobalSourceAddAllowed()==false)
+		return;
+	//Xman end
+
 	uint32 ED2Kip = ntohl(ip);
 	if (theApp.ipfilter->IsFiltered(ED2Kip))
 	{
 		if (thePrefs.GetLogFilteredIPs())
+			//Xman show filename
+			/*
 			AddDebugLogLine(false, _T("IPfiltered source IP=%s (%s) received from Kademlia"), ipstr(ED2Kip), theApp.ipfilter->GetLastHit());
+			*/
+			AddDebugLogLine(false, _T("IPfiltered source IP=%s (%s) received from Kademlia for File: %s"), ipstr(ED2Kip), theApp.ipfilter->GetLastHit(), temp->GetFileName());
+			//Xman end
 		return;
 	}
+
+	//zz_fly :: skip banned source
+	// X-Ray :: Optimizations :: Start
+	if (theApp.clientlist->IsBannedClient(ED2Kip)){
+		if (thePrefs.GetLogFilteredIPs() && thePrefs.GetLogBannedClients())
+			AddDebugLogLine(false, _T("Banned source IP=%s (%s) received from Kademlia"), ipstr(ED2Kip), theApp.ipfilter->GetLastHit());
+		return;
+	}
+	// X-Ray :: Optimizations :: End
+
 	if( (ip == Kademlia::CKademlia::GetIPAddress() || ED2Kip == theApp.serverconnect->GetClientID()) && tcp == thePrefs.GetPort())
 		return;
 	CUpDownClient* ctemp = NULL; 
@@ -1897,7 +2806,7 @@ CString CDownloadQueue::GetOptimalTempDir(UINT nCat, EMFileSize nFileSize){
 
 	CMap<int, int, sint64, sint64> mapNeededSpaceOnDrive;
 	CMap<int, int, sint64, sint64> mapFreeSpaceOnDrive;
-	
+
 	sint64 llBuffer = 0;
 	sint64 llHighestFreeSpace = 0;
 	int	nHighestFreeSpaceDrive = -1;
@@ -1912,7 +2821,7 @@ CString CDownloadQueue::GetOptimalTempDir(UINT nCat, EMFileSize nFileSize){
 			nHighestFreeSpaceDrive = nDriveNumber;
 			llHighestFreeSpace = llBuffer;
 		}
-		
+
 	}
 
 	// now get the space we would need to download all files in the current queue
@@ -2003,3 +2912,773 @@ void CDownloadQueue::RefilterAllComments(){
 		cur_file->RefilterFileComments();
 	}
 }
+
+// BEGIN SLUGFILLER: SafeHash
+bool CDownloadQueue::IsTempFile(const CString& , const CString& rstrName) const
+{
+	// do not share a part file from the temp directory, if there is still a corresponding entry in
+	// the download queue -- because that part file is not yet complete.
+	CString othername = rstrName + _T(".met");
+	for (POSITION pos = filelist.GetHeadPosition();pos != 0;){
+		CPartFile* cur_file = filelist.GetNext(pos);
+		if (!othername.CompareNoCase(cur_file->GetPartMetFileName()))
+			return true;
+	}
+	return false;
+}
+// END SLUGFILLER: SafeHash
+
+// Maella -Accurate measure of bandwidth: eDonkey data + control, network adapter-
+void CDownloadQueue::CompDownloadRate(){
+	// Compute the download datarate of all clients
+	for (POSITION pos = filelist.GetHeadPosition(); pos != 0; ){
+		filelist.GetNext(pos)->CompDownloadRate();
+	}
+}
+// Maella end
+
+#ifdef PRINT_STATISTIC
+void CDownloadQueue::PrintStatistic()
+{
+	uint32 Savedsources=0;
+	uint32 Gaplist=0;
+	uint32 Requestedblocklist=0;
+	uint32 SrcpartFrequency=0;
+	uint32 BufferedData=0;
+	uint32 A4AFsrclist=0;
+	for (POSITION pos = filelist.GetHeadPosition(); pos != 0; ){
+		CPartFile* cur_file = filelist.GetNext(pos);
+		Savedsources += cur_file->GetSavedSources();
+		Gaplist += cur_file->GetGapList();
+		Requestedblocklist += cur_file->GetRequestedBlocklist();
+		SrcpartFrequency += cur_file->GetSrcpartFrequency();
+		BufferedData += cur_file->GetBufferedData();
+		A4AFsrclist += cur_file->GetA4AFsrclist();
+	}
+	AddLogLine(false, _T("sum of all paartfiles at downloadqueue:"));
+	AddLogLine(false, _T("Savedsources: %u"), Savedsources);
+	AddLogLine(false, _T("Gaplist: %u"), Gaplist);
+	AddLogLine(false, _T("Requestedblocklist: %u"), Requestedblocklist);
+	AddLogLine(false, _T("SrcpartFrequency: %u"), SrcpartFrequency);
+	AddLogLine(false, _T("BufferedData: %u"), BufferedData);
+	AddLogLine(false, _T("A4AFsrclist: %u"), A4AFsrclist);
+	AddLogLine(false, _T("internal global sources: %u"), GetGlobalSources());
+	AddLogLine(false, _T("---------------------------------------"));
+}
+#endif
+
+// ==> File Settings [sivka/Stulle] - Stulle
+void CDownloadQueue::InitTempVariables(CPartFile* file)
+{
+	thePrefs.SetTakeOverFileSettings(false);
+
+	thePrefs.SetMaxSourcesPerFileTemp((uint16)(file->GetPrivateMaxSources())); // hardlimit - Stulle
+	thePrefs.SetEnableAutoDropNNSTemp(file->GetEnableAutoDropNNS());
+	thePrefs.SetAutoNNS_TimerTemp(file->GetAutoNNS_Timer());
+	thePrefs.SetMaxRemoveNNSLimitTemp(file->GetMaxRemoveNNSLimit());
+	thePrefs.SetEnableAutoDropFQSTemp(file->GetEnableAutoDropFQS());
+	thePrefs.SetAutoFQS_TimerTemp(file->GetAutoFQS_Timer());
+	thePrefs.SetMaxRemoveFQSLimitTemp(file->GetMaxRemoveFQSLimit());
+	thePrefs.SetEnableAutoDropQRSTemp(file->GetEnableAutoDropQRS());
+	thePrefs.SetAutoHQRS_TimerTemp(file->GetAutoHQRS_Timer());
+	thePrefs.SetMaxRemoveQRSTemp(file->GetMaxRemoveQRS());
+	thePrefs.SetMaxRemoveQRSLimitTemp(file->GetMaxRemoveQRSLimit());
+	thePrefs.SetHQRXmanTemp(file->GetHQRXman());
+	thePrefs.SetGlobalHlTemp(file->GetGlobalHL()); // Global Source Limit (customize for files) - Stulle
+}
+
+void CDownloadQueue::UpdateFileSettings(CPartFile* file)
+{
+	if(thePrefs.GetMaxSourcesPerFileTakeOver()) // hardlimit - Stulle
+		file->SetPrivateMaxSources(thePrefs.GetMaxSourcesPerFileTemp()); // link Sivka File settings and official HL limits - Stulle
+	if(thePrefs.GetEnableAutoDropNNSTakeOver())
+		file->SetEnableAutoDropNNS(thePrefs.GetEnableAutoDropNNSTemp());
+	if(thePrefs.GetAutoNNS_TimerTakeOver())
+		file->SetAutoNNS_Timer(thePrefs.GetAutoNNS_TimerTemp());
+	if(thePrefs.GetMaxRemoveNNSLimitTakeOver())
+		file->SetMaxRemoveNNSLimit(thePrefs.GetMaxRemoveNNSLimitTemp());
+	if(thePrefs.GetEnableAutoDropFQSTakeOver())
+		file->SetEnableAutoDropFQS(thePrefs.GetEnableAutoDropFQSTemp());
+	if(thePrefs.GetAutoFQS_TimerTakeOver())
+		file->SetAutoFQS_Timer(thePrefs.GetAutoFQS_TimerTemp());
+	if(thePrefs.GetMaxRemoveFQSLimitTakeOver())
+		file->SetMaxRemoveFQSLimit(thePrefs.GetMaxRemoveFQSLimitTemp());
+	if(thePrefs.GetEnableAutoDropQRSTakeOver())
+		file->SetEnableAutoDropQRS(thePrefs.GetEnableAutoDropQRSTemp());
+	if(thePrefs.GetAutoHQRS_TimerTakeOver())
+		file->SetAutoHQRS_Timer(thePrefs.GetAutoHQRS_TimerTemp());
+	if(thePrefs.GetMaxRemoveQRSTakeOver())
+		file->SetMaxRemoveQRS(thePrefs.GetMaxRemoveQRSTemp());
+	if(thePrefs.GetMaxRemoveQRSLimitTakeOver())
+		file->SetMaxRemoveQRSLimit(thePrefs.GetMaxRemoveQRSLimitTemp());
+	// ==> Global Source Limit (customize for files) - Stulle
+	if(thePrefs.GetGlobalHlTakeOver())
+		file->SetGlobalHL(thePrefs.GetGlobalHlTemp());
+	// <== Global Source Limit (customize for files) - Stulle
+	if(thePrefs.GetHQRXmanTakeOver())
+		file->SetHQRXman(thePrefs.GetHQRXmanTemp());
+}
+
+#define SAVE_WAIT_TIME 5 // time we wait until we actually save
+void CDownloadQueue::SaveFileSettings(bool bStart)
+{
+	if(bStart)
+	{
+		if (m_SaveSettingsThread == NULL)
+		{
+			m_SaveSettingsThread = new CSaveSettingsThread();
+			m_dwLastSave = ::GetTickCount();
+		}
+		else
+		{
+			if((m_dwLastSave + SEC2MS(SAVE_WAIT_TIME)) < ::GetTickCount())
+				m_bSaveAgain = true;
+			m_dwLastSave = ::GetTickCount();
+			m_SaveSettingsThread->KeepWaiting();
+		}
+	}
+	else
+	{
+		if(m_bSaveAgain)
+		{
+			m_bSaveAgain = false;
+			m_SaveSettingsThread->Pause(false);
+		}
+		else if (m_SaveSettingsThread) // just in case, should always be true at this point
+		{
+			m_SaveSettingsThread->EndThread();
+			delete m_SaveSettingsThread;
+			m_SaveSettingsThread = NULL;
+		}
+	}
+}
+
+// Save settings thread to avoid locking GUI
+CSaveSettingsThread::CSaveSettingsThread(void) {
+	threadEndedEvent = new CEvent(0, 1);
+	pauseEvent = new CEvent(TRUE, TRUE);
+	waitEvent = new CEvent(TRUE, FALSE);
+
+	bDoRun = true;
+	bDoWait = true;
+	m_dwLastWait = 0;
+	AfxBeginThread(RunProc,(LPVOID)this,THREAD_PRIORITY_LOWEST);
+}
+
+CSaveSettingsThread::~CSaveSettingsThread(void) {
+	EndThread();
+	delete threadEndedEvent;
+	delete pauseEvent;
+	delete waitEvent;
+}
+
+void CSaveSettingsThread::EndThread() {
+	if(!bDoRun) // we are trying to stop already
+		return;
+
+	// signal the thread to stop looping and exit.
+	bDoRun = false;
+	bDoWait = false;
+
+	Pause(false);
+	waitEvent->SetEvent();
+
+	// wait for the thread to signal that it has stopped looping.
+	threadEndedEvent->Lock();
+}
+
+void CSaveSettingsThread::Pause(bool paused) {
+	if(paused) {
+		pauseEvent->ResetEvent();
+	} else {
+		pauseEvent->SetEvent();
+    }
+}
+
+UINT AFX_CDECL CSaveSettingsThread::RunProc(LPVOID pParam)
+{
+	DbgSetThreadName("CSaveSettingsThread");
+
+	CSaveSettingsThread* savesettingsthread = (CSaveSettingsThread*)pParam;
+
+	return savesettingsthread->RunInternal();
+}
+
+UINT CSaveSettingsThread::RunInternal()
+{
+	while (bDoWait)
+	{
+		if(m_dwLastWait == 0) // initial wait
+			waitEvent->Lock(SEC2MS(SAVE_WAIT_TIME));
+		else if(m_dwLastWait + SEC2MS(SAVE_WAIT_TIME) > ::GetTickCount()) // we have not waited enough since last keep message
+			waitEvent->Lock(m_dwLastWait + SEC2MS(SAVE_WAIT_TIME) - ::GetTickCount()); // so wait until the time is up
+		else // we waited enough, do the actual run now
+		{
+			bDoWait = false;
+			if(bDoRun == false) // what? canceling this thread before saving
+				m_SettingsSaver.SaveSettings(); // save!
+		}
+	}
+
+	while(bDoRun) 
+	{
+		if(m_SettingsSaver.SaveSettings()) // if this fails we need to run again
+		{
+			Pause(true);
+			PostMessage(theApp.emuledlg->m_hWnd,TM_SAVEDONE,0,0);
+		}
+		pauseEvent->Lock();
+	}
+
+	threadEndedEvent->SetEvent();
+
+	return 0;
+}
+// <== File Settings [sivka/Stulle] - Stulle
+
+//==> Global Source Limit [Max/Stulle] - Stulle
+/****************************\
+* Function written by Stulle *
+* Used ideas from MaxUpload  *
+\****************************/
+void CDownloadQueue::SetHardLimits()
+{
+/********************\
+* Set the variables  *
+\********************/
+
+	uint16 aCount = 0;
+	UINT countsources = 0;
+	UINT m_uGlobalHardlimit = 0;
+	if (thePrefs.m_bAcceptsourcelimit && thePrefs.m_uMaxGlobalSources < thePrefs.GetGlobalHL())
+		m_uGlobalHardlimit = thePrefs.m_uMaxGlobalSources;
+	else
+		m_uGlobalHardlimit = thePrefs.GetGlobalHL();
+	uint16 m_uTollerance = (uint16)(m_uGlobalHardlimit*.05);
+	UINT m_uSourcesDif = 0;
+	bool m_bTooMuchSrc = false;
+	bool m_bPassiveModeTemp = false;
+
+/********************\
+* Count Src & files  *
+\********************/
+
+	for (POSITION pos = filelist.GetHeadPosition();pos != 0;){
+		CPartFile* cur_file = filelist.GetNext(pos);
+		if (cur_file->GetStatus() == PS_READY || cur_file->GetStatus() == PS_EMPTY)
+		{
+			if(thePrefs.GetGlobalHlAll() || cur_file->GetGlobalHL())
+				aCount++;
+
+			 countsources += cur_file->GetSourceCount();
+
+			 // just a safety check
+			 if (cur_file->GetFileHardLimit() < cur_file->GetSourceCount())
+				 cur_file->DecrHL(); // HL = SrcCount
+		}
+	}
+
+	if (aCount == 0) // nothing to check here
+	{
+		m_bGlobalHLSrcReqAllowed = true;
+		m_dwUpdateHL = ::GetTickCount();
+		return;
+	}
+
+/********************\
+* Get Src difference *
+\********************/
+
+	if (m_uGlobalHardlimit < countsources) // get pos result
+	{
+		m_uSourcesDif = countsources - m_uGlobalHardlimit;
+		m_bTooMuchSrc = true;
+	}
+	else
+		m_uSourcesDif = m_uGlobalHardlimit - countsources;
+
+/********************\
+* Use passive mode   *
+\********************/
+
+	if(m_uSourcesDif < m_uTollerance)
+	{
+		if(m_bPassiveMode == false)
+		{
+			// First time in passive mode for this round! What we need to do now is increase
+			// the recheck time. Next we need to remember we had our first time passive mode.
+			// If we enter passive mode we add the difference to the max range to the number
+			// of current sources so we won't exceed the limit. One more var to recognize we
+			// entered the passive mode in this cycle and we are finished.
+			m_dwUpdateHlTime = 300000; // 300 sec = 5 min
+			m_bPassiveMode = true;
+			m_bPassiveModeTemp = true;
+			m_bGlobalHLSrcReqAllowed = true;
+			m_uSourcesDif = ((m_uGlobalHardlimit + m_uTollerance) - countsources)/aCount;
+			AddDebugLogLine(true,_T("{GSL} Global source count is in the tolerance range! PassiveMode!"));
+		}
+		else
+		{
+			m_bGlobalHLSrcReqAllowed = true;
+			m_dwUpdateHL = ::GetTickCount();
+			return;
+		}
+	}
+
+/********************\
+* Calc HL changes    *
+\********************/
+
+	else
+	{
+		if(m_bPassiveMode == true)
+		{
+			m_dwUpdateHlTime = 50000; // 50 sec
+			m_bPassiveMode = false;
+			AddDebugLogLine(true,_T("{GSL} Global source count is not in the tolerance range! Disabled PassiveMode!"));
+		}
+		if(!m_bTooMuchSrc)
+		{
+			uint16 m_uMaxIncr = m_uTollerance/aCount;
+			m_uSourcesDif /= aCount;
+
+			if(m_uMaxIncr < m_uSourcesDif)
+				m_uSourcesDif = m_uMaxIncr;
+
+			m_bGlobalHLSrcReqAllowed = true;
+		}
+		else
+			m_bGlobalHLSrcReqAllowed = false;
+	}
+
+/********************\
+* Change Hardlimits  *
+\********************/
+
+	for (POSITION pos = filelist.GetHeadPosition();pos != 0;){
+		CPartFile* cur_file = filelist.GetNext(pos);
+		if ((cur_file->GetStatus() == PS_READY || cur_file->GetStatus() == PS_EMPTY) && (thePrefs.GetGlobalHlAll() || cur_file->GetGlobalHL()))
+		{
+			if(m_bPassiveModeTemp)
+				cur_file->SetPassiveHL(m_uSourcesDif);
+			else if(!m_bTooMuchSrc)
+				cur_file->IncrHL(m_uSourcesDif);
+			else
+			cur_file->DecrHL();
+		}
+	}
+
+	m_dwUpdateHL = ::GetTickCount();
+	return;
+}
+// <== Global Source Limit [Max/Stulle] - Stulle
+
+// ==> Show sources on title - Stulle
+uint16 CDownloadQueue::GetGlobalSourceCount()
+{
+	uint16 m_uSourceCountTemp = 0;
+	for (POSITION pos = filelist.GetHeadPosition(); pos != 0; )
+	{
+		const CPartFile* cur_file = filelist.GetNext(pos);
+
+		m_uSourceCountTemp = (uint16)(m_uSourceCountTemp + cur_file->GetSourceCount());
+	}
+	return m_uSourceCountTemp;
+}
+// <== Show sources on title - Stulle
+
+// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+// This function is used for the category commands Stop Last and Pause Last.
+// This is a new function.
+void CDownloadQueue::StopPauseLastFile(int Mode, int Category) {
+	CPartFile*  pfile = NULL;
+	for (POSITION pos = filelist.GetHeadPosition();pos != 0;filelist.GetNext(pos)) {
+		CPartFile* cur_file = filelist.GetAt(pos);
+		if ((cur_file->GetStatus() < 4) && ((int)cur_file->GetCategory() == Category || Category == -1)) {
+			if (!pfile)
+				pfile = cur_file;
+			else {
+				if (cur_file->GetCatResumeOrder() > pfile->GetCatResumeOrder())
+					pfile = cur_file;
+				else if (cur_file->GetCatResumeOrder() == pfile->GetCatResumeOrder() && (cur_file->GetDownPriority() < pfile->GetDownPriority()))
+					pfile = cur_file;
+			}
+		}
+	}
+	if (pfile) {
+		Mode == MP_STOP ? pfile->StopFile() : pfile->PauseFile();
+	}
+}
+
+// This function returns the highest resume order in a given category.
+// It can be used to automatically assign a resume order to a partfile
+// when it is added...  Or maybe it will have other uses in the future.
+UINT CDownloadQueue::GetMaxCatResumeOrder(UINT iCategory /* = 0*/)
+{
+	UINT		max   = 0;
+	
+	for (POSITION pos = filelist.GetHeadPosition();pos != 0;filelist.GetNext(pos))
+	{
+		CPartFile* cur_file = filelist.GetAt(pos);
+		if (cur_file->GetCategory() == iCategory && cur_file->GetCatResumeOrder() > max)
+			max = cur_file->GetCatResumeOrder();
+	}
+
+	return max;
+}
+
+// New function, used to add all of the
+// ED2K links on the link queue to the downloads.  This is
+// called when no new links have been added to the download
+// list for half a second, or when there are queued links
+// and the user has disabled the SelectCatForLinks feature.
+bool CDownloadQueue::PurgeED2KLinkQueue()
+{
+	if (m_ED2KLinkQueue.IsEmpty()) return false;
+	
+	m_bBusyPurgingLinks = true;
+
+	int	useCat;
+	int		addedFiles = 0;
+	bool	bCreatedNewCat = false;
+	bool	bCanceled = false;
+	if (thePrefs.SelectCatForNewDL() && thePrefs.GetCatCount()>1)
+	{
+		CSelCategoryDlg* getCatDlg = new CSelCategoryDlg((CWnd*)theApp.emuledlg);
+		getCatDlg->DoModal();
+		
+		// Returns 0 on 'Cancel', otherwise it returns the selected category
+		// or the index of a newly created category.  Users can opt to add the
+		// links into a new category.
+		useCat = getCatDlg->GetInput();
+		bCreatedNewCat = getCatDlg->CreatedNewCat();
+		bCanceled = getCatDlg->WasCancelled();
+		delete getCatDlg;
+	}
+	else if (thePrefs.UseActiveCatForLinks())
+		useCat = theApp.emuledlg->transferwnd->GetActiveCategory();
+	else
+		useCat = 0;
+
+	for (POSITION pos = m_ED2KLinkQueue.GetHeadPosition(); pos != 0; m_ED2KLinkQueue.GetNext(pos))
+	{
+		CED2KFileLink*	pLink = m_ED2KLinkQueue.GetAt(pos);
+		if (bCanceled) {
+			delete pLink;
+			pLink = NULL;
+			continue;
+		}
+		if (!thePrefs.SelectCatForNewDL() && thePrefs.UseAutoCat())
+		{
+			useCat = GetAutoCat(CString(pLink->GetName()), pLink->GetSize());
+			if (!useCat && thePrefs.UseActiveCatForLinks())
+				useCat = theApp.emuledlg->transferwnd->GetActiveCategory();
+		}
+		CPartFile*		newfile =	new CPartFile(pLink, useCat);
+		
+		if (newfile->GetStatus() == PS_ERROR) 
+		{
+			delete newfile;
+			newfile = NULL;
+		}
+		else
+		{
+			if (thePrefs.SmallFileDLPush() && newfile->GetFileSize() < (uint64)154624)
+				newfile->SetCatResumeOrder(0);
+			else if (thePrefs.AutoSetResumeOrder()) {
+				newfile->SetCatResumeOrder(GetMaxCatResumeOrder(useCat)+1);
+			}
+			AddDownload(newfile,thePrefs.AddNewFilesPaused());
+			addedFiles++;
+		}
+
+		CPartFile* partfile = newfile;
+		if (partfile == NULL)
+			partfile = GetFileByID(pLink->GetHashKey());
+		if (partfile)
+		{
+			if (pLink->HasValidSources())
+			partfile->AddClientSources(pLink->SourcesList,1,false);
+			if (pLink->HasValidAICHHash() ){
+				if ( !(partfile->GetAICHRecoveryHashSet()->HasValidMasterHash() && partfile->GetAICHRecoveryHashSet()->GetMasterHash() == pLink->GetAICHHash())){
+					partfile->GetAICHRecoveryHashSet()->SetMasterHash(pLink->GetAICHHash(), AICH_VERIFIED);
+					partfile->GetAICHRecoveryHashSet()->FreeHashSet();
+				}
+			}
+		}
+
+		if(pLink->HasHostnameSources())
+		{
+			POSITION pos = pLink->m_HostnameSourcesList.GetHeadPosition();
+			while (pos != NULL)
+			{
+				const SUnresolvedHostname* pUnresHost = pLink->m_HostnameSourcesList.GetNext(pos);
+				m_srcwnd.AddToResolve(pLink->GetHashKey(), pUnresHost->strHostname, pUnresHost->nPort, pUnresHost->strURL);
+			}
+		}
+		// We're done with this link.
+		delete pLink;
+		pLink = NULL;
+	}
+	
+	m_ED2KLinkQueue.RemoveAll();
+
+	// This bit of code will resume the number of files that the user specifies in preferences (Off by default)
+	if (thePrefs.StartDLInEmptyCats() > 0 && bCreatedNewCat && thePrefs.AddNewFilesPaused())
+		for (int i = 0; i < thePrefs.StartDLInEmptyCats(); i++)
+			if (!StartNextFile(useCat)) break;
+
+	m_bBusyPurgingLinks = false;
+	m_iLastLinkQueuedTick = 0;
+	return true;
+}
+
+// Returns statistics about a category's files' states.
+void CDownloadQueue::GetCategoryFileCounts(UINT uCategory, int cntFiles[])
+{
+	// cntFiles Array Indices:
+	// 0 = Total
+	// 1 = Transferring (Transferring Sources > 0)
+	// 2 = Active (READY and EMPTY)
+	// 3 = Unactive (PAUSED)
+	// 4 = Complete (COMPLETE and COMPLETING)
+	// 5 = Error (ERROR)
+	// 6 = Other (Everything else...)
+	for (int i = 0; i < 7; i++) cntFiles[i] = 0;
+
+	for (POSITION pos = filelist.GetHeadPosition(); pos != NULL; filelist.GetNext(pos))
+	{
+		CPartFile* cur_file = filelist.GetAt(pos);
+		if (cur_file->GetCategory() != uCategory) continue;
+
+		cntFiles[0]++;
+		if (cur_file->GetTransferringSrcCount() > 0) cntFiles[1]++;
+
+		switch (cur_file->GetStatus(false))
+		{
+			case	PS_READY:
+			case	PS_EMPTY:
+				cntFiles[2]++;
+				break;
+
+			case	PS_PAUSED:
+			//case	PS_INSUFFICIENT:
+				cntFiles[3]++;
+				break;
+
+			case	PS_COMPLETING:
+			case	PS_COMPLETE:
+				cntFiles[4]++;
+				break;
+
+			case	PS_ERROR:
+				cntFiles[5]++;
+				break;
+			
+			case	PS_WAITINGFORHASH:
+			case	PS_HASHING:
+			case	PS_UNKNOWN:
+				cntFiles[6]++;
+				break;
+		}
+	}
+}
+
+// Returns the number of active files in a category.
+UINT CDownloadQueue::GetCatActiveFileCount(UINT uCategory)
+{
+	UINT uCount = 0;
+
+	for (POSITION pos = filelist.GetHeadPosition(); pos != NULL; filelist.GetNext(pos))
+	{
+		CPartFile* cur_file = filelist.GetAt(pos);
+		if (cur_file->GetCategory() != uCategory) continue;
+
+		switch (cur_file->GetStatus(false))
+		{
+			case	PS_READY:
+			case	PS_EMPTY:
+			case	PS_COMPLETING:
+				uCount++;
+				break;
+			default:
+				break;
+		}
+	}
+
+	return uCount;
+}
+
+// Returns the number of files in a category.
+UINT CDownloadQueue::GetCategoryFileCount(UINT uCategory)
+{
+	UINT uCount = 0;
+
+	for (POSITION pos = filelist.GetHeadPosition(); pos != NULL; filelist.GetNext(pos))
+	{
+		CPartFile* cur_file = filelist.GetAt(pos);
+		if (cur_file->GetCategory() == uCategory) uCount++;
+	}
+
+	return uCount;
+}
+
+// Returns the source count of the file with the highest available source count.
+// nCat is optional and allows you to specify a certain category.
+UINT CDownloadQueue::GetHighestAvailableSourceCount(int nCat)
+{
+	UINT nCount = 0;
+
+	for (POSITION pos = filelist.GetHeadPosition(); pos != NULL; filelist.GetNext(pos))
+	{
+		CPartFile* curFile = filelist.GetAt(pos);
+		if (nCount < curFile->GetAvailableSrcCount() && (nCat == -1 || (int)curFile->GetCategory() == nCat))
+			nCount = curFile->GetAvailableSrcCount();
+	}
+
+	return nCount;
+}
+
+// GetAutoCat returns a category index of a category
+// that passes the filters.
+// Idea by HoaX_69.
+UINT CDownloadQueue::GetAutoCat(CString sFullName, EMFileSize nFileSize)
+{
+	if (sFullName.IsEmpty())
+		return 0;
+
+	if (thePrefs.GetCatCount() <= 1)
+		return 0;
+
+	for (int ix = 1; ix < thePrefs.GetCatCount(); ix++)
+	{ 
+		Category_Struct* curCat = thePrefs.GetCategory(ix);
+		if (!curCat->selectioncriteria.bAdvancedFilterMask && !curCat->selectioncriteria.bFileSize)
+			continue;
+		if (curCat->selectioncriteria.bAdvancedFilterMask && !ApplyFilterMask(sFullName, ix))
+			continue;
+		if (curCat->selectioncriteria.bFileSize && (nFileSize < curCat->viewfilters.nFSizeMin || (curCat->viewfilters.nFSizeMax == 0 || nFileSize > curCat->viewfilters.nFSizeMax)))
+			continue;
+		return ix;
+	}
+
+	return 0;
+}
+
+// Checks a part-file's "pretty filename" against a filter mask and returns
+// true if it passes.  See read-me for details.
+bool CDownloadQueue::ApplyFilterMask(CString sFullName, UINT nCat)
+{
+	CString sFilterMask = thePrefs.GetCategory(nCat)->viewfilters.sAdvancedFilterMask;
+	sFilterMask.Trim();
+
+	if (sFilterMask == "")
+		return false;
+
+		sFullName.MakeLower();
+	sFilterMask.MakeLower();
+
+	if (sFilterMask.Left(1) == "<")
+		{
+			bool bPassedGlobal[3];
+			bPassedGlobal[0] = false;
+			bPassedGlobal[1] = true;
+			bPassedGlobal[2] = false;
+
+			for (int i = 0; i < 3; i++)
+			{
+				int iStart = 0;
+				switch (i)
+				{
+			case 0: iStart = sFilterMask.Find(_T("<all(")); break;
+			case 1: iStart = sFilterMask.Find(_T("<any(")); break;
+			case 2: iStart = sFilterMask.Find(_T("<none(")); break;
+				}
+
+				if (iStart == -1)
+				{
+					bPassedGlobal[i] = true; // We need to do this since not all criteria are needed in order to match the category.
+					continue; // Skip this criteria block.
+				}
+
+				i !=2 ? (iStart += 5) : (iStart += 6);
+
+			int iEnd = sFilterMask.Find(_T(")>"), iStart);
+			int iLT = sFilterMask.Find(_T("<"), iStart);
+			int iGT = sFilterMask.Find(_T(">"), iStart);
+
+				if (iEnd == -1 || (iLT != -1 && iLT < iEnd) || iGT < iEnd)
+				{
+				AddDebugLogLine(false, _T("Category '%s' has invalid Category Mask String."), thePrefs.GetCategory(nCat)->strTitle);
+					break; // Move on to next category.
+				}
+				if (iStart == iEnd)
+				{
+					bPassedGlobal[i] = true; // Just because this criteria block is empty doesn't mean the mask should fail.
+					continue; // Skip this criteria block.
+				}
+
+			CString sSegment = sFilterMask.Mid(iStart, iEnd - iStart);
+
+				int curPosBlock = 0;
+				CString cmpSubBlock = sSegment.Tokenize(_T(":"), curPosBlock);
+
+				while (cmpSubBlock != "")
+				{
+					bool bPassed = (i == 1) ? false : true;
+
+					int curPosToken = 0;
+					CString cmpSubStr = cmpSubBlock.Tokenize(_T("|"), curPosToken);
+
+				while (cmpSubStr != "")
+				{
+					int cmpResult;
+
+					if (cmpSubStr.Find(_T("*")) != -1 || cmpSubStr.Find(_T("?")) != -1)
+						cmpResult = (wildcmp(cmpSubStr.GetBuffer(), sFullName.GetBuffer()) == 0) ? -1 : 1;
+					else
+						cmpResult = sFullName.Find(cmpSubStr);
+
+					switch (i)
+					{
+							case 0:	if (cmpResult == -1) bPassed = false; break;
+							case 1:	if (cmpResult != -1) bPassed = true; break;
+							case 2:	if (cmpResult != -1) bPassed = false; break;
+						}
+						cmpSubStr = cmpSubBlock.Tokenize(_T("|"), curPosToken);
+						}
+					switch (i)
+						{
+						case 0:
+						case 2: if (bPassed) bPassedGlobal[i] = true; break;
+						case 1: if (!bPassed) bPassedGlobal[i] = false; break;
+						}
+					cmpSubBlock = sSegment.Tokenize(_T(":"), curPosBlock);
+					}
+				}
+			for (int i = 0; i < 3; i++)
+			if (!bPassedGlobal[i]) return false;
+		return true;
+		}
+		else
+		{
+			int curPos = 0;
+		CString cmpSubStr = sFilterMask.Tokenize(_T("|"), curPos);
+
+			while (cmpSubStr != "")
+			{
+				int cmpResult;
+
+				if (cmpSubStr.Find(_T("*")) != -1 || cmpSubStr.Find(_T("?")) != -1)
+					cmpResult = (wildcmp(cmpSubStr.GetBuffer(), sFullName.GetBuffer()) == 0) ? -1 : 1;
+				else
+					cmpResult = sFullName.Find(cmpSubStr);
+
+				if(cmpResult != -1)
+				return true;
+			cmpSubStr = sFilterMask.Tokenize(_T("|"), curPos);
+			}
+		}
+	return false;
+}
+// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle

@@ -17,6 +17,7 @@
 #include "stdafx.h"
 #include "emule.h"
 #include "PreferencesDlg.h"
+#include "emuleDlg.h" // Diabolic Easteregg [Stulle] - Mephisto
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -49,6 +50,9 @@ CPreferencesDlg::CPreferencesDlg()
 	m_wndScheduler.m_psp.dwFlags &= ~PSH_HASHELP;
 	m_wndProxy.m_psp.dwFlags &= ~PSH_HASHELP;
 	m_wndMessages.m_psp.dwFlags &= ~PSH_HASHELP;
+	m_wndXtreme.m_psp.dwFlags &= ~PSH_HASHELP; //Xman Xtreme Mod
+	m_wndXtreme2.m_psp.dwFlags &= ~PSH_HASHELP; //Xman Xtreme Mod
+	m_wndScar.m_psp.dwFlags &= ~PSH_HASHELP; // ScarAngel Preferences window - Stulle
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 	m_wndDebug.m_psp.dwFlags &= ~PSH_HASHELP;
 #endif
@@ -68,6 +72,16 @@ CPreferencesDlg::CPreferencesDlg()
 	CTreePropSheet::SetPageIcon(&m_wndWebServer, _T("WEB"));
 	CTreePropSheet::SetPageIcon(&m_wndTweaks, _T("TWEAK"));
 	CTreePropSheet::SetPageIcon(&m_wndMessages, _T("MESSAGES"));
+	// ==> This ain't no Xtreme - Stulle
+	/*
+	CTreePropSheet::SetPageIcon(&m_wndXtreme, _T("AAAEMULEAPP")); //Xman Xtreme Mod
+	CTreePropSheet::SetPageIcon(&m_wndXtreme2, _T("AAAEMULEAPP")); //Xman Xtreme Mod
+	*/
+	CTreePropSheet::SetPageIcon(&m_wndXtreme, _T("XTREME"));
+	CTreePropSheet::SetPageIcon(&m_wndXtreme2, _T("XTREME"));
+	CTreePropSheet::SetPageIcon(&m_wndScar, _T("AAAEMULEAPP")); // ScarAngel Preferences window - Stulle
+	// <== This ain't no Xtreme - Stulle
+
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 	CTreePropSheet::SetPageIcon(&m_wndDebug, _T("Preferences"));
 #endif
@@ -87,6 +101,9 @@ CPreferencesDlg::CPreferencesDlg()
 	AddPage(&m_wndScheduler);
 	AddPage(&m_wndWebServer);
 	AddPage(&m_wndTweaks);
+	AddPage(&m_wndXtreme); //Xman Xtreme Mod
+	AddPage(&m_wndXtreme2); //Xman Xtreme Mod
+	AddPage(&m_wndScar); // ScarAngel Preferences window - Stulle
 #if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 	AddPage(&m_wndDebug);
 #endif
@@ -98,6 +115,9 @@ CPreferencesDlg::CPreferencesDlg()
 
 	m_pPshStartPage = NULL;
 	m_bSaveIniFile = false;
+
+	m_WebServerTab = CPPgWebServer::WEBSERVER; // Tabbed WebInterface settings panel [Stulle] - Stulle
+	m_ScarTab = CPPgScar::SCAR; // Tabbed Preferences [TPT] - Stulle
 }
 
 CPreferencesDlg::~CPreferencesDlg()
@@ -112,6 +132,10 @@ void CPreferencesDlg::OnDestroy()
 		thePrefs.Save();
 		m_bSaveIniFile = false;
 	}
+	// ==> Diabolic Easteregg [Stulle] - Mephisto
+	if(thePrefs.m_bCloseEasteregg)
+		theApp.emuledlg->CloseeMule();
+	// <== Diabolic Easteregg [Stulle] - Mephisto
 	m_pPshStartPage = GetPage(GetActiveIndex())->m_psp.pszTemplate;
 }
 
@@ -129,6 +153,20 @@ BOOL CPreferencesDlg::OnInitDialog()
 			break;
 		}
 	}
+
+	//Xman Preferences Banner
+	CBitmap bmp;
+	VERIFY( bmp.Attach(theApp.LoadImage(_T("BANNER"), _T("JPG"))) );
+	if (bmp.GetSafeHandle())
+	{
+		m_banner.SetTexture((HBITMAP)bmp.Detach());	
+		m_banner.SetFillFlag(KCSB_FILL_TEXTURE);
+		m_banner.SetSize(75);
+		m_banner.SetTitle(_T(""));
+		m_banner.SetCaption(_T(""));
+		m_banner.Attach(this, KCSB_ATTACH_RIGHT);
+	}
+	//Xman end
 
 	Localize();	
 	return bResult;
@@ -153,6 +191,9 @@ void CPreferencesDlg::Localize()
 	m_wndScheduler.Localize();
 	m_wndProxy.Localize();
 	m_wndMessages.Localize();
+	m_wndXtreme.Localize(); //Xman Xtreme Mod
+	m_wndXtreme2.Localize(); //Xman Xtreme Mod
+	m_wndScar.Localize(); // ScarAngel Preferences window - Stulle
 
 	int c = 0;
 
@@ -174,10 +215,22 @@ void CPreferencesDlg::Localize()
 		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_SCHEDULER)));
 		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_PW_WS)));
 		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_PW_TWEAK)));
+		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_XTREMESETTINGS)) + _T(" I")); //Xman Xtreme Mod
+		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_XTREMESETTINGS)) + _T(" II")); //Xman Xtreme Mod
+		// ==> Mephisto mod [Stulle] - Mephisto
+		/*
+		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_SCARANGEL))); // ScarAngel Preferences window - Stulle
+		*/
+		pTree->SetItemText(GetPageTreeItem(c++), RemoveAmbersand(GetResString(IDS_MEPHISTO)));
+		// <== Mephisto mod [Stulle] - Mephisto
 	#if defined(_DEBUG) || defined(USE_DEBUG_DEVICE)
 		pTree->SetItemText(GetPageTreeItem(c++), _T("Debug"));
 	#endif
 	}
+
+	//Xman Preferences Banner
+	m_banner.UpdateSize();
+	//Xman end
 
 	UpdateCaption();
 }
@@ -185,7 +238,12 @@ void CPreferencesDlg::Localize()
 void CPreferencesDlg::OnHelp()
 {
 	int iCurSel = GetActiveIndex();
+	//Xman no crash on F1 (remark: 12 pages are official)
+	/*
 	if (iCurSel >= 0)
+	*/
+	if (iCurSel >= 0 && iCurSel<=12)
+	//Xman end
 	{
 		CPropertyPage* pPage = GetPage(iCurSel);
 		if (pPage)

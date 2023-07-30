@@ -23,6 +23,12 @@
 #include "QueueListCtrl.h"
 #include "ClientListCtrl.h"
 #include "DownloadClientsCtrl.h"
+// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#if _MSC_VER>=1600
+#include "ButtonVE.h"
+#endif
+// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#include "progressctrlx.h" // Client queue progress bar [Commander] - Stulle
 
 class CDropDownButton;
 class CToolTipCtrlX;
@@ -60,16 +66,32 @@ public:
 
 	void ShowQueueCount(uint32 number);
 	void UpdateListCount(EWnd2 listindex, int iCount = -1);
+	//Xman see all sources
+	/*
 	void UpdateFilesCount(int iCount);
+	*/
+	void UpdateFilesCount(UINT iCount, UINT countsources, UINT countreadyfiles);
+	//Xman end
 	void Localize();
 	void UpdateCatTabTitles(bool force = true);
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	void VerifyCatTabSize();
+	*/
+	void VerifyCatTabSize(bool _forceverify=false);
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 	int	 AddCategory(CString newtitle,CString newincoming,CString newcomment,CString newautocat,bool addTab=true);
 	int	 AddCategoryInteractive();
 	void SwitchUploadList();
 	void ResetTransToolbar(bool bShowToolbar, bool bResetLists = true);
 	void SetToolTipsDelay(DWORD dwDelay);
 	void OnDisableList();
+
+	// ==> CPU/MEM usage [$ick$/Stulle] - Max
+	void ShowRessources();
+	void EnableSysInfo(bool bEnable);
+	void QueueListResize(uint8 value);
+	// <== CPU/MEM usage [$ick$/Stulle] - Max
 
 	// Dialog Data
 	enum { IDD = IDD_TRANSFER };
@@ -97,6 +119,16 @@ protected:
 	uint32		m_dwShowListIDC;
 	CToolTipCtrlX* m_tooltipCats;
 	bool		m_bLayoutInited;
+	// ==> Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+#if _MSC_VER>=1600
+	CButtonVE	m_Refresh;
+#endif
+	// <== Visual Studio 2010 Compatibility [Stulle/Avi-3k/ied] - Stulle
+	// ==> Client queue progress bar [Commander] - Stulle
+	CProgressCtrlX queueBar;
+	CProgressCtrlX queueBar2;
+	CFont bold;
+	// <== Client queue progress bar [Commander] - Stulle
 
 	void	ShowWnd2(EWnd2 uList);
 	void	SetWnd2(EWnd2 uWnd2);
@@ -111,13 +143,22 @@ protected:
 	CString	GetTabStatistic(int tab);
 	int		GetTabUnderMouse(CPoint* point);
 	int		GetItemUnderMouse(CListCtrl* ctrl);
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	/*
 	CString	GetCatTitle(int catid);
+	*/
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
 	void	EditCatTabLabel(int index,CString newlabel);
 	void	EditCatTabLabel(int index);
 	void	ShowList(uint32 dwListIDC);
 	void	SetWnd1Icon(EWnd1Icon iIcon);
 	void	SetWnd2Icon(EWnd2Icon iIcon);
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+	/*
 	void	ShowSplitWindow(bool bReDraw = false);
+	*/
+	void	ShowSplitWindow(bool bReDraw, uint32 dwListIDC, bool bInitSplitted = false);
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
 	void	LocalizeToolbars();
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
@@ -148,4 +189,32 @@ protected:
 	afx_msg void OnWnd2BtnDropDown(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnPaint();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+
+	// ==> XP Style Menu [Xanatos] - Stulle
+	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
+	afx_msg LRESULT OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu);
+	// <== XP Style Menu [Xanatos] - Stulle
+
+	// ==> Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	void		CreateCategoryMenus();
+	CTitleMenu	m_mnuCategory;
+	CTitleMenu	m_mnuCatPriority;
+	CTitleMenu	m_mnuCatViewFilter;
+	CTitleMenu	m_mnuCatDlMode;
+public:
+	int		GetActiveCategory()			{ return m_dlTab.GetCurSel(); }
+	// <== Smart Category Control (SCC) [khaos/SiRoB/Stulle] - Stulle
+	// ==> Design Settings [eWombat/Stulle] - Stulle
+	void SetBackgroundColor(int nStyle);
+	void OnBackcolor();
+protected:
+	CBrush m_brMyBrush;
+	// <== Design Settings [eWombat/Stulle] - Stulle
+
+	// ==> Advanced Transfer Window Layout [Stulle] - Stulle
+public:
+	void UpdateListCountTop(EWnd2 listindex);
+protected:
+	uint32		m_dwTopListIDC;
+	// <== Advanced Transfer Window Layout [Stulle] - Stulle
 };

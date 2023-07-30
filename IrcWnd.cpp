@@ -235,6 +235,9 @@ BOOL CIrcWnd::OnInitDialog()
 	m_wndNicks.Init();
 	m_wndNicks.SetColumnWidth(0, LVSCW_AUTOSIZE_USEHEADER);
 	m_wndChanSel.Init();
+
+	OnBackcolor(); // Design Settings [eWombat/Stulle] - Max
+
 	OnChatTextChange();
 
 	return true;
@@ -1555,8 +1558,46 @@ void CIrcWnd::OnEnRequestResizeTitle(NMHDR *pNMHDR, LRESULT *pResult)
 
 HBRUSH CIrcWnd::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
+// ==> Design Settings [eWombat/Stulle] - Max
+/*
 	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
 	if (hbr)
 		return hbr;
 	return __super::OnCtlColor(pDC, pWnd, nCtlColor);
 }
+*/
+	HBRUSH hbr = theApp.emuledlg->GetCtlColor(pDC, pWnd, nCtlColor);
+	if (hbr)
+		return hbr;
+	hbr = __super::OnCtlColor(pDC, pWnd, nCtlColor);
+
+	switch(nCtlColor)
+	{
+	case CTLCOLOR_EDIT:
+		break;
+	default:
+		pDC->SetBkMode(TRANSPARENT);
+	case CTLCOLOR_DLG:
+		hbr = (HBRUSH) m_brMyBrush.GetSafeHandle();
+		break;
+	}
+
+	return hbr;
+}
+
+void CIrcWnd::OnBackcolor() 
+{
+	COLORREF crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_irc);
+
+	if(crTempColor == CLR_DEFAULT)
+		crTempColor = thePrefs.GetStyleBackColor(window_styles, style_w_default);
+
+	m_brMyBrush.DeleteObject();
+
+	if(crTempColor != CLR_DEFAULT)
+		m_brMyBrush.CreateSolidBrush(crTempColor);
+	else
+		m_brMyBrush.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+	m_wndChanSel.m_clrBack = crTempColor;
+}
+// <== Design Settings [eWombat/Stulle] - Max

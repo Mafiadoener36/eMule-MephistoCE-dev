@@ -7,6 +7,7 @@
 #include "preferences.h"
 #include "opcodes.h"
 #include "otherfunctions.h"
+#include "Scheduler.h" // Don't reset Connection Settings for Webserver/CML/MM [Stulle] - Stulle
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -28,13 +29,22 @@ void CInputBox::OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/)
 /////////////////////////////////////////////////////////////////////////////
 // CMuleSystrayDlg dialog
 
+//Xman
+/*
 CMuleSystrayDlg::CMuleSystrayDlg(CWnd* pParent, CPoint pt, int iMaxUp, int iMaxDown, int iCurUp, int iCurDown)
+*/
+CMuleSystrayDlg::CMuleSystrayDlg(CWnd* pParent, CPoint pt, float iMaxUp, float iMaxDown, float iCurUp, float iCurDown)
+//Xman end
 	: CDialog(CMuleSystrayDlg::IDD, pParent)
 {
 	if(iCurDown == UNLIMITED)
 		iCurDown = 0;
+	//Xman
+	/*
 	if(iCurUp == UNLIMITED)
 		iCurUp = 0;
+	*/
+	//Xman end
 
 	//{{AFX_DATA_INIT(CMuleSystrayDlg)
 	m_nDownSpeedTxt = iMaxDown < iCurDown ? iMaxDown : iCurDown;
@@ -69,10 +79,16 @@ void CMuleSystrayDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SIDEBAR, m_ctrlSidebar);
 	DDX_Control(pDX, IDC_UPSLD, m_ctrlUpSpeedSld);
 	DDX_Control(pDX, IDC_DOWNSLD, m_ctrlDownSpeedSld);
+	//Xman
+	/*
 	DDX_Control(pDX, IDC_DOWNTXT, m_DownSpeedInput);
 	DDX_Control(pDX, IDC_UPTXT, m_UpSpeedInput);
 	DDX_Text(pDX, IDC_DOWNTXT, m_nDownSpeedTxt);
 	DDX_Text(pDX, IDC_UPTXT, m_nUpSpeedTxt);
+	*/
+	DDX_Control(pDX, IDC_DOWNTXT, m_DownSpeedInput);
+	DDX_Control(pDX, IDC_UPTXT, m_UpSpeedInput);
+	//Xman end
 	//}}AFX_DATA_MAP
 }
 
@@ -123,7 +139,7 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 	m_hDownArrow = theApp.LoadIcon(_T("DOWNLOAD"));
 	m_ctrlUpArrow.SetIcon(m_hUpArrow); 
 	m_ctrlDownArrow.SetIcon(m_hDownArrow); 
-    		
+
 	bool	bValidFont = false;
 	LOGFONT lfStaticFont = {0};
 
@@ -161,6 +177,18 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 	}
 
 	p = GetDlgItem(IDC_TOMAX);
+
+	//zz_fly :: make font not bold for chinese :: start
+	if(p)
+	{
+		p->GetFont()->GetLogFont(&lfStaticFont);
+		bValidFont = true;
+	}
+
+	if(bValidFont && (thePrefs.m_wLanguageID != 2052) && (thePrefs.m_wLanguageID != 1028))
+		lfStaticFont.lfWeight += 200;			// make it bold
+	//zz_fly :: make font not bold for chinese :: end
+
 	if(p)
 	{
 		p->GetWindowRect(r);
@@ -218,9 +246,14 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 		m_ctrlRestore.m_bParentCapture = true;
 		if(bValidFont)
 		{	
+			//zz_fly :: make font not bold for chinese :: start 
+			/*
 			LOGFONT lfFont = lfStaticFont;
 			lfFont.lfWeight += 200;			// make it bold
 			m_ctrlRestore.m_cfFont.CreateFontIndirect(&lfFont);
+			*/
+			m_ctrlRestore.m_cfFont.CreateFontIndirect(&lfStaticFont);
+			//zz_fly :: make font not bold for chinese :: end 
 		}	
 	}
 	
@@ -313,6 +346,8 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 	if((p = GetDlgItem(IDC_UPKB)) != NULL)
 		p->SetWindowText(GetResString(IDS_KBYTESPERSEC));
 
+	//Xman
+	/*
 	m_ctrlDownSpeedSld.SetRange(0,m_iMaxDown);
 	m_ctrlDownSpeedSld.SetPos(m_nDownSpeedTxt);
 
@@ -321,6 +356,21 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 
 	m_DownSpeedInput.EnableWindow(m_nDownSpeedTxt >0);
 	m_UpSpeedInput.EnableWindow(m_nUpSpeedTxt >0);
+	*/
+	CString strBuffer;
+	strBuffer.Format(_T("%.1f"), m_nDownSpeedTxt);
+	GetDlgItem(IDC_DOWNTXT)->SetWindowText(strBuffer);
+	strBuffer.Format(_T("%.1f"), m_nUpSpeedTxt);
+	GetDlgItem(IDC_UPTXT)->SetWindowText(strBuffer);
+
+	m_ctrlDownSpeedSld.SetRange(0,int(m_iMaxDown*10.0f));
+	m_ctrlDownSpeedSld.SetPos(int(m_nDownSpeedTxt*10.0f));
+
+	m_ctrlUpSpeedSld.SetRange(1,int(m_iMaxUp*10.0f));
+	m_ctrlUpSpeedSld.SetPos(int(m_nUpSpeedTxt*10.0f));
+
+	m_DownSpeedInput.EnableWindow(m_nDownSpeedTxt > 0.0f);
+	//Xman end
 
 	CFont Font;
 	Font.CreateFont(-16,0,900,0,700,0,0,0,0,3,2,1,34,_T("Tahoma"));
@@ -329,14 +379,14 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 	if (winver == _WINVER_95_ || winver == _WINVER_NT4_ || g_bLowColorDesktop)
 	{
 		m_ctrlSidebar.SetColors(GetSysColor(COLOR_CAPTIONTEXT), 
-								GetSysColor(COLOR_ACTIVECAPTION), 
-								GetSysColor(COLOR_ACTIVECAPTION));
+									GetSysColor(COLOR_ACTIVECAPTION), 
+										GetSysColor(COLOR_ACTIVECAPTION));
 	}
 	else
 	{
 		m_ctrlSidebar.SetColors(GetSysColor(COLOR_CAPTIONTEXT), 
-								GetSysColor(COLOR_ACTIVECAPTION), 
-								GetSysColor(COLOR_GRADIENTACTIVECAPTION));
+									GetSysColor(COLOR_ACTIVECAPTION), 
+										GetSysColor(COLOR_GRADIENTACTIVECAPTION));
 	}
 
 	m_ctrlSidebar.SetHorizontal(false);
@@ -370,6 +420,31 @@ BOOL CMuleSystrayDlg::OnInitDialog()
 void CMuleSystrayDlg::OnChangeDowntxt() 
 {
 	UpdateData();
+	//Xman
+	CString strBuffer;
+	if(GetDlgItem(IDC_DOWNTXT)->GetWindowTextLength())
+	{
+		GetDlgItem(IDC_DOWNTXT)->GetWindowText(strBuffer);
+		m_nDownSpeedTxt = (float)_tstof(strBuffer);
+		// fix non-numeric input
+		/*
+		if(strBuffer.GetAt(0) < '0' || strBuffer.GetAt(0) > '9')
+		{
+			strBuffer.Format(_T("%.1f"),0.0f);
+			GetDlgItem(IDC_DOWNTXT)->SetWindowText(strBuffer);
+		}
+		*/
+		// auto complete to float (removed)
+		/*
+		else if(strBuffer.FindOneOf(_T(".,")) == -1)
+		{
+			strBuffer.Format(_T("%.1f"),m_nDownSpeedTxt);
+			GetDlgItem(IDC_DOWNTXT)->SetWindowText(strBuffer);
+		}
+		*/
+	}
+	float m_nDownSpeedTxtOld = m_nDownSpeedTxt;
+	//Xman end
 
 	if(thePrefs.GetMaxGraphDownloadRate() == UNLIMITED)	//Cax2 - shouldn't be anymore...
 	{
@@ -380,14 +455,30 @@ void CMuleSystrayDlg::OnChangeDowntxt()
 			m_nDownSpeedTxt = thePrefs.GetMaxGraphDownloadRate();
 	}
 
+	//Xman
+	/*
 	m_ctrlDownSpeedSld.SetPos(m_nDownSpeedTxt);
 	
 	if(m_nDownSpeedTxt < 1){
 		m_nDownSpeedTxt = 0;
 		m_DownSpeedInput.EnableWindow(false);
 	}
+	*/
+	m_ctrlDownSpeedSld.SetPos(int(m_nDownSpeedTxt*10.0f));
+	
+	if(m_nDownSpeedTxt < 0.1f){
+		m_nDownSpeedTxt = 0.0f;
+		m_DownSpeedInput.EnableWindow(false);
+	}
+	if(m_nDownSpeedTxt != m_nDownSpeedTxtOld)
+	{
+		strBuffer.Format(_T("%.1f"),m_nDownSpeedTxt);
+		GetDlgItem(IDC_DOWNTXT)->SetWindowText(strBuffer);
+	}
+	//Xman end
 
 	thePrefs.SetMaxDownload((m_nDownSpeedTxt == 0) ? UNLIMITED : m_nDownSpeedTxt);
+	theApp.scheduler->SaveOriginals(); // Don't reset Connection Settings for Webserver/CML/MM [Stulle] - Stulle
 
 	UpdateData(FALSE);
 }
@@ -395,6 +486,8 @@ void CMuleSystrayDlg::OnChangeDowntxt()
 void CMuleSystrayDlg::OnChangeUptxt() 
 {
 	UpdateData();
+	//Xman
+	/*
 	if(thePrefs.GetMaxGraphUploadRate(true) == UNLIMITED)
 	{
 		if(m_nUpSpeedTxt > 16)
@@ -410,6 +503,42 @@ void CMuleSystrayDlg::OnChangeUptxt()
 		m_UpSpeedInput.EnableWindow(false);
 	}
 	thePrefs.SetMaxUpload((m_nUpSpeedTxt == 0) ? UNLIMITED : m_nUpSpeedTxt);
+	*/
+	if(GetDlgItem(IDC_UPTXT)->GetWindowTextLength())
+	{
+		CString strBuffer;
+		GetDlgItem(IDC_UPTXT)->GetWindowText(strBuffer);
+		m_nUpSpeedTxt = (float)_tstof(strBuffer);
+		// auto complete to float (removed)
+		/*
+		if(strBuffer.FindOneOf(_T(".,")) == -1)
+		{
+			strBuffer.Format(_T("%.1f"),m_nUpSpeedTxt);
+			GetDlgItem(IDC_DOWNTXT)->SetWindowText(strBuffer);
+		}
+		*/
+	}
+
+	if(m_nUpSpeedTxt > thePrefs.GetMaxGraphUploadRate())
+	{
+		m_nUpSpeedTxt = thePrefs.GetMaxGraphUploadRate();
+		CString strBuffer;
+		strBuffer.Format(_T("%.1f"), m_nUpSpeedTxt);
+		GetDlgItem(IDC_UPTXT)->SetWindowText(strBuffer);
+	}
+	if(m_nUpSpeedTxt < 0.1f)
+	{
+		m_nUpSpeedTxt = 0.1f;
+		CString strBuffer;
+		strBuffer.Format(_T("%.1f"), m_nUpSpeedTxt);
+		GetDlgItem(IDC_UPTXT)->SetWindowText(strBuffer);
+	}
+
+	m_ctrlUpSpeedSld.SetPos(int(m_nUpSpeedTxt*10.0f));
+
+	thePrefs.SetMaxUpload(m_nUpSpeedTxt);
+	theApp.scheduler->SaveOriginals(); // Don't reset Connection Settings for Webserver/CML/MM [Stulle] - Stulle
+	//Xman end
 
 	UpdateData(FALSE);
 }
@@ -418,19 +547,33 @@ void CMuleSystrayDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	if(pScrollBar == (CScrollBar*)&m_ctrlDownSpeedSld)
 	{
+		//Xman
+		/*
 		m_nDownSpeedTxt = m_ctrlDownSpeedSld.GetPos();
 		if(m_nDownSpeedTxt < 1){
 			m_nDownSpeedTxt = 0;
+		*/
+		m_nDownSpeedTxt = m_ctrlDownSpeedSld.GetPos()/10.0f;
+		if(m_nDownSpeedTxt < 0.1f){
+			m_nDownSpeedTxt = 0.0f;
+		//Xman end
 			m_DownSpeedInput.EnableWindow(false);
 		}
 		else{
 			m_DownSpeedInput.EnableWindow(true);
 		}
+		//Xman
+		CString strBuffer;
+		strBuffer.Format(_T("%.1f"), m_nDownSpeedTxt);
+		GetDlgItem(IDC_DOWNTXT)->SetWindowText(strBuffer);
+		//Xman end
 		UpdateData(FALSE);
 		thePrefs.SetMaxDownload((m_nDownSpeedTxt == 0) ? UNLIMITED : m_nDownSpeedTxt);
 	}
 	else if(pScrollBar == (CScrollBar*)&m_ctrlUpSpeedSld)
 	{
+		//Xman
+		/*
 		m_nUpSpeedTxt = m_ctrlUpSpeedSld.GetPos();
 		if(m_nUpSpeedTxt < 1){
 			m_nUpSpeedTxt = 0;
@@ -441,7 +584,18 @@ void CMuleSystrayDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 		}
 		UpdateData(FALSE);
 		thePrefs.SetMaxUpload((m_nUpSpeedTxt == 0) ? UNLIMITED : m_nUpSpeedTxt);
+		*/
+		m_nUpSpeedTxt = m_ctrlUpSpeedSld.GetPos()/10.0f;
+		if(m_nUpSpeedTxt < 0.1f)
+			m_nUpSpeedTxt = 0.1f;
+		CString strBuffer;
+		strBuffer.Format(_T("%.1f"), m_nUpSpeedTxt);
+		GetDlgItem(IDC_UPTXT)->SetWindowText(strBuffer);
+		UpdateData(FALSE);
+		thePrefs.SetMaxUpload(m_nUpSpeedTxt);
+		//Xman end
 	}
+	theApp.scheduler->SaveOriginals(); // Don't reset Connection Settings for Webserver/CML/MM [Stulle] - Stulle
 	
 	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
 }

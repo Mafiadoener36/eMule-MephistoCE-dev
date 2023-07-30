@@ -21,6 +21,7 @@ All rights reserved.
 #include "HttpDownloadDlg.h"
 #include "OtherFunctions.h"
 #include "Log.h"
+#include "Preferences.h" //MORPH - Added by WiZaRd, Fix broken HTTP downloads
 
 ///////////////////////////////// Defines /////////////////////////////////////
 #define HAS_ZLIB
@@ -214,6 +215,7 @@ CHttpDownloadDlg::CHttpDownloadDlg(CWnd* pParent /*=NULL*/)
 	m_pThread = NULL;
 	if (sm_ullWinInetVer == 0)
 		sm_ullWinInetVer = GetModuleVersion(GetModuleHandle(_T("wininet")));
+	m_pLastModifiedTime = NULL; //Xman auto update IPFilter
 }
 
 void CHttpDownloadDlg::DoDataExchange(CDataExchange* pDX)
@@ -348,6 +350,13 @@ UINT AFX_CDECL CHttpDownloadDlg::_DownloadThread(LPVOID pParam)
 {
 	DbgSetThreadName("HttpDownload");
 	InitThreadLocale();
+	//Xman
+	// BEGIN SLUGFILLER: SafeHash
+	CReadWriteLock lock(&theApp.m_threadlock);
+	if (!lock.ReadLock(0))
+		return 0;
+	// END SLUGFILLER: SafeHash
+
 	//Convert from the SDK world to the C++ world
 	CHttpDownloadDlg* pDlg = (CHttpDownloadDlg*) pParam;
 	ASSERT(pDlg);
@@ -527,6 +536,23 @@ void CHttpDownloadDlg::DownloadThread()
 	HttpAddRequestHeaders(m_hHttpFile, ACCEPT_ENCODING_HEADER, (DWORD)-1L, HTTP_ADDREQ_FLAG_ADD);
 
 	// some sites give unacceptable low download speed if they don't see a well known user agent in the headers...
+	//MORPH START - Added by WiZaRd, Fix broken HTTP downloads
+	int curPos = 0;
+	bool skipAgent = false;
+	CString strBroken = thePrefs.GetBrokenURLs();
+	CString cur = strBroken.Tokenize(L"|", curPos);
+	while (!cur.IsEmpty() && !skipAgent)
+	{
+		cur.Trim();
+		if (!cur.IsEmpty()) 
+		{
+			if(StrStr(m_sURLToDownload, cur))
+				skipAgent = true;
+		}
+		cur = strBroken.Tokenize(L"|", curPos);
+	}
+	if(!skipAgent)
+	//MORPH END   - Added by WiZaRd, Fix broken HTTP downloads
 	HttpAddRequestHeaders(m_hHttpFile, _T("User-Agent: Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; SLCC1)\r\n"), (DWORD)-1L, HTTP_ADDREQ_FLAG_ADD);
 
 //label used to jump to if we need to resend the request
@@ -589,6 +615,26 @@ resend:
 		if(!_tcsicmp(szContentEncoding, _T("gzip")) || !_tcsicmp(szContentEncoding, _T("x-gzip")))
 			bEncodedWithGZIP = TRUE;
 	}
+
+	//Xman auto update IPFilter
+	//this part is taken from morph. It checks the date of the file and only download if newer version is found
+	if (m_pLastModifiedTime) {
+		SYSTEMTIME SysTime;
+		dwInfoSize = sizeof(SYSTEMTIME);
+		if (::HttpQueryInfo(m_hHttpFile, HTTP_QUERY_FLAG_SYSTEMTIME | HTTP_QUERY_LAST_MODIFIED, &SysTime, &dwInfoSize, NULL))
+		{
+			if (memcmp(m_pLastModifiedTime, &SysTime, dwInfoSize)==0) {
+				m_pLastModifiedTime = NULL;
+				//Delete the file being downloaded to if it is present
+				m_FileToWrite.Close();
+				::DeleteFile(m_sFileToDownloadInto);
+				PostMessage(WM_HTTPDOWNLOAD_THREAD_FINISHED);
+				return;
+			}
+			memcpy(m_pLastModifiedTime, &SysTime, dwInfoSize);
+		}
+	}
+	//Xman end
 
 	//Update the status control to reflect that we are getting the file information
 	SetStatus(GetResString(IDS_HTTPDOWNLOAD_GETTING_FILE_INFORMATION));

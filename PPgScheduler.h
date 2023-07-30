@@ -44,4 +44,9 @@ protected:
 	afx_msg void OnNmDblClkActionlist(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnNmRClickActionlist(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnSettingsChange() {SetModified();}
+
+	// ==> XP Style Menu [Xanatos] - Stulle
+	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
+	afx_msg LRESULT OnMenuChar(UINT nChar, UINT nFlags, CMenu* pMenu);
+	// <== XP Style Menu [Xanatos] - Stulle
 };
